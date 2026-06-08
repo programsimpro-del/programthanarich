@@ -587,8 +587,41 @@ function renderQP(){
     el.innerHTML='<div style="font-size:10px;color:#9E9E9E;font-weight:700;margin-bottom:5px">⚡ ตอบด่วน</div>'+QUICK.map(function(q){var t=q.t.replace(/'/g,"&apos;");return '<button class="qbtn" onclick="chatQuickSend(this.dataset.t)" data-t="'+t+'">['+q.k+'] '+q.t.slice(0,44)+'...</button>';}).join("");
 }
 function chkSend(){$("send-btn").disabled=!$("msg-input").value.trim();}
-function sendMsg(){const v=$("msg-input").value.trim();if(!v)return;addMsgToReq(activeChat,"admin",v);$("msg-input").value="";$("send-btn").disabled=true;}
+function sendMsg(){
+  var v=$("msg-input").value.trim(); if(!v)return;
+  var req=reqs.find(function(r){return r.ref===activeChat;});
+  addMsgToReq(activeChat,"admin",v);
+  // ส่งไปหาลูกค้าผ่าน LINE
+  if(req && req.lineUserId) sendLineMsg(req.lineUserId, v);
+  $("msg-input").value=""; $("send-btn").disabled=true;
+}
 function chatQuickSend(t){if(t&&t.target)t=t.target.dataset.t;addMsgToReq(activeChat,"admin",t);showQ=false;renderQP();$("qtoggle").style.background="#E8F5E9";$("qtoggle").style.color="#06C755";}
+// ส่งข้อความจาก Admin → ลูกค้า ผ่าน Vercel API (หลีกเลี่ยง CORS)
+async function sendLineMsg(userId, text) {
+  if(!userId || !text) return;
+  try {
+    var r = await fetch("https://programthanarichapi.vercel.app/api/send", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ to: userId, text: text })
+    });
+    var d = await r.json();
+    if(d.success) console.log("✅ ส่งข้อความสำเร็จ");
+    else console.warn("❌ ส่งไม่ได้:", d.error);
+  } catch(e) { console.warn("sendLineMsg error:", e.message); }
+  // บันทึกใน Firebase
+  if(fbDB) {
+    var mid = "a"+Date.now();
+    var ts2 = new Date().toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});
+    fbDB.ref("/chats/"+userId+"/messages/"+mid).set({
+      id:mid, from:"admin", text:text, time:ts2, ts:Date.now()
+    }).catch(function(){});
+    fbDB.ref("/chats/"+userId+"/info").update({
+      lastMsg:"คุณ: "+text, lastTime:ts2, unread:false
+    }).catch(function(){});
+  }
+}
+
 // ส่งข้อความจาก Admin ไปหาลูกค้า + บันทึก Firebase
 async function sendAdminMsg(userId, text) {
   if(!userId) return;
@@ -615,9 +648,10 @@ async function sendAdminMsg(userId, text) {
 }
 
 function addMsgToReq(ref,from,text){
-  const req=reqs.find(r=>r.ref===ref);if(!req)return;
+  var req=reqs.find(function(r){return r.ref===ref;}); if(!req)return;
   req.lineMessages=req.lineMessages||[];
-  req.lineMessages.push({id:Date.now(),from,text,time:ts()});
+  var msg={id:Date.now(),from:from,text:text,time:ts()};
+  req.lineMessages.push(msg);
   saveReqs();
   if(from==="admin"&&activeChat===ref)renderChatMsgs(req);
   if(aref===ref)renderOdMsgs(req);
@@ -759,7 +793,13 @@ function renderOdQP(){
     el.innerHTML='<div style="font-size:10px;color:#9E9E9E;font-weight:700;margin-bottom:5px">⚡ ตอบด่วน</div>'+QUICK.map(function(q){var t=q.t.replace(/'/g,"&apos;");return '<button class="qbtn" onclick="odQuickSend(this.dataset.t)" data-t="'+t+'">['+q.k+'] '+q.t.slice(0,44)+'...</button>';}).join("");
 }
 function chkOdSend(){$("od-send").disabled=!$("od-input").value.trim();}
-function sendOdMsg(){const v=$("od-input").value.trim();if(!v)return;addMsgToReq(aref,"admin",v);$("od-input").value="";$("od-send").disabled=true;}
+function sendOdMsg(){
+  var v=$("od-input").value.trim(); if(!v)return;
+  var req=reqs.find(function(r){return r.ref===aref;});
+  addMsgToReq(aref,"admin",v);
+  if(req && req.lineUserId) sendLineMsg(req.lineUserId, v);
+  $("od-input").value=""; $("od-send").disabled=true;
+}
 function odQuickSend(t){if(t&&t.target)t=t.target.dataset.t;addMsgToReq(aref,"admin",t);showOdQ=false;renderOdQP();$("od-qt").style.background="#E3F2FD";$("od-qt").style.color="#1565C0";}
 function toggleNet(){showNet=!showNet;renderOdActions(getR());}
 
