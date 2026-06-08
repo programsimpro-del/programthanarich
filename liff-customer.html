@@ -410,40 +410,37 @@ function renderConfirm(){
   }).join("");
 }
 
-/* ═══ LINE NOTIFY ═══ */
+/* ═══ FIREBASE + LINE NOTIFY ═══ */
+var FB_DB  = "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app";
+var API_URL = "https://programthanarichapi.vercel.app/api/notify";
+
 async function notifyAdmin(refNo,req,pkg){
-  if(!LINE_TOKEN||!ADMIN_USER_ID)return;
-  var plt2=PLTS[req.platform]||req.platform;
-  var adminLink=ADMIN_URL+"?ref="+refNo;
-  var flex={
-    type:"flex",altText:"📦 มีคำสั่งซื้อใหม่! "+req.orderNo,
-    contents:{
-      type:"bubble",size:"mega",
-      header:{type:"box",layout:"vertical",backgroundColor:"#FF5722",paddingAll:"14px",
-        contents:[{type:"text",text:"📦 มีคำสั่งซื้อใหม่!",weight:"bold",size:"lg",color:"#fff"},
-                  {type:"text",text:"เลขอ้างอิง: "+refNo,size:"sm",color:"rgba(255,255,255,.85)",margin:"sm"}]},
-      body:{type:"box",layout:"vertical",paddingAll:"14px",spacing:"sm",
-        contents:[
-          {type:"box",layout:"horizontal",contents:[{type:"text",text:"🛍️ แพลตฟอร์ม",size:"sm",color:"#9E9E9E",flex:2},{type:"text",text:plt2,size:"sm",weight:"bold",flex:3,wrap:true}]},
-          {type:"box",layout:"horizontal",contents:[{type:"text",text:"📦 เลขพัสดุ",size:"sm",color:"#9E9E9E",flex:2},{type:"text",text:req.orderNo,size:"sm",weight:"bold",color:"#E53935",flex:3,wrap:true}]},
-          {type:"box",layout:"horizontal",contents:[{type:"text",text:"📱 เบอร์ซิม",size:"sm",color:"#9E9E9E",flex:2},{type:"text",text:req.simPhone,size:"sm",weight:"bold",flex:3}]},
-          {type:"box",layout:"horizontal",contents:[{type:"text",text:"🎁 แพ็คเกจ",size:"sm",color:"#9E9E9E",flex:2},{type:"text",text:pkg?pkg.name:"-",size:"sm",weight:"bold",flex:3,wrap:true}]},
-          {type:"separator",margin:"md"},
-          {type:"text",text:"⏳ รอการตรวจสอบจาก Admin",size:"xs",color:"#E65100",margin:"md",weight:"bold"}
-        ]},
-      footer:{type:"box",layout:"vertical",paddingAll:"12px",spacing:"sm",contents:[
-        {type:"button",style:"primary",color:"#1565C0",height:"sm",action:{type:"uri",label:"🔍 ตรวจสอบคำสั่งซื้อ",uri:adminLink}},
-        {type:"button",style:"secondary",height:"sm",action:{type:"clipboard",label:"📋 คัดลอกเลขพัสดุ",clipboardText:req.orderNo}}
-      ]}
-    }
-  };
+  // 1. บันทึกลง Firebase (real-time)
   try{
-    await fetch("https://api.line.me/v2/bot/message/push",{
-      method:"POST",
-      headers:{"Content-Type":"application/json","Authorization":"Bearer "+LINE_TOKEN},
-      body:JSON.stringify({to:ADMIN_USER_ID,messages:[flex]})
+    var d={
+      ref:req.ref, platform:req.platform, orderNo:req.orderNo,
+      simPhone:req.simPhone, pkgId:req.pkgId, pkgName:req.pkgName,
+      pkgCode:req.pkgCode, status:"pending", shopeeVerified:"pending",
+      submittedAt:req.submittedAt, lineUserId:req.lineUserId||null,
+      lineDisplayName:req.lineDisplayName||null, linePictureUrl:req.linePictureUrl||null,
+      lineMessages:req.lineMessages||[], createdAt:new Date().toISOString()
+    };
+    await fetch(FB_DB+"/orders/"+refNo+".json",{
+      method:"PUT", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(d)
     });
-  }catch(e){console.warn("notify failed",e);}
+  }catch(e){console.warn("Firebase:",e.message);}
+  // 2. แจ้ง LINE Admin ผ่าน Vercel
+  try{
+    await fetch(API_URL,{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        refNo:refNo, orderNo:req.orderNo, simPhone:req.simPhone,
+        pkgName:pkg?pkg.name:"", platform:req.platform,
+        lineDisplayName:req.lineDisplayName||""
+      })
+    });
+  }catch(e){console.warn("LINE:",e.message);}
 }
 
 /* ═══ SUBMIT ═══ */
@@ -468,6 +465,9 @@ async function submitForm(){
   var req={ref:refNo,platform:plt,orderNo:orderNo,simPhone:simPhone,pkgId:pkgId,pkgName:pkg?pkg.name:"",pkgCode:pkg?pkg.code:"",imgOrder:photos[0],imgSim:photos[1],imgReg:photos[2],status:"pending",shopeeVerified:"pending",submittedAt:now,lineUserId:lp?lp.userId:null,lineDisplayName:lp?lp.displayName:null,linePictureUrl:lp?lp.pictureUrl:null,lineMessages:[{id:1,from:"customer",text:"สวัสดีค่ะ ขอรับเน็ตฟรีเดือนแรกค่ะ\nเลขพัสดุ "+orderNo+"\nเบอร์ซิม "+simPhone+"\nแพ็คเกจ "+(pkg?pkg.name:""),time:now}]};
   try{var list=JSON.parse(localStorage.getItem("pt_requests")||"[]");list.unshift(req);localStorage.setItem("pt_requests",JSON.stringify(list));}catch(_){}
   recordReq(orderNo,simPhone,refNo);
+
+
+
   await notifyAdmin(refNo,req,pkg);
   await delay(400); log("✅ รับข้อมูลเรียบร้อย ทีมงานจะดำเนินการให้เร็วที่สุด");
   await delay(400);
