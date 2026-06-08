@@ -354,19 +354,43 @@ function startRealtimeSync(){
   fbDB.ref("/chats").on("value", function(snap){
     var data = snap.val();
     if(!data) return;
-    // อัพเดท chat list ใน reqs
-    Object.values(data).forEach(function(chat){
-      if(!chat.info) return;
-      var info = chat.info;
-      // หาใน reqs หรือสร้างใหม่
-      var existing = reqs.find(function(r){ return r.lineUserId===info.userId; });
+    Object.keys(data).forEach(function(userId){
+      var chat = data[userId];
+      if(!chat) return;
+      var info = chat.info || {};
+      var msgs = Object.values(chat.messages||{})
+        .sort(function(a,b){return ((a.ts||a.timestamp||0)-(b.ts||b.timestamp||0));});
+      // หาใน reqs หรือสร้าง entry ใหม่
+      var existing = reqs.find(function(r){ return r.lineUserId===userId; });
       if(existing){
-        existing.lineMessages = Object.values(chat.messages||{})
-          .sort(function(a,b){return (a.timestamp||0)-(b.timestamp||0)});
-        existing.lineDisplayName = info.displayName;
-        existing.linePictureUrl  = info.pictureUrl;
-        existing._chatUnread = info.unread;
+        existing.lineMessages     = msgs;
+        existing.lineDisplayName  = info.displayName || existing.lineDisplayName;
+        existing.linePictureUrl   = info.pictureUrl  || existing.linePictureUrl;
+        existing._chatUnread      = info.unread;
+        existing.submittedAt      = info.lastTime || existing.submittedAt;
+      } else {
+        // สร้าง chat entry ใหม่สำหรับลูกค้าที่ทักมาตรงๆ
+        reqs.unshift({
+          ref:              "CHAT-"+userId,
+          lineUserId:       userId,
+          lineDisplayName:  info.displayName || userId,
+          linePictureUrl:   info.pictureUrl  || null,
+          lineMessages:     msgs,
+          submittedAt:      info.lastTime || "",
+          status:           "chat",
+          platform:         "line",
+          orderNo:          "",
+          simPhone:         "",
+          _chatOnly:        true,
+          _chatUnread:      info.unread
+        });
       }
+    });
+    // sort: unread + มีออเดอร์ก่อน
+    reqs.sort(function(a,b){
+      if(a._chatUnread && !b._chatUnread) return -1;
+      if(!a._chatUnread && b._chatUnread) return 1;
+      return 0;
     });
     renderChatList();
     updateBadges();
