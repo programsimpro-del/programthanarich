@@ -273,17 +273,28 @@ function saveQuotaDB(db){ try{localStorage.setItem("pt_quota",JSON.stringify(db)
 
 // เรียกเมื่อ Admin กดเปิดเน็ต — บันทึกการใช้สิทธิ์
 window.markActivated = function(orderNo, simPhone, refNo, quota) {
-  const db = getQuotaDB();
+  // บันทึก localStorage
+  var db = getQDB();
   if (!db[orderNo]) db[orderNo] = { usedCount:0, maxQuota: quota||1, activations:[] };
-  db[orderNo].maxQuota  = quota || db[orderNo].maxQuota || 1;
+  if(quota) db[orderNo].maxQuota = quota;
   db[orderNo].usedCount = (db[orderNo].usedCount||0) + 1;
   db[orderNo].activations = db[orderNo].activations || [];
   db[orderNo].activations.push({ sim:simPhone, ref:refNo, at:new Date().toISOString() });
-  // ล้าง pending
-  if(db[orderNo].pending) db[orderNo].pending = db[orderNo].pending.filter(p=>p.ref!==refNo);
-  saveQuotaDB(db);
-  console.log(`✅ บันทึกสิทธิ์: ${orderNo} (${db[orderNo].usedCount}/${db[orderNo].maxQuota})`);
+  saveQDB(db);
+  // บันทึก Firebase — ให้ลูกค้าทุกเครื่องเช็คได้
+  if(fbDB){
+    var q = db[orderNo];
+    fbDB.ref("/quota/"+orderNo).set({
+      orderNo:    orderNo,
+      usedCount:  q.usedCount,
+      maxQuota:   q.maxQuota,
+      activations: q.activations,
+      updatedAt:  new Date().toISOString()
+    }).catch(function(){});
+  }
+  console.log("✅ สิทธิ์: "+orderNo+" ("+db[orderNo].usedCount+"/"+db[orderNo].maxQuota+")");
 };
+
 
 // ดึงสรุปสิทธิ์ของออเดอร์
 function getQuotaSummary(orderNo) {
@@ -307,19 +318,55 @@ function setQuota(orderNo, quota) {
 }
 
 /* ══════ LOAD / SAVE ══════ */
-// Firebase Real-time Database
-const FB_CONFIG = {
-  apiKey:      "AIzaSyCnvEoyaadcOManjeyLcpkIM_rtWt3GLy8",
-  authDomain:  "programthanrich.firebaseapp.com",
-  databaseURL: "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId:   "programthanrich"
-};
-const fbApp = firebase.initializeApp(FB_CONFIG);
-const fbDB  = firebase.database();
 const ORDERS_API = ""; // ไม่ใช้แล้ว Firebase แทน
+var fbDB = null;
 
-// Real-time listener
+// Firebase init — รอให้ SDK โหลดเสร็จก่อน
+function initFirebase(){
+  try{
+    var FB_CONFIG = {
+      apiKey:      "AIzaSyCnvEoyaadcOManjeyLcpkIM_rtWt3GLy8",
+      authDomain:  "programthanrich.firebaseapp.com",
+      databaseURL: "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId:   "programthanrich"
+    };
+    if(!firebase.apps.length) firebase.initializeApp(FB_CONFIG);
+    fbDB = firebase.database();
+    console.log("✅ Firebase ready");
+    return true;
+  }catch(e){
+    console.warn("Firebase init failed:", e.message);
+    return false;
+  }
+}
+
+// Real-time listener — Orders + LINE OA Chat
 function startRealtimeSync(){
+  if(!fbDB && !initFirebase()) return;
+
+  // ── LINE OA Chat real-time ──────────────────────
+  fbDB.ref("/chats").on("value", function(snap){
+    var data = snap.val();
+    if(!data) return;
+    // อัพเดท chat list ใน reqs
+    Object.values(data).forEach(function(chat){
+      if(!chat.info) return;
+      var info = chat.info;
+      // หาใน reqs หรือสร้างใหม่
+      var existing = reqs.find(function(r){ return r.lineUserId===info.userId; });
+      if(existing){
+        existing.lineMessages = Object.values(chat.messages||{})
+          .sort(function(a,b){return (a.timestamp||0)-(b.timestamp||0)});
+        existing.lineDisplayName = info.displayName;
+        existing.linePictureUrl  = info.pictureUrl;
+        existing._chatUnread = info.unread;
+      }
+    });
+    renderChatList();
+    updateBadges();
+  });
+
+  // ── Orders real-time ────────────────────────────
   fbDB.ref("/orders").on("value", function(snap){
     var data = snap.val();
     if(!data) return;
@@ -404,7 +451,7 @@ function saveReqs(){
   try{localStorage.setItem("pt_requests",JSON.stringify(reqs));}catch(_){}
   // sync status กลับไป Firebase
   reqs.forEach(function(r){
-    if(r.ref && r.status && r.status!=="pending"){
+    if(r.ref && r.status && r.status!=="pending" && fbDB){
       try{
         fbDB.ref("/orders/"+r.ref).update({
           status:         r.status,
@@ -512,6 +559,31 @@ function renderQP(){
 function chkSend(){$("send-btn").disabled=!$("msg-input").value.trim();}
 function sendMsg(){const v=$("msg-input").value.trim();if(!v)return;addMsgToReq(activeChat,"admin",v);$("msg-input").value="";$("send-btn").disabled=true;}
 function chatQuickSend(t){if(t&&t.target)t=t.target.dataset.t;addMsgToReq(activeChat,"admin",t);showQ=false;renderQP();$("qtoggle").style.background="#E8F5E9";$("qtoggle").style.color="#06C755";}
+// ส่งข้อความจาก Admin ไปหาลูกค้า + บันทึก Firebase
+async function sendAdminMsg(userId, text) {
+  if(!userId) return;
+  const LINE_TOKEN = "DJ25W48oucJ/fo7BAmAcVNnOUMLeWxvlYGMemXK9ZGFxD11i8rAHxfrGJ80e+m2aScdVCeVnus2Ud/qv8NZ42J3b3Nwec5/O+8pYcau+Fktr3fWahABAdoAoKQwSvQnuaS2wp3UWZT4rUDPBgEkSWwdB04t89/10/w1cDnyilFU=";
+  // ส่งผ่าน Vercel API เพื่อหลีกเลี่ยง CORS
+  try {
+    await fetch("https://programthanarichapi.vercel.app/api/notify", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ _sendMsg: true, to: userId, text, token: LINE_TOKEN })
+    });
+  } catch(_) {}
+  // บันทึกใน Firebase
+  if(fbDB && userId) {
+    var msgId = "a" + Date.now();
+    var ts2   = new Date().toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});
+    fbDB.ref("/chats/"+userId+"/messages/"+msgId).set({
+      id:msgId, from:"admin", text, time:ts2, timestamp:Date.now()
+    });
+    fbDB.ref("/chats/"+userId+"/info").update({
+      lastMessage:"คุณ: "+text, lastTime:ts2, unread:false
+    });
+  }
+}
+
 function addMsgToReq(ref,from,text){
   const req=reqs.find(r=>r.ref===ref);if(!req)return;
   req.lineMessages=req.lineMessages||[];
@@ -688,7 +760,7 @@ function renderOrderBox(req){
 
 
     <!-- ── QUOTA BOX — สรุปสิทธิ์ ── -->
-    \${renderQuotaBox(orderNo, req)}
+    ${renderQuotaBox(orderNo, req)}
     <!-- ปุ่มตรวจสอบ Shopee — <a> tag ธรรมดา เปิด browser native -->
     <a href="https://seller.shopee.co.th/portal/sale/all?keyword=${orderNo}"
       style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:14px 0;border-radius:13px;
@@ -871,7 +943,13 @@ function renderQuotaBox(orderNo, req) {
 function setQuotaFromSel(sel) {
   var orderNo = sel.dataset.order;
   var ref     = sel.dataset.ref;
-  setQuota(orderNo, Number(sel.value));
+  var quota   = Number(sel.value);
+  setQuota(orderNo, quota);
+  // บันทึก quota ลง Firebase
+  if(fbDB){
+    fbDB.ref("/orders/"+ref).update({ maxQuota: quota }).catch(function(){});
+    fbDB.ref("/quota/"+orderNo).set({ maxQuota: quota, updatedAt: new Date().toISOString() }).catch(function(){});
+  }
   renderOrdDetail(ref);
 }
 
