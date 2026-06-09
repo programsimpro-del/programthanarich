@@ -260,6 +260,8 @@ const ts=()=>new Date().toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-dig
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 
 /* ═══ QUOTA ═══ */
+var FB_DB_QUOTA = "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app";
+
 function getQDB(){ try{return JSON.parse(localStorage.getItem("pt_quota")||"{}");}catch(_){return {};} }
 function saveQDB(db){ try{localStorage.setItem("pt_quota",JSON.stringify(db));}catch(_){} }
 function markActivated(orderNo,simPhone,refNo){
@@ -272,10 +274,23 @@ function markActivated(orderNo,simPhone,refNo){
 }
 window.markActivated=markActivated;
 async function checkDup(orderNo){
+  // ดึงจาก Firebase ก่อน — ข้อมูลจริงข้ามอุปกรณ์
+  try{
+    var res = await fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/quota/"+orderNo+".json");
+    if(res.ok){
+      var entry = await res.json();
+      if(entry && entry.usedCount >= (entry.maxQuota||1)){
+        var acts = entry.activations || [];
+        return {usedCount:entry.usedCount, maxQuota:entry.maxQuota, lastAt: acts.length>0?acts[acts.length-1].at:null};
+      }
+      return null; // ยังมีสิทธิ์เหลือ
+    }
+  }catch(e){}
+  // fallback localStorage
   var db=getQDB(), entry=db[orderNo];
   if(!entry)return null;
   var rem=(entry.maxQuota||1)-(entry.usedCount||0);
-  if(rem<=0)return {usedCount:entry.usedCount,maxQuota:entry.maxQuota,lastAt:entry.activations?.slice(-1)[0]?.at};
+  if(rem<=0) return {usedCount:entry.usedCount, maxQuota:entry.maxQuota, lastAt:(entry.activations||[]).slice(-1)[0]?.at};
   return null;
 }
 function recordReq(orderNo,simPhone,refNo){
