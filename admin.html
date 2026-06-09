@@ -136,7 +136,7 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
   </div>
 
   <!-- TAB BAR -->
-  <div class="tabbar" id="tabbar">
+  <div class="tabbar" style="display:none">
     <div class="tab active" id="tab0" onclick="switchTab(0)">
       <span style="font-size:18px">💬</span>
       <span>LINE OA</span>
@@ -152,7 +152,7 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
   <!-- ══════════════════════════════
        SCREEN 0: LINE OA CHAT LIST
   ══════════════════════════════ -->
-  <div class="screen on" id="sc0">
+  <div id="sc0" class="screen" style="display:none">
     <!-- Chat list (LINE style) -->
     <div id="chat-list-view" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
       <div class="chat-search"><input id="chat-search" placeholder="🔍 ค้นหาชื่อหรือข้อความ..." oninput="filterChats()"></div>
@@ -174,7 +174,7 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
   <!-- ══════════════════════════════
        SCREEN 1: NOTIFICATIONS
   ══════════════════════════════ -->
-  <div class="screen" id="sc1">
+  <div id="sc1" class="screen on">
     <!-- Order list view -->
     <div id="ord-list-view" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
       <div class="notif-hdr">
@@ -260,7 +260,7 @@ const DEFAULT_PKGS=[
 /* ══════ STATE ══════ */
 let pkgs=[],reqs=[],aref=null,fstat="all",showQ=false,showOdQ=false,showNet=false,verifying=false,peid=null,pfe="📶",pfc="#00C853";
 let activeChat=null; // LINE OA chat ref
-let curTab=0;
+let curTab=1;
 const $=id=>document.getElementById(id);
 const ts=()=>new Date().toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});
 const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
@@ -350,51 +350,6 @@ function initFirebase(){
 function startRealtimeSync(){
   if(!fbDB && !initFirebase()) return;
 
-  // ── LINE OA Chat real-time ──────────────────────
-  fbDB.ref("/chats").on("value", function(snap){
-    var data = snap.val();
-    if(!data) return;
-    Object.keys(data).forEach(function(userId){
-      var chat = data[userId];
-      if(!chat) return;
-      var info = chat.info || {};
-      var msgs = Object.values(chat.messages||{})
-        .sort(function(a,b){return ((a.ts||a.timestamp||0)-(b.ts||b.timestamp||0));});
-      // หาใน reqs หรือสร้าง entry ใหม่
-      var existing = reqs.find(function(r){ return r.lineUserId===userId; });
-      if(existing){
-        existing.lineMessages     = msgs;
-        existing.lineDisplayName  = info.displayName || existing.lineDisplayName;
-        existing.linePictureUrl   = info.pictureUrl  || existing.linePictureUrl;
-        existing._chatUnread      = info.unread;
-        existing.submittedAt      = info.lastTime || existing.submittedAt;
-      } else {
-        // สร้าง chat entry ใหม่สำหรับลูกค้าที่ทักมาตรงๆ
-        reqs.unshift({
-          ref:              "CHAT-"+userId,
-          lineUserId:       userId,
-          lineDisplayName:  info.displayName || userId,
-          linePictureUrl:   info.pictureUrl  || null,
-          lineMessages:     msgs,
-          submittedAt:      info.lastTime || "",
-          status:           "chat",
-          platform:         "line",
-          orderNo:          "",
-          simPhone:         "",
-          _chatOnly:        true,
-          _chatUnread:      info.unread
-        });
-      }
-    });
-    // sort: unread + มีออเดอร์ก่อน
-    reqs.sort(function(a,b){
-      if(a._chatUnread && !b._chatUnread) return -1;
-      if(!a._chatUnread && b._chatUnread) return 1;
-      return 0;
-    });
-    renderChatList();
-    updateBadges();
-  });
 
   // ── Orders real-time ────────────────────────────
   fbDB.ref("/orders").on("value", function(snap){
@@ -511,8 +466,9 @@ function updateBadges(){
 /* ══════ TAB SWITCH ══════ */
 function switchTab(n){
   curTab=n;
-  document.querySelectorAll(".tab").forEach((t,i)=>t.classList.toggle("active",i===n));
-  [document.getElementById("sc0"),document.getElementById("sc1")].forEach((s,i)=>{if(s)s.classList.toggle("on",i===n);});
+  // sc0 ถูกซ่อนไปแล้ว — sc1 แสดงเสมอ
+  var sc1=document.getElementById("sc1");
+  if(sc1){sc1.classList.add("on");}
   const clv=document.getElementById("chat-list-view"),cdv=document.getElementById("chat-detail-view");
   const olv=document.getElementById("ord-list-view"), odv=document.getElementById("ord-detail-view");
   if(n===0){if(clv)clv.style.display="flex";if(cdv)cdv.style.display="none";}
@@ -861,10 +817,109 @@ function detectType(no){const n=(no||"").trim().toUpperCase();if(/^TH[0-9A-Z]{10
 function confirmOrd(ref,verdict){
   const req=reqs.find(r=>r.ref===ref);if(!req)return;
   req.shopeeVerified=verdict;
-  if(verdict==="confirmed"){req.status="confirmed";addMsgToReq(ref,"admin","✅ ทางร้านตรวจสอบคำสั่งซื้อของคุณเรียบร้อยแล้วนะคะ กำลังดำเนินการเปิดเน็ตฟรีให้ค่ะ รอสักครู่นะคะ 🙏");showNet=true;}
-  else if(verdict==="rejected"){req.status="rejected";addMsgToReq(ref,"admin","ขออภัยค่ะ ไม่พบคำสั่งซื้อนี้ในระบบ กรุณาตรวจสอบและติดต่อใหม่อีกครั้งนะคะ 🙏");}
+
+  if(verdict==="confirmed"){
+    // แสดง dialog เลือกจำนวนสิทธิ์
+    showQuotaDialog(ref, req);
+    return;
+  }
+  else if(verdict==="rejected"){
+    req.status="rejected";
+    // แจ้งลูกค้าผ่าน LINE
+    if(req.lineUserId) sendLineMsg(req.lineUserId, "ขออภัยค่ะ ไม่พบคำสั่งซื้อนี้ในระบบ กรุณาตรวจสอบและติดต่อใหม่อีกครั้งนะคะ 🙏");
+    addMsgToReq(ref,"admin","ขออภัยค่ะ ไม่พบคำสั่งซื้อนี้ในระบบ กรุณาตรวจสอบและติดต่อใหม่อีกครั้งนะคะ 🙏");
+  }
   else{req.shopeeVerified="pending";req.status="pending";}
   saveReqs();renderOrdDetail(ref);renderOrdList();
+}
+
+// Dialog เลือกจำนวนสิทธิ์
+function showQuotaDialog(ref, req){
+  var cur = (typeof getQuotaSummary==="function") ? getQuotaSummary(req.orderNo).maxQuota : 1;
+  var overlay = document.createElement("div");
+  overlay.id = "quota-dlg";
+  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px";
+  overlay.innerHTML = [
+    '<div style="background:#fff;border-radius:20px;padding:24px;width:100%;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.3)">',
+      '<div style="font-weight:900;font-size:17px;color:#14532D;margin-bottom:6px">🎫 กำหนดจำนวนสิทธิ์</div>',
+      '<div style="font-size:13px;color:#6B7280;margin-bottom:20px">ออเดอร์ <b style="color:#E53935;font-family:monospace">'+req.orderNo+'</b> มีซิมกี่ตัว?</div>',
+      '<div style="display:flex;gap:10px;margin-bottom:20px">',
+        [1,2,3,4,5].map(function(n){
+          return '<button onclick="selectQuota('+n+')" data-n="'+n+'" '+
+            'style="flex:1;padding:14px 0;border-radius:12px;border:2px solid '+(n===cur?"#06C755":"#E0E0E0")+
+            ';background:'+(n===cur?"#E8F5E9":"#fff")+
+            ';font-weight:900;font-size:18px;color:'+(n===cur?"#14532D":"#757575")+
+            ';cursor:pointer;transition:all .15s" class="quota-btn">'+n+'</button>';
+        }).join(""),
+      '</div>',
+      '<div style="background:#F0FDF4;border-radius:12px;padding:12px 14px;margin-bottom:18px;font-size:12px;color:#166534;line-height:1.7" id="quota-preview">',
+        '📋 เลือก <b id="qn-label">'+cur+'</b> สิทธิ์ — ลูกค้าจะได้รับแจ้งผ่าน LINE',
+      '</div>',
+      '<div style="display:flex;gap:10px">',
+        '<button onclick="closeQuotaDialog()" style="flex:1;padding:13px;border-radius:12px;border:1.5px solid #E0E0E0;background:#fff;font-weight:700;font-size:14px;cursor:pointer">ยกเลิก</button>',
+        '<button id="quota-apply-btn" data-ref="'+ref+'" onclick="applyQuotaConfirm(this.dataset.ref)" style="flex:2;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#06C755,#05A847);color:#fff;font-weight:900;font-size:14px;cursor:pointer">✅ ยืนยัน & แจ้งลูกค้า</button>',
+      '</div>',
+    '</div>'
+  ].join("");
+  document.body.appendChild(overlay);
+  window._selectedQuota = cur;
+}
+
+function selectQuota(n){
+  window._selectedQuota = n;
+  document.querySelectorAll(".quota-btn").forEach(function(btn){
+    var isSelected = parseInt(btn.dataset.n) === n;
+    btn.style.borderColor  = isSelected ? "#06C755" : "#E0E0E0";
+    btn.style.background   = isSelected ? "#E8F5E9" : "#fff";
+    btn.style.color        = isSelected ? "#14532D" : "#757575";
+  });
+  var lbl = document.getElementById("qn-label");
+  if(lbl) lbl.textContent = n;
+}
+
+function closeQuotaDialog(){
+  var el = document.getElementById("quota-dlg");
+  if(el) el.remove();
+}
+
+function applyQuotaConfirm(ref){
+  var quota = window._selectedQuota || 1;
+  var req = reqs.find(function(r){return r.ref===ref;});
+  if(!req){ closeQuotaDialog(); return; }
+
+  // ตั้ง quota และ confirm
+  req.status = "confirmed";
+  req.shopeeVerified = "confirmed";
+  setQuota(req.orderNo, quota);
+
+  // บันทึก Firebase quota
+  if(fbDB){
+    fbDB.ref("/quota/"+req.orderNo).set({
+      orderNo:   req.orderNo,
+      maxQuota:  quota,
+      usedCount: 0,
+      activations: [],
+      updatedAt: new Date().toISOString()
+    }).catch(function(){});
+    fbDB.ref("/orders/"+ref).update({ status:"confirmed", maxQuota:quota }).catch(function(){});
+  }
+
+  // แจ้งลูกค้าผ่าน LINE พร้อมจำนวนสิทธิ์
+  var msg = "✅ ทางร้านตรวจสอบคำสั่งซื้อของคุณเรียบร้อยแล้วนะคะ 🎉\n\n" +
+    "📦 เลขออเดอร์: " + req.orderNo + "\n" +
+    "🎫 สิทธิ์รับเน็ตฟรี: " + quota + " ซิม\n" +
+    "✅ คงเหลือ: " + quota + " สิทธิ์\n\n" +
+    "ทีมงานกำลังดำเนินการเปิดเน็ตฟรีให้ค่ะ รอสักครู่นะคะ 🙏";
+
+  if(req.lineUserId) sendLineMsg(req.lineUserId, msg);
+  addMsgToReq(ref, "admin", msg);
+
+  showNet = true;
+  saveReqs();
+  closeQuotaDialog();
+  renderOrdDetail(ref);
+  renderOrdList();
+  updateBadges();
 }
 
 /* ══════ AI VERIFY ══════ */
