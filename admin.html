@@ -1090,8 +1090,8 @@ function showQuotaDialog(ref, req){
     '<div style="background:#fff;border-radius:20px;padding:24px;width:100%;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.3)">',
       '<div style="font-weight:900;font-size:17px;color:#14532D;margin-bottom:6px">🎫 กำหนดจำนวนสิทธิ์</div>',
       '<div style="font-size:13px;color:#6B7280;margin-bottom:20px">ออเดอร์ <b style="color:#E53935;font-family:monospace">'+req.orderNo+'</b> มีซิมกี่ตัว?</div>',
-      '<div style="display:flex;gap:10px;margin-bottom:20px">',
-        [1,2,3,4,5].map(function(n){
+      '<div style="display:flex;gap:8px;margin-bottom:20px">',
+        [0,1,2,3,4].map(function(n){
           return '<button onclick="selectQuota('+n+')" data-n="'+n+'" '+
             'style="flex:1;padding:14px 0;border-radius:12px;border:2px solid '+(n===cur?"#06C755":"#E0E0E0")+
             ';background:'+(n===cur?"#E8F5E9":"#fff")+
@@ -1100,7 +1100,7 @@ function showQuotaDialog(ref, req){
         }).join(""),
       '</div>',
       '<div style="background:#F0FDF4;border-radius:12px;padding:12px 14px;margin-bottom:18px;font-size:12px;color:#166534;line-height:1.7" id="quota-preview">',
-        '📋 เลือก <b id="qn-label">'+cur+'</b> สิทธิ์ — ลูกค้าจะได้รับแจ้งผ่าน LINE',
+        '📋 เลือก <b id="qn-label"></b> สิทธิ์ — ลูกค้าจะได้รับแจ้งผ่าน LINE',
       '</div>',
       '<div style="display:flex;gap:10px">',
         '<button onclick="closeQuotaDialog()" style="flex:1;padding:13px;border-radius:12px;border:1.5px solid #E0E0E0;background:#fff;font-weight:700;font-size:14px;cursor:pointer">ยกเลิก</button>',
@@ -1109,7 +1109,7 @@ function showQuotaDialog(ref, req){
     '</div>'
   ].join("");
   document.body.appendChild(overlay);
-  window._selectedQuota = cur;
+  window._selectedQuota = null; // ยังไม่เลือก
 }
 
 function selectQuota(n){
@@ -1122,6 +1122,10 @@ function selectQuota(n){
   });
   var lbl = document.getElementById("qn-label");
   if(lbl) lbl.textContent = n;
+  // อัพเดท preview text
+  var prev = document.getElementById("quota-preview");
+  if(prev) prev.style.background = n===0 ? "#FEF3C7" : "#F0FDF4";
+  if(prev) prev.style.color = n===0 ? "#92400E" : "#166534";
 }
 
 function closeQuotaDialog(){
@@ -1130,7 +1134,11 @@ function closeQuotaDialog(){
 }
 
 function applyQuotaConfirm(ref){
-  var quota = window._selectedQuota || 1;
+  if(window._selectedQuota === null || window._selectedQuota === undefined){
+    alert("กรุณาเลือกจำนวนสิทธิ์ก่อนค่ะ");
+    return;
+  }
+  var quota = window._selectedQuota;
   var req = reqs.find(function(r){return r.ref===ref;});
   if(!req){ closeQuotaDialog(); return; }
 
