@@ -215,24 +215,49 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
         </div>
       </div>
 
-      <!-- ── สถิติแยกสาขา ── -->
+      <!-- ── สถิติแยกสาขา Real-time ── -->
       <div style="background:#fff;border:1.5px solid #E8E8E8;border-radius:14px;padding:12px 14px;margin:0 12px 8px">
-        <div style="font-size:12px;font-weight:800;color:#374151;margin-bottom:10px">🏪 สถิติแยกสาขา</div>
-        <div style="display:flex;gap:8px">
-          <div style="flex:1;background:linear-gradient(135deg,#1565C0,#1976D2);border-radius:12px;padding:12px;color:#fff;text-align:center">
-            <div style="font-size:11px;opacity:.85;font-weight:700;margin-bottom:4px">🏪 K — กาฬสินธุ์</div>
-            <div style="font-size:26px;font-weight:900" id="dash-branch-K">0</div>
-            <div style="font-size:9px;opacity:.75">เดือนนี้</div>
-            <div style="font-size:18px;font-weight:800;margin-top:4px" id="dash-branch-K-today">0</div>
-            <div style="font-size:9px;opacity:.75">วันนี้</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:12px;font-weight:800;color:#374151">🏪 สถิติแยกสาขา</div>
+          <div style="font-size:10px;color:#9E9E9E" id="branch-updated">🔴 LIVE</div>
+        </div>
+        <!-- K กาฬสินธุ์ -->
+        <div style="background:linear-gradient(135deg,#1565C0,#1976D2);border-radius:12px;padding:12px 14px;margin-bottom:8px;color:#fff">
+          <div style="font-weight:800;font-size:12px;margin-bottom:8px">🏪 K — กาฬสินธุ์</div>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <div style="flex:1;background:rgba(255,255,255,.15);border-radius:8px;padding:8px;text-align:center">
+              <div style="font-size:22px;font-weight:900" id="bK-today">0</div>
+              <div style="font-size:9px;opacity:.8">วันนี้</div>
+            </div>
+            <div style="flex:1;background:rgba(255,255,255,.15);border-radius:8px;padding:8px;text-align:center">
+              <div style="font-size:22px;font-weight:900" id="bK-month">0</div>
+              <div style="font-size:9px;opacity:.8">เดือนนี้</div>
+            </div>
+            <div style="flex:1;background:rgba(255,255,255,.15);border-radius:8px;padding:8px;text-align:center">
+              <div style="font-size:18px;font-weight:900" id="bK-revenue">฿0</div>
+              <div style="font-size:9px;opacity:.8">ยอดเดือนนี้</div>
+            </div>
           </div>
-          <div style="flex:1;background:linear-gradient(135deg,#6A1B9A,#7B1FA2);border-radius:12px;padding:12px;color:#fff;text-align:center">
-            <div style="font-size:11px;opacity:.85;font-weight:700;margin-bottom:4px">🏪 L — เลย</div>
-            <div style="font-size:26px;font-weight:900" id="dash-branch-L">0</div>
-            <div style="font-size:9px;opacity:.75">เดือนนี้</div>
-            <div style="font-size:18px;font-weight:800;margin-top:4px" id="dash-branch-L-today">0</div>
-            <div style="font-size:9px;opacity:.75">วันนี้</div>
+          <div id="bK-pkgs" style="font-size:10px;opacity:.85;line-height:1.8"></div>
+        </div>
+        <!-- L เลย -->
+        <div style="background:linear-gradient(135deg,#6A1B9A,#7B1FA2);border-radius:12px;padding:12px 14px;color:#fff">
+          <div style="font-weight:800;font-size:12px;margin-bottom:8px">🏪 L — เลย</div>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <div style="flex:1;background:rgba(255,255,255,.15);border-radius:8px;padding:8px;text-align:center">
+              <div style="font-size:22px;font-weight:900" id="bL-today">0</div>
+              <div style="font-size:9px;opacity:.8">วันนี้</div>
+            </div>
+            <div style="flex:1;background:rgba(255,255,255,.15);border-radius:8px;padding:8px;text-align:center">
+              <div style="font-size:22px;font-weight:900" id="bL-month">0</div>
+              <div style="font-size:9px;opacity:.8">เดือนนี้</div>
+            </div>
+            <div style="flex:1;background:rgba(255,255,255,.15);border-radius:8px;padding:8px;text-align:center">
+              <div style="font-size:18px;font-weight:900" id="bL-revenue">฿0</div>
+              <div style="font-size:9px;opacity:.8">ยอดเดือนนี้</div>
+            </div>
           </div>
+          <div id="bL-pkgs" style="font-size:10px;opacity:.85;line-height:1.8"></div>
         </div>
       </div>
       <div class="stats" id="stats-row"></div>
@@ -862,6 +887,40 @@ function renderDashboard(){
     }).join("");
   }
 
+  // ── สถิติแยกสาขา ──────────────────────────────────
+  var branchData={K:{today:0,month:0,revenue:0,pkgs:{}},L:{today:0,month:0,revenue:0,pkgs:{}}};
+  reqs.forEach(function(r){
+    var d=new Date(r.createdAt||0);
+    var mk=d.getFullYear()+"-"+(d.getMonth()+1).toString().padStart(2,"0");
+    var ds=d.toLocaleDateString("th-TH");
+    var br=(r.branchCode||"").toUpperCase();
+    if(br!=="K"&&br!=="L") return;
+    var bd=branchData[br];
+    if(mk===thisMonth){
+      bd.month++;
+      var p2=pkgs.find(function(p){return p.id===(r.activatedPackage||r.pkgId);});
+      if(p2&&r.status==="activated") bd.revenue+=(p2.price||0);
+      var pn=p2?p2.name:(r.pkgName||"ไม่ระบุ");
+      bd.pkgs[pn]=(bd.pkgs[pn]||0)+1;
+    }
+    if(ds===today) bd.today++;
+  });
+  ["K","L"].forEach(function(br){
+    var bd=branchData[br], px=br==="K"?"bK":"bL";
+    var eT=document.getElementById(px+"-today");
+    var eM=document.getElementById(px+"-month");
+    var eR=document.getElementById(px+"-revenue");
+    var eP=document.getElementById(px+"-pkgs");
+    if(eT) eT.textContent=bd.today;
+    if(eM) eM.textContent=bd.month;
+    if(eR) eR.textContent="฿"+bd.revenue.toLocaleString();
+    if(eP){
+      var lines=Object.keys(bd.pkgs).map(function(k){return "📦 "+k+": "+bd.pkgs[k]+" ซิม";});
+      eP.innerHTML=lines.length?lines.join("<br>"):'<span style="opacity:.6">ยังไม่มีข้อมูล</span>';
+    }
+  });
+  var upd=document.getElementById("branch-updated");
+  if(upd) upd.textContent="อัพเดท "+ts();
 }
 
 function renderOrdList(){
