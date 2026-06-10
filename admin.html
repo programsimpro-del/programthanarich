@@ -552,6 +552,7 @@ function startRealtimeSync(){
 }
 
 function loadAll(){
+  // โหลด pkgs — ถ้ามีใน localStorage ใช้ก่อน
   try{pkgs=JSON.parse(localStorage.getItem("pt_packages")||"null")||DEFAULT_PKGS;}catch(_){pkgs=DEFAULT_PKGS;}
   try{reqs=JSON.parse(localStorage.getItem("pt_requests")||"null")||[];}catch(_){reqs=[];}
   renderChatList();
@@ -559,10 +560,28 @@ function loadAll(){
   updateBadges();
   renderDashboard();
   $("rts").textContent="อัพเดท "+ts();
-  // ตั้ง topbar ให้มีปุ่มแพ็คเกจ
-  setTopbar("",null,`<button onclick="showPkgMgr()" style="padding:6px 14px;border-radius:20px;border:none;background:rgba(255,255,255,.2);color:#fff;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">📦 แพ็คเกจ</button>`);
+  setTopbar("",null,'<button onclick="showPkgMgr()" style="padding:6px 14px;border-radius:20px;border:none;background:rgba(255,255,255,.2);color:#fff;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">📦 แพ็คเกจ</button>');
   if(ORDERS_API) syncFromAPI();
   startRealtimeSync();
+  // sync pkgs จาก Firebase ใน background
+  syncPkgsFromFirebase();
+}
+
+function syncPkgsFromFirebase(){
+  if(!fbDB && !initFirebase()) return;
+  fbDB.ref("/packages").once("value").then(function(snap){
+    var fbPkgs = snap.val();
+    if(fbPkgs && Array.isArray(fbPkgs) && fbPkgs.length > 0){
+      pkgs = fbPkgs;
+      localStorage.setItem("pt_packages", JSON.stringify(pkgs));
+      console.log("✅ pkgs synced from Firebase:", pkgs.length, "packages");
+    } else {
+      // Firebase ว่าง — upload LOCAL pkgs ขึ้น Firebase
+      if(pkgs && pkgs.length > 0){
+        fbDB.ref("/packages").set(pkgs).catch(function(){});
+      }
+    }
+  }).catch(function(e){ console.warn("syncPkgs:", e.message); });
 }
 
 function syncFromAPI(){
@@ -1559,7 +1578,7 @@ function renderPkgMgrList(){
   });
 }
 
-async function showPkgMgr(){
+function showPkgMgr(){
   document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("on");});
   $("sc-pkgs").classList.add("on");
   $("tabbar").style.display="none";
@@ -1569,24 +1588,32 @@ async function showPkgMgr(){
     $("tabbar").style.display="flex";
   }, "");
 
-  // โหลดจาก Firebase ก่อนแสดง
-  var loading = $("pkg-mgr-list");
-  if(loading) loading.innerHTML = '<div style="text-align:center;padding:20px;color:#9E9E9E;font-size:12px">⏳ กำลังโหลด...</div>';
+  // แสดง pkgs จาก memory ทันที (ไม่ต้องรอ Firebase)
+  renderPkgMgrList();
 
-  try{
-    if(fbDB||initFirebase()){
-      var snap = await fbDB.ref("/packages").once("value");
+  // โหลดจาก Firebase ใน background แล้ว refresh
+  if(fbDB||initFirebase()){
+    fbDB.ref("/packages").once("value").then(function(snap){
       var fbPkgs = snap.val();
       if(fbPkgs && Array.isArray(fbPkgs) && fbPkgs.length>0){
         pkgs = fbPkgs;
         localStorage.setItem("pt_packages", JSON.stringify(pkgs));
+        renderPkgMgrList(); // refresh รายการ
       }
-    }
-  }catch(e){ console.warn("loadPkgs:", e.message); }
-
-  renderPkgMgrList();
+    }).catch(function(e){ console.warn("loadPkgs:", e.message); });
+  }
 }
-function delPkg(id){if(!confirm("ลบแพ็คเกจนี้?"))return;pkgs=pkgs.filter(p=>p.id!==id);showPkgMgr();}
+function delPkg(id){
+  if(!confirm("ลบแพ็คเกจนี้?"))return;
+  pkgs = pkgs.filter(function(p){return p.id!==id;});
+  localStorage.setItem("pt_packages", JSON.stringify(pkgs));
+  if(fbDB||initFirebase()){
+    fbDB.ref("/packages").set(pkgs).catch(function(){});
+  }
+  renderPkgMgrList();
+  showToast("🗑️ ลบแพ็คเกจแล้วค่ะ","#C62828","#FFEBEE");
+}
+
 function openPkgForm(id){
   peid=id;pfe="📶";pfc="#00C853";const ex=id?pkgs.find(p=>p.id===id):null;
   if(ex){pfe=ex.emoji||"📶";pfc=ex.color||"#00C853";}
@@ -1603,8 +1630,16 @@ function savePkgForm(){
   const n=$("pf-name").value.trim(),co=$("pf-code").value.trim(),pr=$("pf-price").value.trim(),m=$("pf-method").value.trim();
   if(!n||!co||!pr){alert("กรุณากรอกข้อมูลให้ครบ");return;}
   const am=$("pf-activateMsg")?$("pf-activateMsg").value.trim():"";const cm=$("pf-confirmMsg")?$("pf-confirmMsg").value.trim():"";const p={id:peid||("PKG"+Date.now()),name:n,code:co,price:Number(pr),emoji:pfe,color:pfc,method:m,confirmMsg:cm,activateMsg:am};
-  pkgs=peid?pkgs.map(x=>x.id===peid?p:x):[...pkgs,p];
-  $("sc-pkgform").classList.remove("on");showPkgMgr();
+  pkgs = peid ? pkgs.map(function(x){return x.id===peid?p:x;}) : [...pkgs, p];
+  localStorage.setItem("pt_packages", JSON.stringify(pkgs));
+  // บันทึก Firebase ทันที
+  if(fbDB||initFirebase()){
+    fbDB.ref("/packages").set(pkgs)
+      .then(function(){ showToast("✅ บันทึกแพ็คเกจแล้วค่ะ","#166534","#DCFCE7"); })
+      .catch(function(){});
+  }
+  $("sc-pkgform").classList.remove("on");
+  renderPkgMgrList(); // รีเฟรชรายการทันที
 }
 function saveAllPkgs(){
   localStorage.setItem("pt_packages",JSON.stringify(pkgs));
@@ -1616,7 +1651,7 @@ function saveAllPkgs(){
   } else {
     showToast("✅ บันทึกแพ็คเกจแล้วค่ะ","#166534","#DCFCE7");
   }
-  renderPkgMgr();
+  renderPkgMgrList();
 }
 
 function setTopbar(title,backFn,right){
