@@ -206,7 +206,7 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#fff;min-heigh
         <div class="srow"><span style="font-size:12px;color:#16A34A;font-weight:600">เลขพัสดุ</span><span id="s-ono" style="font-size:12px;font-weight:800;color:#14532D;font-family:monospace;word-break:break-all;text-align:right;max-width:58%"></span></div>
         <div class="srow"><span style="font-size:12px;color:#16A34A;font-weight:600">เบอร์ซิม</span><span id="s-ph" style="font-size:12px;font-weight:800;color:#14532D;font-family:monospace"></span></div>
         <div class="srow"><span style="font-size:12px;color:#16A34A;font-weight:600">ซิมหมายเลข</span><span id="s-sc" style="font-size:12px;font-weight:800;color:#14532D;font-family:monospace"></span></div>
-        <div class="srow"><span style="font-size:12px;color:#16A34A;font-weight:600">สาขา</span><span id="s-br" style="font-size:12px;font-weight:800;color:#14532D"></span></div>
+
         <div class="srow"><span style="font-size:12px;color:#16A34A;font-weight:600">แพ็คเกจ</span><span id="s-pkg" style="font-size:12px;font-weight:800;color:#14532D;text-align:right;max-width:58%"></span></div>
       </div>
       <div class="thumbrow" id="thumbrow"></div>
@@ -547,7 +547,7 @@ function renderConfirm(){
   $("s-ono").textContent=orderNo;
   $("s-ph").textContent=simPhone;
   if($("s-sc"))$("s-sc").textContent=simCodeVal;
-  if($("s-br"))$("s-br").textContent=branchCode==="K"?"🏪 K — กาฬสินธุ์":branchCode==="L"?"🏪 L — เลย":"-";
+
   $("s-pkg").textContent=pkgs.find(function(p){return p.id===pkgId;})||{name:"-"};
   var pkg=pkgs.find(function(p){return p.id===pkgId;});
   if($("s-pkg"))$("s-pkg").textContent=pkg?pkg.name:"-";
