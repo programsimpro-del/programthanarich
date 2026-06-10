@@ -445,6 +445,8 @@ function loadAll(){
   updateBadges();
   renderDashboard();
   $("rts").textContent="อัพเดท "+ts();
+  // ตั้ง topbar ให้มีปุ่มแพ็คเกจ
+  setTopbar("",null,`<button onclick="showPkgMgr()" style="padding:6px 14px;border-radius:20px;border:none;background:rgba(255,255,255,.2);color:#fff;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">📦 แพ็คเกจ</button>`);
   if(ORDERS_API) syncFromAPI();
   startRealtimeSync();
 }
@@ -1184,10 +1186,52 @@ async function doActivate(pkgId){
     }
   }catch(_){}
 
+  // ตรวจสอบว่าครบ quota แล้วหรือยัง
+  var newUsed = q.usedCount + 1;
+  var isFull  = newUsed >= q.maxQuota;
+
+  if(isFull){
+    // บันทึก Firebase ว่าครบสิทธิ์แล้ว
+    if(fbDB){
+      fbDB.ref("/quota/"+req.orderNo).update({
+        usedCount: newUsed,
+        isFull: true,
+        fullAt: new Date().toISOString()
+      }).catch(function(){});
+      fbDB.ref("/orders/"+req.ref).update({
+        quotaFull: true,
+        quotaFullAt: new Date().toISOString()
+      }).catch(function(){});
+    }
+    // แจ้ง Admin
+    setTimeout(function(){
+      showToast("✅ ออเดอร์ "+req.orderNo+" ใช้สิทธิ์ครบแล้ว ("+newUsed+"/"+q.maxQuota+" ซิม)","#166534","#DCFCE7");
+    }, 500);
+  }
+
   saveReqs();
   renderOrdDetail(aref);
   renderOrdList();
   updateBadges();
+}
+
+// Toast notification
+function showToast(msg, color, bg){
+  var t = document.getElementById("toast-msg");
+  if(!t){
+    t = document.createElement("div");
+    t.id = "toast-msg";
+    t.style.cssText = "position:fixed;bottom:80px;left:50%;transform:translateX(-50%);padding:12px 20px;border-radius:14px;font-weight:800;font-size:13px;z-index:9999;max-width:320px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.15);transition:opacity .3s";
+    document.body.appendChild(t);
+  }
+  t.style.background = bg || "#DCFCE7";
+  t.style.color = color || "#166534";
+  t.style.border = "1.5px solid "+(color||"#166534")+"40";
+  t.textContent = msg;
+  t.style.display = "block";
+  t.style.opacity = "1";
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function(){ t.style.opacity="0"; setTimeout(function(){t.style.display="none";},300); }, 3500);
 }
 
 /* ══════ COPY ══════ */
@@ -1282,10 +1326,19 @@ function renderQuotaBox(orderNo, req) {
     var pct  = Math.min(100, Math.round((q.usedCount / q.maxQuota) * 100));
     var remBg = q.remaining <= 0 ? "rgba(198,40,40,.4)" : "rgba(255,255,255,.12)";
     var remLb = q.remaining <= 0 ? "ครบแล้ว" : "เหลือ";
-    var alert = q.remaining <= 0 ? "<div style='margin-top:8px;background:rgba(198,40,40,.3);border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;text-align:center'>⛔ ออเดอร์นี้ใช้สิทธิ์ครบแล้ว</div>" : "";
+    var alert = q.remaining <= 0
+      ? "<div style='margin-top:10px;background:rgba(198,40,40,.35);border:1.5px solid rgba(198,40,40,.5);border-radius:10px;padding:10px 12px;font-size:12px;font-weight:800;text-align:center;color:#fff'>"
+        +"⛔ คำสั่งซื้อนี้ได้รับสิทธิ์เน็ตฟรีเดือนแรกครบแล้ว"
+        +"<div style='font-size:10px;font-weight:600;opacity:.85;margin-top:3px'>ใช้ไปแล้ว "+q.usedCount+" / "+q.maxQuota+" ซิม</div>"
+        +"</div>"
+      : (q.remaining === 1
+        ? "<div style='margin-top:8px;background:rgba(230,81,0,.25);border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;text-align:center;color:#fff'>⚠️ เหลือสิทธิ์อีก 1 ซิม</div>"
+        : "");
     var opts = [1,2,3,4,5].map(function(n){
       return "<option value=" + n + (q.maxQuota===n?" selected":"") + ">" + n + " ซิม</option>";
     }).join("");
+    // เพิ่มตัวเลือก 0 (ยกเลิกสิทธิ์)
+    opts = "<option value='0'" + (q.maxQuota===0?" selected":"") + ">0 — ยกเลิกสิทธิ์</option>" + opts;
     var sel = "<select style='border:none;background:rgba(255,255,255,.25);color:#fff;font-weight:800;border-radius:6px;padding:2px 4px;font-size:12px;cursor:pointer' data-order='" + orderNo + "' data-ref='" + req.ref + "' onchange='setQuotaFromSel(this)'>" + opts + "</select>";
     return "<div style='background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.35);border-radius:12px;padding:12px 14px;margin-bottom:9px'>" +
       "<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:8px'>" +
