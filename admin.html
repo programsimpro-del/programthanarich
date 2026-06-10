@@ -1477,26 +1477,40 @@ function showFormSettings(){
   loadFormSettings();
 }
 
-function loadFormSettings(){
+async function loadFormSettings(){
+  // โหลดจาก Firebase ก่อน (ข้อมูลถาวร)
+  if(fbDB || initFirebase()){
+    try{
+      // รูปตัวอย่าง
+      for(var i=0;i<3;i++){
+        var snap = await fbDB.ref("/settings/exImages/img"+i).once("value");
+        var src  = snap.val();
+        if(src){
+          localStorage.setItem("pt_exImg_"+i, src); // sync กลับ local
+          var wrap = document.getElementById("ex-img-"+i);
+          var img  = document.getElementById("ex-img-"+i+"-prev");
+          if(wrap) wrap.style.display="block";
+          if(img)  img.src = src;
+        }
+      }
+      // logos
+      var plts = getPlatforms();
+      for(var j=0;j<plts.length;j++){
+        var snapL = await fbDB.ref("/settings/logos/plt_"+plts[j].id).once("value");
+        var logo  = snapL.val();
+        if(logo){ plts[j].logo = logo; }
+      }
+      localStorage.setItem("pt_platforms", JSON.stringify(plts));
+    }catch(e){ console.warn("load from Firebase failed:", e.message); }
+  }
+
+  // โหลด text settings จาก localStorage
   var fs = JSON.parse(localStorage.getItem("pt_formSettings")||"{}");
   var oH = document.getElementById("fs-orderHint");
   var sH = document.getElementById("fs-simCodeHint");
   if(oH) oH.value = fs.orderHint || "ดูได้จากหน้าคำสั่งซื้อในแอป เช่น TH265354252413H";
   if(sH) sH.value = fs.simCodeHint || "เลขที่เขียนบนซองซิม เช่น K12463 หรือ L26374";
 
-  // โหลดรูปตัวอย่าง
-  [0,1,2].forEach(function(i){
-    var key = "pt_exImg_"+i;
-    var src = localStorage.getItem(key);
-    if(src){
-      var wrap = document.getElementById("ex-img-"+i);
-      var img  = document.getElementById("ex-img-"+i+"-prev");
-      if(wrap) wrap.style.display="block";
-      if(img)  img.src=src;
-    }
-  });
-
-  // โหลด platforms
   renderPlatformList();
 }
 
@@ -1523,10 +1537,17 @@ function setPlatformLogo(input, idx){
   var file = input.files[0]; if(!file)return;
   var reader = new FileReader();
   reader.onload = function(e){
+    var src = e.target.result;
     var plts = getPlatforms();
-    plts[idx].logo = e.target.result;
+    plts[idx].logo = src;
     localStorage.setItem("pt_platforms", JSON.stringify(plts));
     renderPlatformList();
+    // บันทึก Firebase ทันที
+    if(fbDB || initFirebase()){
+      fbDB.ref("/settings/logos/plt_"+plts[idx].id).set(src)
+        .then(function(){ showToast("✅ บันทึกโลโก้แล้วค่ะ","#166534","#DCFCE7"); })
+        .catch(function(e){ console.warn("save logo failed",e); });
+    }
   };
   reader.readAsDataURL(file);
 }
@@ -1552,11 +1573,18 @@ function setExampleImg(idx, input){
   var file = input.files[0]; if(!file) return;
   var reader = new FileReader();
   reader.onload = function(e){
-    localStorage.setItem("pt_exImg_"+idx, e.target.result);
+    var src = e.target.result;
+    localStorage.setItem("pt_exImg_"+idx, src);
     var wrap = document.getElementById("ex-img-"+idx);
     var img  = document.getElementById("ex-img-"+idx+"-prev");
-    if(wrap){wrap.style.display="block";}
-    if(img){img.src=e.target.result;}
+    if(wrap) wrap.style.display="block";
+    if(img)  img.src = src;
+    // บันทึก Firebase ทันที
+    if(fbDB || initFirebase()){
+      fbDB.ref("/settings/exImages/img"+idx).set(src)
+        .then(function(){ showToast("✅ บันทึกรูปตัวอย่างแล้วค่ะ","#166534","#DCFCE7"); })
+        .catch(function(e){ console.warn("save img failed",e); });
+    }
   };
   reader.readAsDataURL(file);
 }
