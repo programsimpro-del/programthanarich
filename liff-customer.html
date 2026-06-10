@@ -138,12 +138,17 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#fff;min-heigh
           autocomplete="off" spellcheck="false" maxlength="10"
           style="font-family:monospace;font-size:18px;font-weight:800;letter-spacing:2px">
         <div id="simcode-hint" style="display:none"></div>
+        <div id="ex-hint-wrap-3" style="display:none;margin-top:8px">
+          <div style="font-size:11px;color:#9E9E9E;margin-bottom:4px">📌 ตัวอย่างซิมหมายเลข</div>
+          <img id="ex-hint-3" style="width:100%;border-radius:8px;border:1.5px dashed #A5D6A7">
+        </div>
       </div>
 
       <div class="field">
         <div class="flbl">เลขพัสดุ หรือ เลขคำสั่งซื้อ <span style="color:#E53935;font-size:11px">*</span></div>
         <div class="fhint">ดูได้จากหน้าคำสั่งซื้อในแอป เช่น TH265354252413H</div>
         <input class="inp" id="orderNo" type="text" placeholder="TH..." oninput="this.value=this.value.toUpperCase();chkForm()" autocomplete="off" spellcheck="false">
+        <div id="ex-hint-wrap-4" style="display:none;margin-top:8px"><div style="font-size:11px;color:#9E9E9E;margin-bottom:4px">📌 ตัวอย่างเลขพัสดุ/เลขคำสั่งซื้อ</div><img id="ex-hint-4" style="width:100%;border-radius:8px;border:1.5px dashed #A5D6A7"></div>
       </div>
       <div class="field">
         <div class="flbl">เบอร์โทรที่ได้รับหลังลงทะเบียนซิม <span style="color:#E53935;font-size:11px">*</span></div>
@@ -425,8 +430,8 @@ async function loadSettings(){
       renderPlatformBtns(plts);
     }
 
-    // 3. โหลดรูปตัวอย่าง
-    for(var j=0; j<3; j++){
+    // 3. โหลดรูปตัวอย่าง (0-4)
+    for(var j=0; j<5; j++){
       try{
         var snapI = await db.ref("/settings/exImages/img"+j).once("value");
         var imgSrc = snapI.val();
