@@ -350,6 +350,25 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
       </div>
     </div>
 
+      <div style="margin-bottom:4px">
+        <div style="font-size:12px;font-weight:800;color:#374151;margin-bottom:6px">🔖 รูปตัวอย่างซิมหมายเลข</div>
+        <div id="ex-img-3" style="display:none;margin-bottom:6px"><img id="ex-img-3-prev" style="width:100%;border-radius:10px;border:1.5px solid #A5D6A7;max-height:160px;object-fit:cover"></div>
+        <label style="display:flex;align-items:center;gap:8px;background:#F0FDF4;border:1.5px dashed #A5D6A7;border-radius:10px;padding:10px 14px;cursor:pointer">
+          <span style="font-size:20px">📁</span><span style="font-size:13px;font-weight:700;color:#166534">เลือกรูปตัวอย่าง</span>
+          <input type="file" accept="image/*" style="display:none" onchange="setExampleImg(3,this)">
+        </label>
+      </div>
+
+      <div style="margin-bottom:4px">
+        <div style="font-size:12px;font-weight:800;color:#374151;margin-bottom:6px">📦 รูปตัวอย่างเลขพัสดุ</div>
+        <div id="ex-img-4" style="display:none;margin-bottom:6px"><img id="ex-img-4-prev" style="width:100%;border-radius:10px;border:1.5px solid #A5D6A7;max-height:160px;object-fit:cover"></div>
+        <label style="display:flex;align-items:center;gap:8px;background:#F0FDF4;border:1.5px dashed #A5D6A7;border-radius:10px;padding:10px 14px;cursor:pointer">
+          <span style="font-size:20px">📁</span><span style="font-size:13px;font-weight:700;color:#166534">เลือกรูปตัวอย่าง</span>
+          <input type="file" accept="image/*" style="display:none" onchange="setExampleImg(4,this)">
+        </label>
+      </div>
+    </div>
+
     <button class="btn btn-blue" onclick="saveFormSettings()">💾 บันทึกการตั้งค่า</button>
   </div>
 </div>
@@ -1454,8 +1473,8 @@ async function loadFormSettings(){
   // โหลดจาก Firebase ก่อน (ข้อมูลถาวร)
   if(fbDB || initFirebase()){
     try{
-      // รูปตัวอย่าง
-      for(var i=0;i<3;i++){
+      // รูปตัวอย่าง (0-4)
+      for(var i=0;i<5;i++){
         var snap = await fbDB.ref("/settings/exImages/img"+i).once("value");
         var src  = snap.val();
         if(src){
@@ -1599,8 +1618,8 @@ async function saveFormSettings(){
       }
     }
 
-    // 4. บันทึกรูปตัวอย่าง แยกทีละรูป
-    for(var j=0; j<3; j++){
+    // 4. บันทึกรูปตัวอย่าง แยกทีละรูป (0-4)
+    for(var j=0; j<5; j++){
       var imgData = localStorage.getItem("pt_exImg_"+j);
       if(imgData){
         await fbDB.ref("/settings/exImages/img"+j).set(imgData);
