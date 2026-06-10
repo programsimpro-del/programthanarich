@@ -917,8 +917,9 @@ function getR(){return reqs.find(r=>r.ref===aref);}
 
 function renderOrdDetail(ref){
   const req=reqs.find(r=>r.ref===ref);if(!req)return;
-  const steps=["ตรวจ Shopee","ยืนยัน","เปิดเน็ต","เสร็จ"];
-  const cur=req.status==="activated"?4:req.status==="confirmed"?2:1;
+  const stepsMap={"pending":1,"confirmed":2,"activated":4,"rejected":0};
+  const steps=["รอตรวจสอบ","ยืนยันแล้ว","รอเปิดเน็ต","เสร็จแล้ว"];
+  const cur=stepsMap[req.status]||1;
   $("od-steps").innerHTML=`<div style="display:flex;align-items:flex-start">${steps.map((s,i)=>`
     <div style="flex:1;display:flex;flex-direction:column;align-items:center">
       <div style="display:flex;align-items:center;width:100%">
@@ -951,23 +952,82 @@ function renderOrdDetail(ref){
 }
 
 function renderOdActions(req){
-  const el=$("od-actions");
-  if(req.status==="activated"){el.innerHTML="";return;}
-  el.innerHTML=`
-    <button style="flex:1;min-width:80px;padding:9px 6px;border-radius:10px;border:none;font-weight:800;font-size:11px;cursor:pointer;font-family:inherit;background:${verifying?"#E0E0E0":req.aiResult?"#DCFCE7":"linear-gradient(135deg,#7B1FA2,#6A1B9A)"};color:${verifying?"#9E9E9E":req.aiResult?"#166534":"#fff"}" onclick="doVerify()" ${verifying?"disabled":""}>
-      ${verifying?'<span style="display:inline-block;animation:spin 1s linear infinite">⏳</span> ตรวจอยู่...':'🤖 AI ตรวจรูป'}
-    </button>
-    ${req.shopeeVerified==="confirmed"&&req.status!=="rejected"?`<button style="flex:1;min-width:80px;padding:9px 6px;border-radius:10px;border:none;font-weight:800;font-size:11px;cursor:pointer;font-family:inherit;background:linear-gradient(135deg,#1565C0,#0D47A1);color:#fff" onclick="toggleNet()">📤 ส่งวิธีสมัครเน็ต</button>`:""}`;
-  const nm=$("od-netmenu");
-  if(showNet&&req.shopeeVerified==="confirmed"){
-    nm.style.display="block";
-    nm.innerHTML=`<div style="font-weight:800;font-size:12px;color:#1565C0;margin-bottom:8px">เลือกแพ็คเกจ</div>`+
-    pkgs.map(p=>`<div class="pkg-pick" style="background:${req.pkgId===p.id?p.color+"12":"#FAFAFA"};border-color:${req.pkgId===p.id?p.color:"#E8E8E8"}" onclick="doActivate('${p.id}')">
-      <div style="width:34px;height:34px;border-radius:9px;background:${p.color}18;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">${p.emoji}</div>
-      <div style="flex:1"><div style="font-weight:800;font-size:12px;color:#111">${p.name}</div><div style="font-size:10px;font-family:monospace;color:#9E9E9E">${p.code}</div><div style="font-size:11px;font-weight:800;color:${p.color}">฿${p.price}</div></div>
-      ${req.pkgId===p.id?`<span style="font-size:10px;color:${p.color};font-weight:800">ลูกค้าเลือก</span>`:""}
-    </div>`).join("");
-  }else nm.style.display="none";
+  var el = $("od-actions");
+  var nm = $("od-netmenu");
+  if(!el) return;
+  el.innerHTML = "";
+  nm.style.display = "none";
+
+  var s = req.status;
+
+  // ── STATUS BADGE ─────────────────────────────────────
+  var statusInfo = {
+    "pending":           {label:"📋 รอตรวจสอบคำสั่งซื้อ", bg:"#FFF3E0", color:"#E65100"},
+    "confirmed":         {label:"⏳ รอเปิดเน็ตฟรีเดือนแรก", bg:"#E3F2FD", color:"#1565C0"},
+    "activated":         {label:"✅ สมัครเน็ตเสร็จแล้ว",  bg:"#E8F5E9", color:"#2E7D32"},
+    "rejected":          {label:"❌ ปฏิเสธคำสั่งซื้อ",    bg:"#FFEBEE", color:"#C62828"},
+  };
+  var si = statusInfo[s] || {label:s, bg:"#F5F5F5", color:"#666"};
+  el.innerHTML += '<div style="width:100%;padding:10px 14px;border-radius:12px;background:'+si.bg+';color:'+si.color+';font-weight:800;font-size:13px;text-align:center;margin-bottom:8px">'+si.label+'</div>';
+
+  if(s === "rejected"){
+    var rbtn = document.createElement("button");
+    rbtn.style.cssText="flex:1;padding:9px;border-radius:10px;border:none;background:#F5F5F5;color:#757575;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit";
+    rbtn.textContent="↩️ คืนสถานะรอตรวจ";
+    rbtn.onclick=function(){confirmOrd(aref,"pending");};
+    el.appendChild(rbtn);
+    return;
+  }
+  if(s === "activated"){
+    el.innerHTML += '<div style="text-align:center;padding:6px;font-size:12px;color:#9E9E9E">เสร็จสมบูรณ์แล้วค่ะ 🎉</div>';
+    return;
+  }
+
+  // ── STEP 1: pending → ยืนยัน หรือ ปฏิเสธ ─────────────
+  if(s === "pending"){
+    var b1=document.createElement("button");
+    b1.style.cssText="flex:1;padding:10px;border-radius:10px;border:none;background:linear-gradient(135deg,#2E7D32,#388E3C);color:#fff;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit";
+    b1.textContent="✅ ยืนยันคำสั่งซื้อ";
+    b1.onclick=function(){showQuotaDialog(aref,reqs.find(function(r){return r.ref===aref;}));};
+    el.appendChild(b1);
+    var b2=document.createElement("button");
+    b2.style.cssText="flex:1;padding:10px;border-radius:10px;border:none;background:#FFEBEE;color:#C62828;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit";
+    b2.textContent="❌ ปฏิเสธ";
+    b2.onclick=function(){confirmOrd(aref,"rejected");};
+    el.appendChild(b2);
+  }
+
+  // ── STEP 2: confirmed → ปุ่มเปิดเน็ต ─────────────────
+  if(s === "confirmed"){
+    el.innerHTML +=
+      '<button style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#1565C0,#1976D2);color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(21,101,192,.3)" onclick="showActivateMenu()">🌐 สมัครเน็ตเสร็จแล้ว — กดที่นี่</button>';
+    // แสดงเมนูเลือก package ถ้า showNet=true
+    if(showNet){
+      nm.style.display = "block";
+      nm.innerHTML = "";
+      var nmTitle = document.createElement("div");
+      nmTitle.style.cssText = "font-weight:800;font-size:12px;color:#1565C0;margin-bottom:8px";
+      nmTitle.textContent = "เลือกแพ็คเกจที่สมัครให้ลูกค้า";
+      nm.appendChild(nmTitle);
+      pkgs.forEach(function(p){
+        var card = document.createElement("div");
+        card.className = "pkg-pick";
+        card.style.background = req.pkgId===p.id ? p.color+"12" : "#FAFAFA";
+        card.style.borderColor = req.pkgId===p.id ? p.color : "#E8E8E8";
+        card.setAttribute("onclick","doActivate('"+p.id+"')");
+        card.innerHTML = '<div style="width:34px;height:34px;border-radius:9px;background:'+p.color+'18;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">'+p.emoji+'</div>'
+          +'<div style="flex:1"><div style="font-weight:800;font-size:12px;color:#111">'+p.name+'</div><div style="font-size:10px;font-family:monospace;color:#9E9E9E">'+p.code+'</div></div>'
+          +(req.pkgId===p.id ? '<span style="font-size:10px;color:'+p.color+';font-weight:800">ลูกค้าเลือก ✓</span>' : '');
+        nm.appendChild(card);
+      });
+    }
+  }
+}
+
+function showActivateMenu(){
+  showNet = !showNet;
+  var req = reqs.find(function(r){return r.ref===aref;});
+  if(req) renderOdActions(req);
 }
 
 function renderOdMsgs(req){
@@ -996,7 +1056,7 @@ function sendOdMsg(){
   $("od-input").value=""; $("od-send").disabled=true;
 }
 function odQuickSend(t){if(t&&t.target)t=t.target.dataset.t;addMsgToReq(aref,"admin",t);showOdQ=false;renderOdQP();$("od-qt").style.background="#E3F2FD";$("od-qt").style.color="#1565C0";}
-function toggleNet(){showNet=!showNet;renderOdActions(getR());}
+function toggleNet(){showActivateMenu();}
 
 /* ══════ ORDER BOX ══════ */
 function renderOrderBox(req){
@@ -1230,16 +1290,36 @@ async function doActivate(pkgId){
   req.activatedAt=ts();
   showNet=false;
 
-  // บันทึก Firebase
-  if(fbDB){
+  // บันทึก Firebase /orders
+  if(fbDB || initFirebase()){
     fbDB.ref("/orders/"+req.ref).update({
       status:"activated",
       activatedPackage:pkgId,
       activatedAt:new Date().toISOString()
     }).catch(function(){});
+
+    // อัพเดท /quota — นับ usedCount + บันทึก activation
+    var newActivation = {
+      sim:   req.simPhone,
+      ref:   req.ref,
+      pkg:   pkgId,
+      at:    new Date().toISOString()
+    };
+    fbDB.ref("/quota/"+req.orderNo).once("value").then(function(snap){
+      var qd = snap.val() || {orderNo:req.orderNo, maxQuota:q.maxQuota, usedCount:0, activations:[]};
+      qd.usedCount = (qd.usedCount||0) + 1;
+      qd.activations = qd.activations || [];
+      qd.activations.push(newActivation);
+      qd.updatedAt = new Date().toISOString();
+      if(qd.usedCount >= qd.maxQuota){
+        qd.isFull   = true;
+        qd.fullAt   = new Date().toISOString();
+      }
+      return fbDB.ref("/quota/"+req.orderNo).set(qd);
+    }).catch(function(e){ console.warn("quota update failed:", e); });
   }
 
-  // อัพเดทสิทธิ์
+  // อัพเดทสิทธิ์ local
   try{
     if(typeof window.markActivated==="function"){
       window.markActivated(req.orderNo,req.simPhone,req.ref,q.maxQuota);
