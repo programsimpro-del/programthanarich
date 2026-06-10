@@ -856,8 +856,8 @@ function renderDashboard(){
 }
 
 function renderOrdList(){
-  const pending=reqs.filter(r=>["pending"].includes(r.status)).length;
-  const confirmed=reqs.filter(r=>r.status==="confirmed").length;
+  const pending=reqs.filter(r=>r.status==="pending").length;
+  const confirmed=reqs.filter(r=>["confirmed","processing"].includes(r.status)).length;
   const activated=reqs.filter(r=>r.status==="activated").length;
   $("stats-row").innerHTML=[
     {label:"รอตรวจ",v:pending,c:"#E65100",b:"#FFF3E0",f:"pending"},
@@ -877,7 +877,7 @@ function renderOrdList(){
   if(!filtered.length){el.innerHTML="";em.style.display="block";return;}
   em.style.display="none";
   el.innerHTML=filtered.map(r=>{
-    const sC={pending:["#E65100","#FFF3E0","รอตรวจ"],confirmed:["#1565C0","#E3F2FD","ยืนยัน"],activated:["#2E7D32","#E8F5E9","เปิดเน็ต"],rejected:["#C62828","#FFE4E6","ปฏิเสธ"]};
+    const sC={pending:["#E65100","#FFF3E0","รอตรวจ"],confirmed:["#1565C0","#E3F2FD","รอเปิดเน็ต"],processing:["#6A1B9A","#F3E8FF","กำลังดำเนินการ"],activated:["#2E7D32","#E8F5E9","เสร็จแล้ว"],rejected:["#C62828","#FFE4E6","ปฏิเสธ"]};
     const[sc,sb,sl]=sC[r.status]||sC.pending;
     const svB=r.shopeeVerified==="confirmed"?`<span class="tag" style="background:#DCFCE7;color:#166534">✅ Shopee ยืนยัน</span>`:r.shopeeVerified==="rejected"?`<span class="tag" style="background:#FFE4E6;color:#BE123C">❌ ปฏิเสธ</span>`:`<span class="tag" style="background:#FEF3C7;color:#D97706">⏳ รอตรวจ Shopee</span>`;
     return`<div class="ord-card fade" onclick="openOrdDetail('${r.ref}')">
@@ -917,8 +917,8 @@ function getR(){return reqs.find(r=>r.ref===aref);}
 
 function renderOrdDetail(ref){
   const req=reqs.find(r=>r.ref===ref);if(!req)return;
-  const stepsMap={"pending":1,"confirmed":2,"activated":4,"rejected":0};
-  const steps=["รอตรวจสอบ","ยืนยันแล้ว","รอเปิดเน็ต","เสร็จแล้ว"];
+  const stepsMap={"pending":1,"confirmed":2,"processing":3,"activated":4,"rejected":0};
+  const steps=["รอตรวจสอบ","รอเปิดเน็ต","กำลังดำเนินการ","เสร็จแล้ว"];
   const cur=stepsMap[req.status]||1;
   $("od-steps").innerHTML=`<div style="display:flex;align-items:flex-start">${steps.map((s,i)=>`
     <div style="flex:1;display:flex;flex-direction:column;align-items:center">
@@ -929,7 +929,7 @@ function renderOrdDetail(ref){
       </div>
       <div style="font-size:8px;margin-top:3px;font-weight:700;color:${cur>=i?"#1565C0":"#BDBDBD"};text-align:center">${s}</div>
     </div>`).join("")}</div>`;
-  const sC={pending:["#E65100","#FFF3E0","รอตรวจ"],confirmed:["#1565C0","#E3F2FD","ยืนยัน"],activated:["#2E7D32","#E8F5E9","เปิดเน็ต"],rejected:["#C62828","#FFE4E6","ปฏิเสธ"]};
+  const sC={pending:["#E65100","#FFF3E0","รอตรวจ"],confirmed:["#1565C0","#E3F2FD","รอเปิดเน็ต"],processing:["#6A1B9A","#F3E8FF","กำลังดำเนินการ"],activated:["#2E7D32","#E8F5E9","เสร็จแล้ว"],rejected:["#C62828","#FFE4E6","ปฏิเสธ"]};
   const[sc,sb,sl]=sC[req.status]||sC.pending;
   $("od-info").innerHTML=`<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
     <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#06C755,#05A847);display:flex;align-items:center;justify-content:center;font-size:${req.linePictureUrl?"0":"17"}px;overflow:hidden;flex-shrink:0">
@@ -957,72 +957,140 @@ function renderOdActions(req){
   if(!el) return;
   el.innerHTML = "";
   nm.style.display = "none";
-
   var s = req.status;
 
-  // ── STATUS BADGE ─────────────────────────────────────
+  // ── STATUS BADGE ──────────────────────────────────────
   var statusInfo = {
-    "pending":           {label:"📋 รอตรวจสอบคำสั่งซื้อ", bg:"#FFF3E0", color:"#E65100"},
-    "confirmed":         {label:"⏳ รอเปิดเน็ตฟรีเดือนแรก", bg:"#E3F2FD", color:"#1565C0"},
-    "activated":         {label:"✅ สมัครเน็ตเสร็จแล้ว",  bg:"#E8F5E9", color:"#2E7D32"},
-    "rejected":          {label:"❌ ปฏิเสธคำสั่งซื้อ",    bg:"#FFEBEE", color:"#C62828"},
+    "pending":     {label:"📋 รอตรวจสอบคำสั่งซื้อ",          bg:"#FFF3E0", color:"#E65100"},
+    "confirmed":   {label:"⏳ รอเปิดเน็ตฟรีเดือนแรก",         bg:"#E3F2FD", color:"#1565C0"},
+    "processing":  {label:"📤 กำลังดำเนินการ — รอแอดมินสมัคร", bg:"#F3E8FF", color:"#6A1B9A"},
+    "activated":   {label:"✅ เสร็จสมบูรณ์",                   bg:"#E8F5E9", color:"#2E7D32"},
+    "rejected":    {label:"❌ ปฏิเสธคำสั่งซื้อ",               bg:"#FFEBEE", color:"#C62828"},
   };
   var si = statusInfo[s] || {label:s, bg:"#F5F5F5", color:"#666"};
-  el.innerHTML += '<div style="width:100%;padding:10px 14px;border-radius:12px;background:'+si.bg+';color:'+si.color+';font-weight:800;font-size:13px;text-align:center;margin-bottom:8px">'+si.label+'</div>';
+  var badge = document.createElement("div");
+  badge.style.cssText = "width:100%;padding:10px 14px;border-radius:12px;background:"+si.bg+";color:"+si.color+";font-weight:800;font-size:13px;text-align:center;margin-bottom:8px";
+  badge.textContent = si.label;
+  el.appendChild(badge);
 
-  if(s === "rejected"){
-    var rbtn = document.createElement("button");
-    rbtn.style.cssText="flex:1;padding:9px;border-radius:10px;border:none;background:#F5F5F5;color:#757575;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit";
-    rbtn.textContent="↩️ คืนสถานะรอตรวจ";
-    rbtn.onclick=function(){confirmOrd(aref,"pending");};
-    el.appendChild(rbtn);
-    return;
-  }
-  if(s === "activated"){
-    el.innerHTML += '<div style="text-align:center;padding:6px;font-size:12px;color:#9E9E9E">เสร็จสมบูรณ์แล้วค่ะ 🎉</div>';
-    return;
-  }
-
-  // ── STEP 1: pending → ยืนยัน หรือ ปฏิเสธ ─────────────
+  // ── STEP 1: pending ───────────────────────────────────
   if(s === "pending"){
-    var b1=document.createElement("button");
-    b1.style.cssText="flex:1;padding:10px;border-radius:10px;border:none;background:linear-gradient(135deg,#2E7D32,#388E3C);color:#fff;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit";
-    b1.textContent="✅ ยืนยันคำสั่งซื้อ";
-    b1.onclick=function(){showQuotaDialog(aref,reqs.find(function(r){return r.ref===aref;}));};
+    var b1 = document.createElement("button");
+    b1.style.cssText = "flex:1;padding:11px;border-radius:11px;border:none;background:linear-gradient(135deg,#2E7D32,#388E3C);color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit";
+    b1.textContent = "✅ ยืนยันคำสั่งซื้อ";
+    b1.onclick = function(){ showQuotaDialog(aref, reqs.find(function(r){return r.ref===aref;})); };
     el.appendChild(b1);
-    var b2=document.createElement("button");
-    b2.style.cssText="flex:1;padding:10px;border-radius:10px;border:none;background:#FFEBEE;color:#C62828;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit";
-    b2.textContent="❌ ปฏิเสธ";
-    b2.onclick=function(){confirmOrd(aref,"rejected");};
+    var b2 = document.createElement("button");
+    b2.style.cssText = "flex:1;padding:11px;border-radius:11px;border:none;background:#FFEBEE;color:#C62828;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit";
+    b2.textContent = "❌ ปฏิเสธ";
+    b2.onclick = function(){ confirmOrd(aref,"rejected"); };
     el.appendChild(b2);
+    return;
   }
 
-  // ── STEP 2: confirmed → ปุ่มเปิดเน็ต ─────────────────
+  // ── STEP 2: confirmed — เลือก package + ยืนยัน ───────
   if(s === "confirmed"){
-    el.innerHTML +=
-      '<button style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#1565C0,#1976D2);color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(21,101,192,.3)" onclick="showActivateMenu()">🌐 สมัครเน็ตเสร็จแล้ว — กดที่นี่</button>';
-    // แสดงเมนูเลือก package ถ้า showNet=true
-    if(showNet){
-      nm.style.display = "block";
-      nm.innerHTML = "";
-      var nmTitle = document.createElement("div");
-      nmTitle.style.cssText = "font-weight:800;font-size:12px;color:#1565C0;margin-bottom:8px";
-      nmTitle.textContent = "เลือกแพ็คเกจที่สมัครให้ลูกค้า";
-      nm.appendChild(nmTitle);
-      pkgs.forEach(function(p){
-        var card = document.createElement("div");
-        card.className = "pkg-pick";
-        card.style.background = req.pkgId===p.id ? p.color+"12" : "#FAFAFA";
-        card.style.borderColor = req.pkgId===p.id ? p.color : "#E8E8E8";
-        card.setAttribute("onclick","doActivate('"+p.id+"')");
-        card.innerHTML = '<div style="width:34px;height:34px;border-radius:9px;background:'+p.color+'18;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">'+p.emoji+'</div>'
-          +'<div style="flex:1"><div style="font-weight:800;font-size:12px;color:#111">'+p.name+'</div><div style="font-size:10px;font-family:monospace;color:#9E9E9E">'+p.code+'</div></div>'
-          +(req.pkgId===p.id ? '<span style="font-size:10px;color:'+p.color+';font-weight:800">ลูกค้าเลือก ✓</span>' : '');
-        nm.appendChild(card);
-      });
-    }
+    // แสดง package list ให้เลือก
+    nm.style.display = "block";
+    nm.innerHTML = "";
+    var hd = document.createElement("div");
+    hd.style.cssText = "font-weight:800;font-size:12px;color:#1565C0;margin-bottom:10px";
+    hd.textContent = "📦 เลือกแพ็คเกจที่จะสมัครให้ลูกค้า";
+    nm.appendChild(hd);
+    pkgs.forEach(function(p){
+      var card = document.createElement("div");
+      card.className = "pkg-pick";
+      var isSelected = (window._selectedPkg||req.pkgId) === p.id;
+      card.style.background  = isSelected ? p.color+"18" : "#FAFAFA";
+      card.style.borderColor = isSelected ? p.color : "#E8E8E8";
+      card.style.cursor = "pointer";
+      card.innerHTML =
+        '<div style="width:34px;height:34px;border-radius:9px;background:'+p.color+'18;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">'+p.emoji+'</div>'
+       +'<div style="flex:1"><div style="font-weight:800;font-size:12px;color:#111">'+p.name+'</div>'
+       +'<div style="font-size:10px;font-family:monospace;color:#9E9E9E">'+p.code+'</div></div>'
+       +(req.pkgId===p.id ? '<span style="font-size:10px;color:'+p.color+';font-weight:700">ลูกค้าเลือก</span>' : '')
+       +(isSelected ? '<span style="font-size:16px;color:'+p.color+'">✓</span>' : '');
+      card.onclick = function(){
+        window._selectedPkg = p.id;
+        renderOdActions(req);
+      };
+      nm.appendChild(card);
+    });
+    // ปุ่มยืนยัน package
+    var confirmPkg = document.createElement("button");
+    confirmPkg.style.cssText = "width:100%;margin-top:10px;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#1565C0,#1976D2);color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(21,101,192,.25)";
+    confirmPkg.textContent = "📤 ยืนยันแพ็คเกจ — ส่งวิธีสมัครให้ลูกค้า";
+    confirmPkg.onclick = function(){
+      var selPkg = window._selectedPkg || req.pkgId;
+      if(!selPkg){ alert("กรุณาเลือกแพ็คเกจก่อนค่ะ"); return; }
+      sendPackageAndProcess(aref, selPkg);
+    };
+    nm.appendChild(confirmPkg);
+    return;
+  }
+
+  // ── STEP 3: processing — รอสมัคร ─────────────────────
+  if(s === "processing"){
+    var bDone = document.createElement("button");
+    bDone.style.cssText = "width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#6A1B9A,#7B1FA2);color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(106,27,154,.25)";
+    bDone.textContent = "🌐 สมัครเน็ตแล้ว — กดยืนยัน";
+    bDone.onclick = function(){
+      var req2 = reqs.find(function(r){return r.ref===aref;});
+      if(req2) doActivate(req2.activatedPackage || req2.pkgId);
+    };
+    el.appendChild(bDone);
+    return;
+  }
+
+  // ── STEP 4: activated ─────────────────────────────────
+  if(s === "activated"){
+    var done = document.createElement("div");
+    done.style.cssText = "text-align:center;padding:8px;font-size:12px;color:#9E9E9E";
+    done.textContent = "เสร็จสมบูรณ์แล้วค่ะ 🎉";
+    el.appendChild(done);
+    return;
+  }
+
+  // ── rejected ─────────────────────────────────────────
+  if(s === "rejected"){
+    var rb = document.createElement("button");
+    rb.style.cssText = "flex:1;padding:9px;border-radius:10px;border:none;background:#F5F5F5;color:#757575;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit";
+    rb.textContent = "↩️ คืนสถานะรอตรวจ";
+    rb.onclick = function(){ confirmOrd(aref,"pending"); };
+    el.appendChild(rb);
   }
 }
+
+// ส่งวิธีสมัครเน็ต + เปลี่ยนสถานะ processing
+async function sendPackageAndProcess(ref, pkgId){
+  var req = reqs.find(function(r){return r.ref===ref;});
+  var pkg = pkgs.find(function(p){return p.id===pkgId;});
+  if(!req||!pkg) return;
+
+  // ส่งวิธีสมัครเน็ตให้ลูกค้า
+  var method = pkg.method || "-";
+  var msg = "✅ ทางร้านยืนยันคำสั่งซื้อของคุณแล้วค่ะ 🎉\n\n"
+    +"📦 แพ็คเกจ: "+pkg.name+"\n"
+    +"📶 วิธีสมัครเน็ต: "+method+"\n\n"
+    +"📵 กรุณาปิดเน็ตมือถือก่อนนะคะ\n"
+    +"จากนั้นทำตามวิธีด้านบน รอสักครู่เน็ตจะเข้าอัตโนมัติค่ะ 😊";
+
+  if(req.lineUserId) sendLineMsg(req.lineUserId, msg);
+  addMsgToReq(ref, "admin", msg);
+
+  // อัพเดทสถานะ → processing
+  req.status = "processing";
+  req.activatedPackage = pkgId;
+  if(fbDB||initFirebase()){
+    fbDB.ref("/orders/"+ref).update({status:"processing", activatedPackage:pkgId}).catch(function(){});
+  }
+  window._selectedPkg = null;
+  saveReqs();
+  renderOrdDetail(ref);
+  renderOrdList();
+  showToast("📤 ส่งวิธีสมัครเน็ตให้ลูกค้าแล้วค่ะ","#1565C0","#E3F2FD");
+}
+
 
 function showActivateMenu(){
   showNet = !showNet;
