@@ -517,9 +517,27 @@ function initFirebase(){
   }
 }
 
-// Real-time listener — Orders + LINE OA Chat
+// Real-time listener — Orders + Packages
 function startRealtimeSync(){
   if(!fbDB && !initFirebase()) return;
+
+  // ── Packages real-time ────────────────────────
+  fbDB.ref("/packages").on("value", function(snap){
+    var fbPkgs = snap.val();
+    if(fbPkgs && Array.isArray(fbPkgs) && fbPkgs.length > 0){
+      pkgs = fbPkgs;
+      localStorage.setItem("pt_packages", JSON.stringify(pkgs));
+      // ถ้าหน้า sc-pkgs เปิดอยู่ให้ refresh
+      if(document.getElementById("sc-pkgs").classList.contains("on")){
+        renderPkgMgrList();
+      }
+    } else {
+      // Firebase ว่าง — push local pkgs ขึ้น
+      if(pkgs && pkgs.length > 0 && (fbDB||initFirebase())){
+        fbDB.ref("/packages").set(pkgs).catch(function(){});
+      }
+    }
+  });
 
 
   // ── Orders real-time ────────────────────────────
@@ -533,12 +551,15 @@ function startRealtimeSync(){
     newReqs = newReqs.map(function(r){
       var lo = localMap[r.ref];
       if(lo){
+        // merge status จาก local (Admin อัพเดท)
         if(lo.status)           r.status           = lo.status;
         if(lo.shopeeVerified)   r.shopeeVerified   = lo.shopeeVerified;
         if(lo.lineMessages)     r.lineMessages     = lo.lineMessages;
         if(lo.activatedPackage) r.activatedPackage = lo.activatedPackage;
         if(lo.activatedAt)      r.activatedAt      = lo.activatedAt;
         if(lo.aiResult)         r.aiResult         = lo.aiResult;
+        // *** ห้ามทับ lineUserId จาก Firebase — ข้อมูลสำคัญสำหรับส่ง LINE ***
+        if(!r.lineUserId && lo.lineUserId) r.lineUserId = lo.lineUserId;
       }
       return r;
     });
@@ -631,12 +652,15 @@ function saveReqs(){
   reqs.forEach(function(r){
     if(r.ref && r.status && r.status!=="pending" && fbDB){
       try{
-        fbDB.ref("/orders/"+r.ref).update({
-          status:         r.status,
-          shopeeVerified: r.shopeeVerified||"pending",
+        // อัพเดทเฉพาะ status fields ไม่ทับ lineUserId
+        var updates = {
+          status:           r.status,
+          shopeeVerified:   r.shopeeVerified||"pending",
           activatedPackage: r.activatedPackage||null,
-          activatedAt:    r.activatedAt||null
-        });
+          activatedAt:      r.activatedAt||null
+        };
+        if(r.maxQuota) updates.maxQuota = r.maxQuota;
+        fbDB.ref("/orders/"+r.ref).update(updates);
       }catch(_){}
     }
   });
@@ -747,7 +771,9 @@ function sendMsg(){
 function chatQuickSend(t){if(t&&t.target)t=t.target.dataset.t;addMsgToReq(activeChat,"admin",t);showQ=false;renderQP();$("qtoggle").style.background="#E8F5E9";$("qtoggle").style.color="#06C755";}
 // ส่งข้อความจาก Admin → ลูกค้า ผ่าน Vercel API (หลีกเลี่ยง CORS)
 async function sendLineMsg(userId, text) {
-  if(!userId || !text) return;
+  if(!userId){ console.warn("❌ sendLineMsg: userId ว่าง"); return; }
+  if(!text){ console.warn("❌ sendLineMsg: text ว่าง"); return; }
+  console.log("📤 sendLineMsg to:", userId, "msg:", text.slice(0,30));
   try {
     var r = await fetch("https://programthanarichapi.vercel.app/api/send", {
       method: "POST",
