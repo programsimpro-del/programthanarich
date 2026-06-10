@@ -1558,9 +1558,19 @@ function savePkgForm(){
   pkgs=peid?pkgs.map(x=>x.id===peid?p:x):[...pkgs,p];
   $("sc-pkgform").classList.remove("on");showPkgMgr();
 }
-function saveAllPkgs(){try{localStorage.setItem("pt_packages",JSON.stringify(pkgs));}catch(_){}alert("บันทึกเรียบร้อยแล้วค่ะ ✅");$("sc-pkgs").classList.remove("on");switchTab(curTab);$("tabbar").style.display="flex";}
+function saveAllPkgs(){
+  localStorage.setItem("pt_packages",JSON.stringify(pkgs));
+  // บันทึกไป Firebase ให้ลูกค้าได้รับแพ็คเกจล่าสุดทันที
+  if(fbDB||initFirebase()){
+    fbDB.ref("/packages").set(pkgs)
+      .then(function(){showToast("✅ บันทึกแพ็คเกจแล้วค่ะ — ลูกค้าจะเห็นทันที","#166534","#DCFCE7");})
+      .catch(function(){showToast("✅ บันทึก local แล้วค่ะ","#166534","#DCFCE7");});
+  } else {
+    showToast("✅ บันทึกแพ็คเกจแล้วค่ะ","#166534","#DCFCE7");
+  }
+  renderPkgMgr();
+}
 
-/* ══════ TOPBAR ══════ */
 function setTopbar(title,backFn,right){
   const tlogo=document.getElementById("tlogo");
   const backBtn=document.getElementById("back-btn");
