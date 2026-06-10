@@ -123,6 +123,17 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#fff;min-heigh
     <!-- P2: FORM -->
     <div class="pg" id="p2">
       <div class="dots" id="d2"></div>
+      <!-- ซิมหมายเลข -->
+      <div class="field">
+        <div class="flbl">ซิมหมายเลข <span style="color:#E53935;font-size:11px">*</span></div>
+        <div class="fhint">เลขที่เขียนบนซองซิม เช่น <b>K12463</b> หรือ <b>L26374</b></div>
+        <input class="inp" id="simCode" type="text" placeholder="K12345 หรือ L12345"
+          oninput="this.value=this.value.toUpperCase().replace(/[^KLkl0-9]/g,'');onSimCodeInput(this.value)"
+          autocomplete="off" spellcheck="false" maxlength="10"
+          style="font-family:monospace;font-size:18px;font-weight:800;letter-spacing:2px">
+        <div id="simcode-hint" style="display:none"></div>
+      </div>
+
       <div class="field">
         <div class="flbl">เลขพัสดุ หรือ เลขคำสั่งซื้อ <span style="color:#E53935;font-size:11px">*</span></div>
         <div class="fhint">ดูได้จากหน้าคำสั่งซื้อในแอป เช่น TH265354252413H</div>
@@ -153,7 +164,7 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#fff;min-heigh
         <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:13px;font-weight:800;color:#14532D">📋 รูปคำสั่งซื้อ <span style="color:#E53935;font-size:11px">*</span></span><span id="b0" style="display:none;font-size:11px;color:#06C755;font-weight:800">✓ อัพโหลดแล้ว</span></div>
         <div style="font-size:12px;color:#9E9E9E;margin-bottom:7px">สกรีนช็อตหน้าคำสั่งซื้อจากแอปช้อปปิ้ง</div>
         <div id="pv0" style="display:none;position:relative"><img id="pi0" class="previmg" src="" alt=""><div style="background:rgba(6,199,85,.88);padding:6px 11px;display:flex;align-items:center;gap:5px"><span>✅</span><span style="font-size:11px;color:#fff;font-weight:700">อัพโหลดสำเร็จ</span></div></div>
-        <div id="pp0"><div class="pph"><span style="font-size:28px">📷</span><span style="font-size:13px;color:#374151;font-weight:700">เลือกรูปจากแกลเลอรี่</span><label for="fi0" class="uplbl">📁 เลือกรูป</label><input id="fi0" type="file" accept="image/*" style="display:none" onchange="handlePic(0,this)"></div></div>
+        <div id="pp0"><div class="pph"><span style="font-size:28px">📷</span><span style="font-size:13px;color:#374151;font-weight:700">เลือกรูปจากแกลเลอรี่</span><div id="ex-hint-wrap-0" style="display:none;width:100%;margin:4px 0"><img id="ex-hint-0" style="width:100%;border-radius:8px;opacity:.6;border:1.5px dashed #A5D6A7"></div><label for="fi0" class="uplbl">📁 เลือกรูป</label><input id="fi0" type="file" accept="image/*" style="display:none" onchange="handlePic(0,this)"></div></div>
         <div id="pc0" style="display:none"><label for="fc0" class="chglbl">🔄 เปลี่ยนรูป</label><input id="fc0" type="file" accept="image/*" style="display:none" onchange="handlePic(0,this)"></div>
       </div>
       <!-- Photo 1 -->
@@ -161,7 +172,7 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#fff;min-heigh
         <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:13px;font-weight:800;color:#14532D">📦 รูปถ่ายซองซิมที่ได้รับ <span style="color:#E53935;font-size:11px">*</span></span><span id="b1" style="display:none;font-size:11px;color:#06C755;font-weight:800">✓ อัพโหลดแล้ว</span></div>
         <div style="font-size:12px;color:#9E9E9E;margin-bottom:7px">ถ่ายรูปซองซิม ให้เห็นเบอร์และบาร์โค้ด</div>
         <div id="pv1" style="display:none;position:relative"><img id="pi1" class="previmg" src="" alt=""><div style="background:rgba(6,199,85,.88);padding:6px 11px;display:flex;align-items:center;gap:5px"><span>✅</span><span style="font-size:11px;color:#fff;font-weight:700">อัพโหลดสำเร็จ</span></div></div>
-        <div id="pp1"><div class="pph"><span style="font-size:28px">📷</span><span style="font-size:13px;color:#374151;font-weight:700">เลือกรูปจากแกลเลอรี่</span><label for="fi1" class="uplbl">📁 เลือกรูป</label><input id="fi1" type="file" accept="image/*" style="display:none" onchange="handlePic(1,this)"></div></div>
+        <div id="pp1"><div class="pph"><span style="font-size:28px">📷</span><span style="font-size:13px;color:#374151;font-weight:700">เลือกรูปจากแกลเลอรี่</span><div id="ex-hint-wrap-1" style="display:none;width:100%;margin:4px 0"><img id="ex-hint-1" style="width:100%;border-radius:8px;opacity:.6;border:1.5px dashed #A5D6A7"></div><label for="fi1" class="uplbl">📁 เลือกรูป</label><input id="fi1" type="file" accept="image/*" style="display:none" onchange="handlePic(1,this)"></div></div>
         <div id="pc1" style="display:none"><label for="fc1" class="chglbl">🔄 เปลี่ยนรูป</label><input id="fc1" type="file" accept="image/*" style="display:none" onchange="handlePic(1,this)"></div>
       </div>
       <!-- Photo 2 -->
@@ -169,7 +180,7 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#fff;min-heigh
         <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:13px;font-weight:800;color:#14532D">✅ รูปยืนยันการลงทะเบียน <span style="color:#E53935;font-size:11px">*</span></span><span id="b2" style="display:none;font-size:11px;color:#06C755;font-weight:800">✓ อัพโหลดแล้ว</span></div>
         <div style="font-size:12px;color:#9E9E9E;margin-bottom:7px">สกรีนช็อตหน้ายืนยันลงทะเบียนซิมสำเร็จ</div>
         <div id="pv2" style="display:none;position:relative"><img id="pi2" class="previmg" src="" alt=""><div style="background:rgba(6,199,85,.88);padding:6px 11px;display:flex;align-items:center;gap:5px"><span>✅</span><span style="font-size:11px;color:#fff;font-weight:700">อัพโหลดสำเร็จ</span></div></div>
-        <div id="pp2"><div class="pph"><span style="font-size:28px">📷</span><span style="font-size:13px;color:#374151;font-weight:700">เลือกรูปจากแกลเลอรี่</span><label for="fi2" class="uplbl">📁 เลือกรูป</label><input id="fi2" type="file" accept="image/*" style="display:none" onchange="handlePic(2,this)"></div></div>
+        <div id="pp2"><div class="pph"><span style="font-size:28px">📷</span><span style="font-size:13px;color:#374151;font-weight:700">เลือกรูปจากแกลเลอรี่</span><div id="ex-hint-wrap-2" style="display:none;width:100%;margin:4px 0"><img id="ex-hint-2" style="width:100%;border-radius:8px;opacity:.6;border:1.5px dashed #A5D6A7"></div><label for="fi2" class="uplbl">📁 เลือกรูป</label><input id="fi2" type="file" accept="image/*" style="display:none" onchange="handlePic(2,this)"></div></div>
         <div id="pc2" style="display:none"><label for="fc2" class="chglbl">🔄 เปลี่ยนรูป</label><input id="fc2" type="file" accept="image/*" style="display:none" onchange="handlePic(2,this)"></div>
       </div>
       <div class="chips">
@@ -188,6 +199,8 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#fff;min-heigh
         <div class="srow"><span style="font-size:12px;color:#16A34A;font-weight:600">ช่องทาง</span><span id="s-plt" style="font-size:12px;font-weight:800;color:#14532D"></span></div>
         <div class="srow"><span style="font-size:12px;color:#16A34A;font-weight:600">เลขพัสดุ</span><span id="s-ono" style="font-size:12px;font-weight:800;color:#14532D;font-family:monospace;word-break:break-all;text-align:right;max-width:58%"></span></div>
         <div class="srow"><span style="font-size:12px;color:#16A34A;font-weight:600">เบอร์ซิม</span><span id="s-ph" style="font-size:12px;font-weight:800;color:#14532D;font-family:monospace"></span></div>
+        <div class="srow"><span style="font-size:12px;color:#16A34A;font-weight:600">ซิมหมายเลข</span><span id="s-sc" style="font-size:12px;font-weight:800;color:#14532D;font-family:monospace"></span></div>
+        <div class="srow"><span style="font-size:12px;color:#16A34A;font-weight:600">สาขา</span><span id="s-br" style="font-size:12px;font-weight:800;color:#14532D"></span></div>
         <div class="srow"><span style="font-size:12px;color:#16A34A;font-weight:600">แพ็คเกจ</span><span id="s-pkg" style="font-size:12px;font-weight:800;color:#14532D;text-align:right;max-width:58%"></span></div>
       </div>
       <div class="thumbrow" id="thumbrow"></div>
@@ -254,7 +267,7 @@ const DEFPKGS = [
   {id:"DTAC30D",name:"ซิม DTAC 2Mbps ไม่จำกัด",code:"DTAC30DAYS(FREE)",price:249,emoji:"🟡",color:"#F9A825"},
 ];
 const PLTS = {shopee:"🛍️ Shopee",lazada:"🛒 Lazada",tiktok:"🎵 TikTok Shop"};
-let curP=0, plt="", orderNo="", simPhone="", pkgId="", pkgs=[], photos=[null,null,null], lp=null;
+let curP=0, plt="", orderNo="", simPhone="", pkgId="", pkgs=[], photos=[null,null,null], lp=null, branchCode="";
 const $=id=>document.getElementById(id);
 const ts=()=>new Date().toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
@@ -312,7 +325,7 @@ async function initLiff(){
   var done=false;
   function showApp(){
     if(done)return; done=true;
-    loadPkgs(); goP(0);
+    loadPkgs(); loadSettings(); goP(0);
     $("ls").style.display="none";
     $("app").style.display="flex";
   }
@@ -334,7 +347,62 @@ function renderUser(){
 }
 function closeLiff(){ try{liff.closeWindow();}catch(_){window.close();} }
 
-/* ═══ PACKAGES ═══ */
+/* ═══ PACKAGES + SETTINGS ═══ */
+var formCfg = {}; // ตั้งค่าจาก Admin
+
+async function loadSettings(){
+  try{
+    var r = await fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/form.json");
+    if(r.ok){
+      var d = await r.json();
+      if(d){
+        formCfg = d;
+        // อัพเดทคำอธิบายฟอร์ม
+        var oHint = document.getElementById("orderNo");
+        if(oHint && d.orderHint) oHint.placeholder = d.orderHint;
+        var sHint = document.getElementById("simCode");
+        if(sHint && d.simCodeHint) sHint.placeholder = d.simCodeHint;
+        // อัพเดท platforms
+        if(d.platforms && d.platforms.length){
+          renderPlatformBtns(d.platforms);
+        }
+        // อัพเดทรูปตัวอย่าง
+        [["exImg0",0],["exImg1",1],["exImg2",2]].forEach(function(x){
+          var src = d[x[0]]; var i = x[1];
+          if(!src) return;
+          var img  = document.getElementById("ex-hint-"+i);
+          var wrap = document.getElementById("ex-hint-wrap-"+i);
+          if(img)  img.src = src;
+          if(wrap) wrap.style.display = "block";
+        });
+      }
+    }
+  }catch(e){console.warn("settings load failed");}
+}
+
+function renderPlatformBtns(platforms){
+  var el = document.getElementById("p1");
+  if(!el) return;
+  // สร้างปุ่มแพลตฟอร์มจาก settings
+  var btns = platforms.map(function(p){
+    var logo = p.logo
+      ? '<img src="'+p.logo+'" style="width:32px;height:32px;object-fit:contain;border-radius:8px">'
+      : '<span style="font-size:28px">'+p.emoji+'</span>';
+    return '<button class="pltbtn" onclick="selPlt(''+p.id+'')">'
+      +logo
+      +'<div style="flex:1"><div style="font-weight:800;font-size:15px;color:#111">'+p.name+'</div>'
+      +'<div style="font-size:11px;color:#BDBDBD">สั่งซื้อผ่าน '+p.name+'</div></div>'
+      +'<span style="color:#BDBDBD;font-size:20px">›</span>'
+      +'</button>';
+  }).join("");
+  // แทนที่ปุ่มเดิมใน p1
+  var dotsEl = document.getElementById("d1");
+  var hintEl = el.querySelector('p');
+  var existing = el.querySelectorAll('.pltbtn');
+  existing.forEach(function(b){b.remove();});
+  el.insertAdjacentHTML('beforeend', btns);
+}
+
 function loadPkgs(){
   try{pkgs=JSON.parse(localStorage.getItem("pt_packages")||"null")||DEFPKGS;}catch(_){pkgs=DEFPKGS;}
   renderPkgs();
@@ -382,10 +450,32 @@ function goP(n){
 }
 function goBack(){ if(curP>0&&curP<5)goP(curP-1); }
 function selPlt(id){ plt=id; goP(2); }
+function onSimCodeInput(val){
+  val = val.toUpperCase();
+  var hint = document.getElementById('simcode-hint');
+  if(!hint) return;
+  if(val.length === 0){
+    branchCode = ""; hint.style.display="none";
+  } else if(val[0]==="K"){
+    branchCode = "K";
+    hint.style.display = "none";
+  } else if(val[0]==="L"){
+    branchCode = "L";
+    hint.style.display = "none";
+  } else {
+    branchCode = "";
+    hint.style.display = "block";
+    hint.style.color   = "#E53935";
+    hint.innerHTML     = "❌ ซิมหมายเลขต้องเริ่มด้วย K หรือ L";
+  }
+  chkForm();
+}
+
 function chkForm(){
-  orderNo=($("orderNo")||{}).value?.trim()||"";
-  simPhone=($("simPhone")||{}).value?.trim()||"";
-  var ok=orderNo.length>0&&simPhone.length>0&&pkgId!=="";
+  orderNo  = ($("orderNo") ||{}).value?.trim()||"";
+  simPhone = ($("simPhone")||{}).value?.trim()||"";
+  var simCodeVal = ($("simCode")||{}).value?.trim()||"";
+  var ok = orderNo.length>0 && simPhone.length>0 && pkgId!=="" && branchCode!=="" && simCodeVal.length>=2;
   var b=$("btnform"); if(b)b.disabled=!ok;
 }
 
@@ -413,9 +503,12 @@ function chkPhotos(){
 /* ═══ CONFIRM ═══ */
 function renderConfirm(){
   var p=PLTS[plt]||"";
+  var simCodeVal=($("simCode")||{}).value?.trim().toUpperCase()||"";
   $("s-plt").textContent=p;
   $("s-ono").textContent=orderNo;
   $("s-ph").textContent=simPhone;
+  if($("s-sc"))$("s-sc").textContent=simCodeVal;
+  if($("s-br"))$("s-br").textContent=branchCode==="K"?"🏪 K — กาฬสินธุ์":branchCode==="L"?"🏪 L — เลย":"-";
   $("s-pkg").textContent=pkgs.find(function(p){return p.id===pkgId;})||{name:"-"};
   var pkg=pkgs.find(function(p){return p.id===pkgId;});
   if($("s-pkg"))$("s-pkg").textContent=pkg?pkg.name:"-";
@@ -477,7 +570,12 @@ async function submitForm(){
   var refNo="PT"+Date.now().toString().slice(-6);
   var now=ts();
   var pkg=pkgs.find(function(p){return p.id===pkgId;});
-  var req={ref:refNo,platform:plt,orderNo:orderNo,simPhone:simPhone,pkgId:pkgId,pkgName:pkg?pkg.name:"",pkgCode:pkg?pkg.code:"",imgOrder:photos[0],imgSim:photos[1],imgReg:photos[2],status:"pending",shopeeVerified:"pending",submittedAt:now,lineUserId:lp?lp.userId:null,lineDisplayName:lp?lp.displayName:null,linePictureUrl:lp?lp.pictureUrl:null,lineMessages:[{id:1,from:"customer",text:"สวัสดีค่ะ ขอรับเน็ตฟรีเดือนแรกค่ะ\nเลขพัสดุ "+orderNo+"\nเบอร์ซิม "+simPhone+"\nแพ็คเกจ "+(pkg?pkg.name:""),time:now}]};
+  var simCodeVal=($("simCode")||{}).value?.trim().toUpperCase()||"";
+  var req={ref:refNo,platform:plt,orderNo:orderNo,simPhone:simPhone,
+    simCode:simCodeVal,
+    branchCode:simCodeVal.length>0?simCodeVal[0]:"",
+    branchName:simCodeVal[0]==="K"?"กาฬสินธุ์":simCodeVal[0]==="L"?"เลย":"ไม่ระบุ",
+    pkgId:pkgId,pkgName:pkg?pkg.name:"",pkgCode:pkg?pkg.code:"",imgOrder:photos[0],imgSim:photos[1],imgReg:photos[2],status:"pending",shopeeVerified:"pending",submittedAt:now,lineUserId:lp?lp.userId:null,lineDisplayName:lp?lp.displayName:null,linePictureUrl:lp?lp.pictureUrl:null,lineMessages:[{id:1,from:"customer",text:"สวัสดีค่ะ ขอรับเน็ตฟรีเดือนแรกค่ะ\nเลขพัสดุ "+orderNo+"\nเบอร์ซิม "+simPhone+"\nแพ็คเกจ "+(pkg?pkg.name:""),time:now}]};
   try{var list=JSON.parse(localStorage.getItem("pt_requests")||"[]");list.unshift(req);localStorage.setItem("pt_requests",JSON.stringify(list));}catch(_){}
   recordReq(orderNo,simPhone,refNo);
 
