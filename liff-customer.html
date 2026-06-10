@@ -106,21 +106,24 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#fff;min-heigh
     <div class="pg" id="p1" style="padding-top:20px">
       <div class="dots" id="d1"></div>
       <p style="font-size:13px;color:#9E9E9E;margin-bottom:16px">เลือกช่องทางที่คุณสั่งซื้อซิม</p>
-      <button class="pltbtn" onclick="selPlt('shopee')">
-        <span style="font-size:28px">🛍️</span>
-        <div style="flex:1"><div style="font-weight:800;font-size:15px;color:#111">Shopee</div><div style="font-size:11px;color:#BDBDBD">สั่งซื้อผ่าน Shopee</div></div>
-        <span style="color:#BDBDBD;font-size:20px">›</span>
-      </button>
-      <button class="pltbtn" onclick="selPlt('lazada')">
-        <span style="font-size:28px">🛒</span>
-        <div style="flex:1"><div style="font-weight:800;font-size:15px;color:#111">Lazada</div><div style="font-size:11px;color:#BDBDBD">สั่งซื้อผ่าน Lazada</div></div>
-        <span style="color:#BDBDBD;font-size:20px">›</span>
-      </button>
-      <button class="pltbtn" onclick="selPlt('tiktok')">
-        <span style="font-size:28px">🎵</span>
-        <div style="flex:1"><div style="font-weight:800;font-size:15px;color:#111">TikTok Shop</div><div style="font-size:11px;color:#BDBDBD">สั่งซื้อผ่าน TikTok</div></div>
-        <span style="color:#BDBDBD;font-size:20px">›</span>
-      </button>
+      <div id="plt-btns-wrap">
+        <!-- ปุ่ม platform โหลดจาก Firebase อัตโนมัติ -->
+        <button class="pltbtn" onclick="selPlt('shopee')">
+          <span style="font-size:28px">🛍️</span>
+          <div style="flex:1"><div style="font-weight:800;font-size:15px;color:#111">Shopee</div><div style="font-size:11px;color:#BDBDBD">สั่งซื้อผ่าน Shopee</div></div>
+          <span style="color:#BDBDBD;font-size:20px">›</span>
+        </button>
+        <button class="pltbtn" onclick="selPlt('lazada')">
+          <span style="font-size:28px">🛒</span>
+          <div style="flex:1"><div style="font-weight:800;font-size:15px;color:#111">Lazada</div><div style="font-size:11px;color:#BDBDBD">สั่งซื้อผ่าน Lazada</div></div>
+          <span style="color:#BDBDBD;font-size:20px">›</span>
+        </button>
+        <button class="pltbtn" onclick="selPlt('tiktok')">
+          <span style="font-size:28px">🎵</span>
+          <div style="flex:1"><div style="font-weight:800;font-size:15px;color:#111">TikTok Shop</div><div style="font-size:11px;color:#BDBDBD">สั่งซื้อผ่าน TikTok</div></div>
+          <span style="color:#BDBDBD;font-size:20px">›</span>
+        </button>
+      </div>
     </div>
 
     <!-- P2: FORM -->
@@ -367,6 +370,32 @@ function closeLiff(){ try{liff.closeWindow();}catch(_){window.close();} }
 
 /* ═══ PACKAGES + SETTINGS ═══ */
 var formCfg = {}; // ตั้งค่าจาก Admin
+
+function renderPlatformBtns(platforms){
+  var wrap = document.getElementById("plt-btns-wrap");
+  if(!wrap || !platforms || !platforms.length) return;
+  // ล้างปุ่มเดิมทั้งหมด
+  wrap.innerHTML = "";
+  platforms.forEach(function(p){
+    var btn = document.createElement("button");
+    btn.className = "pltbtn";
+    btn.setAttribute("onclick","selPlt('"+p.id+"')");
+    // สร้าง logo/emoji
+    var logoEl = "";
+    if(p.logo && p.logo.length > 10){
+      logoEl = '<img src="'+p.logo+'" style="width:36px;height:36px;object-fit:contain;border-radius:8px;flex-shrink:0">';
+    } else {
+      logoEl = '<span style="font-size:28px;flex-shrink:0">'+(p.emoji||"🛍️")+'</span>';
+    }
+    btn.innerHTML = logoEl
+      +'<div style="flex:1">'
+        +'<div style="font-weight:800;font-size:15px;color:#111">'+p.name+'</div>'
+        +'<div style="font-size:11px;color:#BDBDBD">สั่งซื้อผ่าน '+p.name+'</div>'
+      +'</div>'
+      +'<span style="color:#BDBDBD;font-size:20px">›</span>';
+    wrap.appendChild(btn);
+  });
+}
 
 async function loadSettings(){
   var db = getLFB();
