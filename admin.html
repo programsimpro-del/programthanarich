@@ -775,7 +775,7 @@ async function sendLineMsg(userId, text) {
   if(!text){ console.warn("❌ sendLineMsg: text ว่าง"); return; }
   console.log("📤 sendLineMsg to:", userId, "msg:", text.slice(0,30));
   try {
-    var r = await fetch("https://programthanarichapi.vercel.app/api/send", {
+    var r = await fetch("https://programthanarich-api.netlify.app/.netlify/functions/send", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify({ to: userId, text: text })
@@ -803,7 +803,7 @@ async function sendAdminMsg(userId, text) {
   const LINE_TOKEN = "DJ25W48oucJ/fo7BAmAcVNnOUMLeWxvlYGMemXK9ZGFxD11i8rAHxfrGJ80e+m2aScdVCeVnus2Ud/qv8NZ42J3b3Nwec5/O+8pYcau+Fktr3fWahABAdoAoKQwSvQnuaS2wp3UWZT4rUDPBgEkSWwdB04t89/10/w1cDnyilFU=";
   // ส่งผ่าน Vercel API เพื่อหลีกเลี่ยง CORS
   try {
-    await fetch("https://programthanarichapi.vercel.app/api/notify", {
+    await fetch("https://programthanarich-api.netlify.app/.netlify/functions/notify", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify({ _sendMsg: true, to: userId, text, token: LINE_TOKEN })
