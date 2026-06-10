@@ -235,25 +235,22 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#fff;min-heigh
         <div id="refno" style="font-family:monospace;font-weight:900;font-size:26px;color:#14532D;letter-spacing:2px"></div>
         <div style="font-size:11px;color:#BDBDBD;margin-top:5px">📸 แคปหน้าจอเก็บไว้นะคะ</div>
       </div>
+      <!-- ขั้นตอนถัดไป -->
       <div style="background:#F0FDF4;border-radius:13px;padding:14px 17px;width:100%;text-align:left;margin-bottom:12px">
         <div style="font-weight:800;font-size:12px;color:#166534;margin-bottom:9px">ขั้นตอนถัดไป</div>
         <div style="display:flex;gap:7px;margin-bottom:6px"><div style="background:#06C755;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0">1</div><span style="font-size:12px;color:#166534">รอทีมงานตรวจสอบคำสั่งซื้อ</span></div>
         <div style="display:flex;gap:7px;margin-bottom:6px"><div style="background:#06C755;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0">2</div><span style="font-size:12px;color:#166534"><b>ปิดเน็ตมือถือ</b>เพื่อรอรับแพ็คเกจ</span></div>
         <div style="display:flex;gap:7px;margin-bottom:6px"><div style="background:#06C755;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0">3</div><span style="font-size:12px;color:#166534">รอเจ้าหน้าที่เปิดเน็ตฟรีเดือนแรกให้</span></div>
-        <div style="display:flex;gap:7px;margin-bottom:12px"><div style="background:#06C755;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0">4</div><span style="font-size:12px;color:#166534">เน็ตฟรีหรือยอดเงินจะเข้า</span></div>
+        <div style="display:flex;gap:7px;margin-bottom:14px"><div style="background:#06C755;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0">4</div><span style="font-size:12px;color:#166534">เน็ตฟรีหรือยอดเงินจะเข้า</span></div>
         <!-- คำเตือนสำคัญ -->
-        <div style="background:#B71C1C;border-radius:12px;padding:12px 14px">
-          <div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:6px;letter-spacing:.3px">⚠️ สำคัญมาก — โปรดอ่าน</div>
-          <div style="font-size:12px;color:#FFCDD2;font-weight:700;line-height:1.8">
-            ถ้าลูกค้า<span style="color:#fff;font-size:14px;font-weight:900">ไม่ปิดเน็ตมือถือ</span><br>
+        <div style="background:#B71C1C;border-radius:12px;padding:13px 15px">
+          <div style="font-size:14px;font-weight:900;color:#fff;margin-bottom:6px">⚠️ สำคัญมาก ⚠️</div>
+          <div style="font-size:13px;color:#FFCDD2;font-weight:700;line-height:1.9">
+            ถ้าลูกค้า <span style="color:#fff;font-size:15px;font-weight:900;text-decoration:underline">ไม่ปิดเน็ตมือถือ</span><br>
             ยอดเงินหายหรือสมัครเน็ตไม่ได้<br>
             <span style="color:#fff;font-weight:900">ทางร้านจะไม่รับผิดชอบทุกกรณี</span>
           </div>
         </div>
-      <!-- คำเตือนสำคัญ -->
-      <div style="background:#FFF1F2;border:2px solid #FECDD3;border-radius:13px;padding:14px 17px;width:100%;text-align:center;margin-bottom:18px">
-        <div style="font-size:15px;font-weight:900;color:#C62828;margin-bottom:6px">⚠️ สำคัญมาก ⚠️</div>
-        <div style="font-size:13px;font-weight:800;color:#9F1239;line-height:1.8">ถ้าลูกค้าไม่ปิดเน็ตมือถือ<br>ยอดเงินหายหรือสมัครเน็ตไม่ได้<br><span style="font-size:12px;font-weight:700">ทางร้านจะไม่รับผิดชอบทุกกรณี</span></div>
       </div>
       <button class="btn" onclick="closeLiff()" style="background:#F3F4F6;color:#374151;box-shadow:none">✕ ปิดหน้าต่างนี้</button>
     </div>
@@ -460,9 +457,23 @@ async function loadSettings(){
 }
 
 
-function loadPkgs(){
+async function loadPkgs(){
+  // โหลด local ก่อน (แสดงเร็ว)
   try{pkgs=JSON.parse(localStorage.getItem("pt_packages")||"null")||DEFPKGS;}catch(_){pkgs=DEFPKGS;}
   renderPkgs();
+  // ดึงจาก Firebase (sync แพ็คเกจล่าสุดที่ Admin ตั้งไว้)
+  try{
+    var db = getLFB();
+    if(db){
+      var snap = await db.ref("/packages").once("value");
+      var fbPkgs = snap.val();
+      if(fbPkgs && Array.isArray(fbPkgs) && fbPkgs.length > 0){
+        pkgs = fbPkgs;
+        localStorage.setItem("pt_packages", JSON.stringify(pkgs));
+        renderPkgs();
+      }
+    }
+  }catch(e){ console.warn("loadPkgs Firebase:", e.message); }
 }
 function renderPkgs(){
   var el=$("pkglist"); if(!el)return;
