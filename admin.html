@@ -182,7 +182,59 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
         <button onclick="loadAll()" style="background:none;border:none;color:#1565C0;font-weight:700;font-size:12px;cursor:pointer">🔄 รีเฟรช</button>
       </div>
       <div class="notif-wrap">
-        <div class="stats" id="stats-row"></div>
+        <!-- ── DASHBOARD นับรายวัน/รายเดือน ── -->
+      <div id="dashboard-row" style="padding:10px 12px 0;display:flex;flex-direction:column;gap:8px">
+        <!-- วันนี้ / เดือนนี้ -->
+        <div style="display:flex;gap:8px">
+          <div style="flex:1;background:linear-gradient(135deg,#1565C0,#1976D2);border-radius:14px;padding:12px 14px;color:#fff">
+            <div style="font-size:10px;opacity:.8;font-weight:600;margin-bottom:4px">📅 วันนี้</div>
+            <div style="font-size:28px;font-weight:900" id="dash-today">0</div>
+            <div style="font-size:10px;opacity:.75">คำสั่งซื้อ</div>
+          </div>
+          <div style="flex:1;background:linear-gradient(135deg,#2E7D32,#388E3C);border-radius:14px;padding:12px 14px;color:#fff">
+            <div style="font-size:10px;opacity:.8;font-weight:600;margin-bottom:4px">📆 เดือนนี้</div>
+            <div style="font-size:28px;font-weight:900" id="dash-month">0</div>
+            <div style="font-size:10px;opacity:.75">คำสั่งซื้อ</div>
+          </div>
+          <div style="flex:1;background:linear-gradient(135deg,#E65100,#F57C00);border-radius:14px;padding:12px 14px;color:#fff">
+            <div style="font-size:10px;opacity:.8;font-weight:600;margin-bottom:4px">🎯 รอตรวจ</div>
+            <div style="font-size:28px;font-weight:900" id="dash-pending">0</div>
+            <div style="font-size:10px;opacity:.75">รายการ</div>
+          </div>
+        </div>
+        <!-- กราฟรายวัน 7 วันย้อนหลัง -->
+        <div style="background:#fff;border:1.5px solid #E8E8E8;border-radius:14px;padding:12px 14px">
+          <div style="font-size:12px;font-weight:800;color:#374151;margin-bottom:10px">📊 7 วันย้อนหลัง</div>
+          <div id="dash-chart" style="display:flex;align-items:flex-end;gap:4px;height:60px"></div>
+          <div id="dash-chart-labels" style="display:flex;gap:4px;margin-top:4px"></div>
+        </div>
+        <!-- ยอดรายเดือน 3 เดือน -->
+        <div style="background:#fff;border:1.5px solid #E8E8E8;border-radius:14px;padding:12px 14px">
+          <div style="font-size:12px;font-weight:800;color:#374151;margin-bottom:8px">📈 ยอดรายเดือน</div>
+          <div id="dash-months" style="display:flex;gap:6px"></div>
+        </div>
+      </div>
+      <!-- ── สถิติแยกสาขา ── -->
+      <div style="background:#fff;border:1.5px solid #E8E8E8;border-radius:14px;padding:12px 14px;margin:0 12px 8px">
+        <div style="font-size:12px;font-weight:800;color:#374151;margin-bottom:10px">🏪 สถิติแยกสาขา</div>
+        <div style="display:flex;gap:8px">
+          <div style="flex:1;background:linear-gradient(135deg,#1565C0,#1976D2);border-radius:12px;padding:12px;color:#fff;text-align:center">
+            <div style="font-size:11px;opacity:.85;font-weight:700;margin-bottom:4px">🏪 K — กาฬสินธุ์</div>
+            <div style="font-size:26px;font-weight:900" id="dash-branch-K">0</div>
+            <div style="font-size:9px;opacity:.75">เดือนนี้</div>
+            <div style="font-size:18px;font-weight:800;margin-top:4px" id="dash-branch-K-today">0</div>
+            <div style="font-size:9px;opacity:.75">วันนี้</div>
+          </div>
+          <div style="flex:1;background:linear-gradient(135deg,#6A1B9A,#7B1FA2);border-radius:12px;padding:12px;color:#fff;text-align:center">
+            <div style="font-size:11px;opacity:.85;font-weight:700;margin-bottom:4px">🏪 L — เลย</div>
+            <div style="font-size:26px;font-weight:900" id="dash-branch-L">0</div>
+            <div style="font-size:9px;opacity:.75">เดือนนี้</div>
+            <div style="font-size:18px;font-weight:800;margin-top:4px" id="dash-branch-L-today">0</div>
+            <div style="font-size:9px;opacity:.75">วันนี้</div>
+          </div>
+        </div>
+      </div>
+      <div class="stats" id="stats-row"></div>
         <div class="filter-row" id="filter-row"></div>
         <div id="ord-list"></div>
         <div id="empty" style="display:none;text-align:center;padding:36px 20px;background:#fff;border-radius:15px;margin:0 12px;color:#BDBDBD"><div style="font-size:36px;margin-bottom:8px">📭</div>ยังไม่มีรายการ</div>
@@ -216,6 +268,7 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
     <div class="pad">
       <div id="pkg-mgr-list"></div>
       <button class="btn btn-od" style="margin-bottom:8px" onclick="openPkgForm(null)">➕ เพิ่มแพ็คเกจใหม่</button>
+      <button class="btn" style="margin-bottom:8px;background:#E8F5E9;color:#2E7D32;border:1.5px solid #A5D6A7" onclick="showFormSettings()">⚙️ ตั้งค่าแบบฟอร์มลูกค้า</button>
       <button class="btn btn-blue" onclick="saveAllPkgs()">✅ บันทึกและอัพเดทระบบ</button>
     </div>
   </div>
@@ -231,6 +284,10 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
       <div style="font-size:12px;font-weight:800;color:#1565C0;margin-bottom:4px">รหัสสินค้า *</div><input class="finput" id="pf-code" placeholder="TRUE2MB159(FREE)" style="font-family:monospace">
       <div style="font-size:12px;font-weight:800;color:#1565C0;margin-bottom:4px">ราคา (฿) *</div><input class="finput" id="pf-price" type="number" placeholder="149">
       <div style="font-size:12px;font-weight:800;color:#1565C0;margin-bottom:4px">วิธีสมัครเน็ต</div><textarea class="finput" id="pf-method" rows="3" placeholder="กด *900*9# โทรออก&#10;หรือ SMS: ACT → 1800"></textarea>
+      <div style="height:12px"></div>
+      <div style="font-size:12px;font-weight:800;color:#2E7D32;margin-bottom:4px">💬 ข้อความแจ้งลูกค้าหลังเปิดเน็ต</div>
+      <div style="font-size:11px;color:#9E9E9E;margin-bottom:6px">ระบบจะส่งข้อความนี้ไปหาลูกค้าอัตโนมัติเมื่อ Admin กดเปิดเน็ต<br>ใช้ {simPhone} แทนเบอร์ซิม, {orderNo} แทนเลขออเดอร์</div>
+      <textarea class="finput" id="pf-activateMsg" rows="6" placeholder="ตัวอย่าง:&#10;✅ เปิดเน็ตฟรีเดือนแรกเรียบร้อยแล้วค่ะ 🎉&#10;&#10;📱 เบอร์: {simPhone}&#10;📵 กรุณาปิดเน็ตมือถือก่อนนะคะ&#10;รอสักครู่เน็ตจะเข้าอัตโนมัติค่ะ 😊"></textarea>
       <button class="btn btn-blue" onclick="savePkgForm()">💾 บันทึกแพ็คเกจ</button>
     </div>
   </div>
@@ -386,6 +443,7 @@ function loadAll(){
   renderChatList();
   renderOrdList();
   updateBadges();
+  renderDashboard();
   $("rts").textContent="อัพเดท "+ts();
   if(ORDERS_API) syncFromAPI();
   startRealtimeSync();
@@ -616,6 +674,133 @@ function addMsgToReq(ref,from,text){
 /* ══════════════════════════════
    TAB 1: ORDER LIST
 ══════════════════════════════ */
+/* ══════ DASHBOARD ══════ */
+function renderDashboard(){
+  if(!reqs || !reqs.length) return;
+
+  var now   = new Date();
+  var today = now.toLocaleDateString("th-TH");
+  var thisMonth = now.getFullYear()+"-"+(now.getMonth()+1).toString().padStart(2,"0");
+
+  // นับวันนี้
+  var todayCount = reqs.filter(function(r){
+    if(!r.submittedAt && !r.createdAt) return false;
+    var d = new Date(r.createdAt || 0);
+    return d.toLocaleDateString("th-TH") === today;
+  }).length;
+
+  // นับเดือนนี้
+  var monthCount = reqs.filter(function(r){
+    var d = new Date(r.createdAt || 0);
+    var m = d.getFullYear()+"-"+(d.getMonth()+1).toString().padStart(2,"0");
+    return m === thisMonth;
+  }).length;
+
+  // รอตรวจ
+  var pendingCount = reqs.filter(function(r){ return r.status==="pending"; }).length;
+
+  var dToday  = document.getElementById("dash-today");
+  var dMonth  = document.getElementById("dash-month");
+  var dPend   = document.getElementById("dash-pending");
+  if(dToday)  dToday.textContent  = todayCount;
+  if(dMonth)  dMonth.textContent  = monthCount;
+  if(dPend)   dPend.textContent   = pendingCount;
+
+  // ── กราฟ 7 วัน ─────────────────────────────────
+  var days = [];
+  for(var i=6;i>=0;i--){
+    var d = new Date(now);
+    d.setDate(d.getDate()-i);
+    days.push({
+      label: (d.getMonth()+1)+"/"+(d.getDate()),
+      dateStr: d.toLocaleDateString("th-TH"),
+      count: 0
+    });
+  }
+  reqs.forEach(function(r){
+    var d = new Date(r.createdAt||0);
+    var ds = d.toLocaleDateString("th-TH");
+    var day = days.find(function(x){return x.dateStr===ds;});
+    if(day) day.count++;
+  });
+
+  var maxVal = Math.max(1, Math.max.apply(null, days.map(function(d){return d.count;})));
+  var chart  = document.getElementById("dash-chart");
+  var labels = document.getElementById("dash-chart-labels");
+  if(chart){
+    chart.innerHTML = days.map(function(d){
+      var h = Math.max(4, Math.round((d.count/maxVal)*60));
+      var isToday = d.dateStr === today;
+      return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">'
+        +'<div style="font-size:9px;color:#374151;font-weight:700">'+(d.count||"")+'</div>'
+        +'<div style="width:100%;height:'+h+'px;background:'+(isToday?"#06C755":"#BFDBFE")+';border-radius:4px 4px 0 0;min-height:4px"></div>'
+        +'</div>';
+    }).join("");
+  }
+  if(labels){
+    labels.innerHTML = days.map(function(d){
+      var isToday = d.dateStr===today;
+      return '<div style="flex:1;text-align:center;font-size:9px;color:'+(isToday?"#06C755":"#9E9E9E")+';font-weight:'+(isToday?"800":"400")+'">'+d.label+'</div>';
+    }).join("");
+  }
+
+  // ── ยอด 3 เดือน ────────────────────────────────
+  var months3 = [];
+  for(var j=2;j>=0;j--){
+    var md = new Date(now.getFullYear(), now.getMonth()-j, 1);
+    var mk = md.getFullYear()+"-"+(md.getMonth()+1).toString().padStart(2,"0");
+    var ml = (md.getMonth()+1)+"/"+md.getFullYear().toString().slice(2);
+    months3.push({key:mk, label:ml, count:0});
+  }
+  reqs.forEach(function(r){
+    var d = new Date(r.createdAt||0);
+    var mk = d.getFullYear()+"-"+(d.getMonth()+1).toString().padStart(2,"0");
+    var m = months3.find(function(x){return x.key===mk;});
+    if(m) m.count++;
+  });
+
+  var dm = document.getElementById("dash-months");
+  if(dm){
+    dm.innerHTML = months3.map(function(m,i){
+      var isThis = m.key===thisMonth;
+      return '<div style="flex:1;background:'+(isThis?"#E8F5E9":"#F9FAFB")+';border:1.5px solid '+(isThis?"#A5D6A7":"#E8E8E8")+';border-radius:10px;padding:10px 8px;text-align:center">'
+        +'<div style="font-size:10px;color:#9E9E9E;font-weight:600">'+m.label+'</div>'
+        +'<div style="font-size:22px;font-weight:900;color:'+(isThis?"#2E7D32":"#374151")+'">'+m.count+'</div>'
+        +'<div style="font-size:9px;color:#9E9E9E">คำสั่งซื้อ</div>'
+        +'</div>';
+    }).join("");
+  }
+
+  // ── นับแยกสาขา ─────────────────────────────────
+  var bKMonth=0, bLMonth=0, bKToday=0, bLToday=0;
+  reqs.forEach(function(r){
+    var d   = new Date(r.createdAt||0);
+    var mk  = d.getFullYear()+"-"+(d.getMonth()+1).toString().padStart(2,"0");
+    var ds  = d.toLocaleDateString("th-TH");
+    var br  = (r.branchCode||"").toUpperCase();
+    if(!br){
+      // ดูจาก simPhone prefix หรือ orderNo ถ้าไม่มี branchCode
+      br = "?";
+    }
+    if(mk===thisMonth){
+      if(br==="K") bKMonth++;
+      if(br==="L") bLMonth++;
+    }
+    if(ds===today){
+      if(br==="K") bKToday++;
+      if(br==="L") bLToday++;
+    }
+  });
+  var bK  = document.getElementById("dash-branch-K");
+  var bL  = document.getElementById("dash-branch-L");
+  var bKT = document.getElementById("dash-branch-K-today");
+  var bLT = document.getElementById("dash-branch-L-today");
+  if(bK)  bK.textContent  = bKMonth;
+  if(bL)  bL.textContent  = bLMonth;
+  if(bKT) bKT.textContent = bKToday;
+  if(bLT) bLT.textContent = bLToday;
+}
+
 function renderOrdList(){
   const pending=reqs.filter(r=>["pending"].includes(r.status)).length;
   const confirmed=reqs.filter(r=>r.status==="confirmed").length;
@@ -938,16 +1123,71 @@ async function doVerify(){
 }
 
 async function doActivate(pkgId){
-  const req=getR();if(!req)return;const pkg=pkgs.find(p=>p.id===pkgId);if(!pkg)return;
-  addMsgToReq(aref,"admin",`✅ ยืนยันคำสั่งซื้อเรียบร้อยแล้วนะคะ\n\nทางร้านดำเนินการเปิดแพ็คเกจ\n🌐 ${pkg.name}\n\n📵 กรุณาปิดเน็ตมือถือก่อนนะคะ แล้ว:\n📶 ${pkg.method}\n\nรอสักครู่เน็ตจะเข้าอัตโนมัติค่ะ 😊`);
-  req.status="activated";req.activatedPackage=pkgId;req.activatedAt=ts();showNet=false;saveReqs();
+  const req=getR(); if(!req)return;
+  const pkg=pkgs.find(p=>p.id===pkgId); if(!pkg)return;
+
+  // ── ข้อความแจ้งลูกค้าว่าสมัครเน็ตเสร็จแล้ว ──────────────
+  const q = (typeof getQuotaSummary==="function") ? getQuotaSummary(req.orderNo) : {maxQuota:1,usedCount:0,remaining:1};
+  const remaining = Math.max(0, q.remaining - 1); // หลังจากใช้ซิมนี้แล้ว
+
+  // ดึงข้อความจาก pkg.activateMsg ถ้ามี ถ้าไม่มีใช้ default
+  var rawMsg = (pkg.activateMsg && pkg.activateMsg.trim())
+    ? pkg.activateMsg
+    : [
+        "✅ ทางร้านสมัครเน็ตฟรีเดือนแรกให้คุณเสร็จแล้วค่ะ 🎉",
+        "",
+        "📦 แพ็คเกจ: " + pkg.name,
+        "📶 วิธีสมัคร: " + (pkg.method||"-"),
+        "📱 เบอร์: {simPhone}",
+        "",
+        "📵 กรุณาปิดเน็ตมือถือก่อนนะคะ",
+        "รอสักครู่เน็ตจะเข้าอัตโนมัติค่ะ 😊",
+        "",
+        "🎫 สิทธิ์คงเหลือ: " + remaining + " / " + q.maxQuota + " ซิม",
+        "",
+        "ขอบคุณที่ใช้บริการค่ะ 🙏"
+      ].join("\n");
+
+  // แทน placeholder
+  var notifyMsg = rawMsg
+    .replace(/\{simPhone\}/g, req.simPhone||"")
+    .replace(/\{orderNo\}/g,  req.orderNo||"")
+    .replace(/\{pkgName\}/g,  pkg.name||"")
+    .replace(/\{branch\}/g,   req.branchName||"")
+    .replace(/\{simCode\}/g,  req.simCode||"")
+    .replace(/\{remaining\}/g, String(remaining))
+    .replace(/\{maxQuota\}/g,  String(q.maxQuota));
+
+  // ส่งใน LINE จริง
+  if(req.lineUserId) sendLineMsg(req.lineUserId, notifyMsg);
+  addMsgToReq(aref, "admin", notifyMsg);
+
+  // อัพเดทสถานะ
+  req.status="activated";
+  req.activatedPackage=pkgId;
+  req.activatedAt=ts();
+  showNet=false;
+
+  // บันทึก Firebase
+  if(fbDB){
+    fbDB.ref("/orders/"+req.ref).update({
+      status:"activated",
+      activatedPackage:pkgId,
+      activatedAt:new Date().toISOString()
+    }).catch(function(){});
+  }
+
+  // อัพเดทสิทธิ์
   try{
     if(typeof window.markActivated==="function"){
-      const q=typeof getQuotaSummary==="function"?getQuotaSummary(req.orderNo):{maxQuota:1};
       window.markActivated(req.orderNo,req.simPhone,req.ref,q.maxQuota);
     }
   }catch(_){}
-  renderOrdDetail(aref);renderOrdList();updateBadges();
+
+  saveReqs();
+  renderOrdDetail(aref);
+  renderOrdList();
+  updateBadges();
 }
 
 /* ══════ COPY ══════ */
@@ -976,7 +1216,7 @@ function openPkgForm(id){
   if(ex){pfe=ex.emoji||"📶";pfc=ex.color||"#00C853";}
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("on"));$("sc-pkgform").classList.add("on");$("tabbar").style.display="none";
   setTopbar(id?"แก้ไขแพ็คเกจ":"เพิ่มใหม่",()=>{$("sc-pkgform").classList.remove("on");showPkgMgr();},"");
-  $("pf-name").value=ex?.name||"";$("pf-code").value=ex?.code||"";$("pf-price").value=ex?.price||"";$("pf-method").value=ex?.method||"";
+  $("pf-name").value=ex?.name||"";$("pf-code").value=ex?.code||"";$("pf-price").value=ex?.price||"";$("pf-method").value=ex?.method||"";if($("pf-activateMsg"))$("pf-activateMsg").value=ex?.activateMsg||"";
   $("ep").innerHTML=EMOJIS.map(e=>`<button onclick="sPfe('${e}')" style="width:34px;height:34px;border-radius:8px;border:none;font-size:17px;cursor:pointer;background:${pfe===e?"#E3F2FD":"#F5F5F5"};box-shadow:${pfe===e?"0 0 0 2px #1565C0":"none"}">${e}</button>`).join("");
   $("cp").innerHTML=COLORS.map(c=>`<button onclick="sPfc('${c}')" style="width:26px;height:26px;border-radius:50%;border:none;background:${c};cursor:pointer;box-shadow:${pfc===c?"0 0 0 3px #fff, 0 0 0 5px "+c:"none"}"></button>`).join("");
 }
@@ -985,7 +1225,7 @@ function sPfc(c){pfc=c;openPkgForm(peid);}
 function savePkgForm(){
   const n=$("pf-name").value.trim(),co=$("pf-code").value.trim(),pr=$("pf-price").value.trim(),m=$("pf-method").value.trim();
   if(!n||!co||!pr){alert("กรุณากรอกข้อมูลให้ครบ");return;}
-  const p={id:peid||("PKG"+Date.now()),name:n,code:co,price:Number(pr),emoji:pfe,color:pfc,method:m};
+  const am=$("pf-activateMsg")?$("pf-activateMsg").value.trim():"";const p={id:peid||("PKG"+Date.now()),name:n,code:co,price:Number(pr),emoji:pfe,color:pfc,method:m,activateMsg:am};
   pkgs=peid?pkgs.map(x=>x.id===peid?p:x):[...pkgs,p];
   $("sc-pkgform").classList.remove("on");showPkgMgr();
 }
@@ -1085,6 +1325,139 @@ function setQuotaFromSel(sel) {
   let n=0;const t=setInterval(()=>{n++;const req=reqs.find(r=>r.ref===ref);if(req){clearInterval(t);switchTab(1);setTimeout(()=>openOrdDetail(ref),100);}else if(n>20)clearInterval(t);},300);
 })();
 
+/* ══════ FORM SETTINGS ══════ */
+var formSettings = JSON.parse(localStorage.getItem("pt_formSettings")||"{}");
+
+var DEFAULT_PLATFORMS = [
+  {id:"shopee",  name:"Shopee",       emoji:"🛍️", color:"#EE4D2D", logo:""},
+  {id:"lazada",  name:"Lazada",       emoji:"🛒", color:"#0F146D", logo:""},
+  {id:"tiktok",  name:"TikTok Shop",  emoji:"🎵", color:"#010101", logo:""}
+];
+
+function getPlatforms(){
+  try{
+    var saved = JSON.parse(localStorage.getItem("pt_platforms")||"null");
+    return saved || DEFAULT_PLATFORMS;
+  }catch(_){return DEFAULT_PLATFORMS;}
+}
+
+function showFormSettings(){
+  document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("on");});
+  document.getElementById("sc-formsettings").classList.add("on");
+  document.getElementById("tabbar").style.display="none";
+  setTopbar("ตั้งค่าแบบฟอร์ม", function(){
+    document.getElementById("sc-formsettings").classList.remove("on");
+    showPkgMgr();
+  }, "");
+  loadFormSettings();
+}
+
+function loadFormSettings(){
+  var fs = JSON.parse(localStorage.getItem("pt_formSettings")||"{}");
+  var oH = document.getElementById("fs-orderHint");
+  var sH = document.getElementById("fs-simCodeHint");
+  if(oH) oH.value = fs.orderHint || "ดูได้จากหน้าคำสั่งซื้อในแอป เช่น TH265354252413H";
+  if(sH) sH.value = fs.simCodeHint || "เลขที่เขียนบนซองซิม เช่น K12463 หรือ L26374";
+
+  // โหลดรูปตัวอย่าง
+  [0,1,2].forEach(function(i){
+    var key = "pt_exImg_"+i;
+    var src = localStorage.getItem(key);
+    if(src){
+      var wrap = document.getElementById("ex-img-"+i);
+      var img  = document.getElementById("ex-img-"+i+"-prev");
+      if(wrap) wrap.style.display="block";
+      if(img)  img.src=src;
+    }
+  });
+
+  // โหลด platforms
+  renderPlatformList();
+}
+
+function renderPlatformList(){
+  var plts = getPlatforms();
+  var el   = document.getElementById("plt-list");
+  if(!el) return;
+  el.innerHTML = plts.map(function(p, i){
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #F3F4F6">'
+      +'<div style="width:36px;height:36px;border-radius:10px;background:'+(p.color||"#eee")+';display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">'+(p.logo?'<img src="'+p.logo+'" style="width:28px;height:28px;object-fit:contain;border-radius:6px">':p.emoji||"🛍️")+'</div>'
+      +'<div style="flex:1"><div style="font-weight:800;font-size:13px">'+p.name+'</div><div style="font-size:10px;color:#9E9E9E">id: '+p.id+'</div></div>'
+      +'<label style="background:#E3F2FD;color:#1565C0;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer">🖼️ โลโก้<input type="file" accept="image/*" style="display:none" data-idx="'+i+'" onchange="setPlatformLogo(this,'+i+')"></label>'
+      +'<button onclick="delPlatform('+i+')" style="background:#FFEBEE;color:#C62828;border:none;border-radius:8px;padding:5px 8px;font-size:12px;cursor:pointer">🗑️</button>'
+      +'</div>';
+  }).join("");
+}
+
+function setPlatformLogo(input, idx){
+  var file = input.files[0]; if(!file)return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var plts = getPlatforms();
+    plts[idx].logo = e.target.result;
+    localStorage.setItem("pt_platforms", JSON.stringify(plts));
+    renderPlatformList();
+  };
+  reader.readAsDataURL(file);
+}
+
+function addPlatform(){
+  var name = prompt("ชื่อช่องทาง:");
+  if(!name) return;
+  var plts = getPlatforms();
+  plts.push({id:name.toLowerCase().replace(/\s+/g,"_"), name:name, emoji:"🛍️", color:"#9E9E9E", logo:""});
+  localStorage.setItem("pt_platforms", JSON.stringify(plts));
+  renderPlatformList();
+}
+
+function delPlatform(idx){
+  if(!confirm("ลบช่องทางนี้?")) return;
+  var plts = getPlatforms();
+  plts.splice(idx,1);
+  localStorage.setItem("pt_platforms", JSON.stringify(plts));
+  renderPlatformList();
+}
+
+function setExampleImg(idx, input){
+  var file = input.files[0]; if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    localStorage.setItem("pt_exImg_"+idx, e.target.result);
+    var wrap = document.getElementById("ex-img-"+idx);
+    var img  = document.getElementById("ex-img-"+idx+"-prev");
+    if(wrap){wrap.style.display="block";}
+    if(img){img.src=e.target.result;}
+  };
+  reader.readAsDataURL(file);
+}
+
+function saveFormSettings(){
+  var fs = {
+    orderHint:   (document.getElementById("fs-orderHint")||{}).value||"",
+    simCodeHint: (document.getElementById("fs-simCodeHint")||{}).value||""
+  };
+  localStorage.setItem("pt_formSettings", JSON.stringify(fs));
+  // บันทึก Firebase — ให้ liff ดึงได้
+  var plts = getPlatforms();
+  var toSave = {
+    orderHint:   fs.orderHint,
+    simCodeHint: fs.simCodeHint,
+    platforms:   plts.map(function(p){ return {id:p.id,name:p.name,emoji:p.emoji,color:p.color,logo:p.logo||""}; }),
+    exImg0: localStorage.getItem("pt_exImg_0")||"",
+    exImg1: localStorage.getItem("pt_exImg_1")||"",
+    exImg2: localStorage.getItem("pt_exImg_2")||""
+  };
+  if(fbDB){
+    fbDB.ref("/settings/form").set(toSave).then(function(){
+      alert("✅ บันทึกเรียบร้อยแล้วค่ะ");
+    }).catch(function(){ alert("✅ บันทึก local แล้วค่ะ"); });
+  } else {
+    alert("✅ บันทึกเรียบร้อยแล้วค่ะ");
+  }
+  document.getElementById("sc-formsettings").classList.remove("on");
+  showPkgMgr();
+}
+
 /* ══════ INIT ══════ */
 // รอ window load เพื่อให้ Firebase SDK โหลดเสร็จก่อน
 if(document.readyState === "complete"){
@@ -1097,5 +1470,65 @@ setInterval(function(){
   loadAll();       // fallback ถ้า Firebase ยังไม่พร้อม
 }, 15000);
 </script>
+<!-- ══ FORM SETTINGS SCREEN ══ -->
+<div id="sc-formsettings" class="screen" style="background:#F9FAFB">
+  <div class="pad" style="padding-bottom:40px">
+
+    <!-- แพลตฟอร์ม -->
+    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;border:1.5px solid #E8E8E8">
+      <div style="font-weight:900;font-size:14px;color:#14532D;margin-bottom:12px">🛍️ ช่องทางสั่งซื้อ</div>
+      <div id="plt-list"></div>
+      <button class="btn btn-od" style="margin-top:8px" onclick="addPlatform()">➕ เพิ่มช่องทาง</button>
+    </div>
+
+    <!-- คำอธิบายเลขพัสดุ -->
+    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;border:1.5px solid #E8E8E8">
+      <div style="font-weight:900;font-size:14px;color:#14532D;margin-bottom:8px">📦 คำอธิบายเลขพัสดุ</div>
+      <input id="fs-orderHint" class="finput" placeholder="เช่น TH265354252413H" style="margin-bottom:8px">
+      <div style="font-size:11px;color:#9E9E9E">แสดงใต้ช่องกรอกเลขพัสดุ</div>
+    </div>
+
+    <!-- คำอธิบายซิมหมายเลข -->
+    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;border:1.5px solid #E8E8E8">
+      <div style="font-weight:900;font-size:14px;color:#14532D;margin-bottom:8px">🔖 คำอธิบายซิมหมายเลข</div>
+      <input id="fs-simCodeHint" class="finput" placeholder="เช่น K12463 หรือ L26374" style="margin-bottom:8px">
+    </div>
+
+    <!-- รูปตัวอย่าง -->
+    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;border:1.5px solid #E8E8E8">
+      <div style="font-weight:900;font-size:14px;color:#14532D;margin-bottom:12px">📷 รูปตัวอย่างการถ่ายรูป</div>
+
+      <div style="margin-bottom:14px">
+        <div style="font-size:12px;font-weight:800;color:#374151;margin-bottom:6px">📋 รูปคำสั่งซื้อ</div>
+        <div id="ex-img-0" style="display:none;margin-bottom:6px"><img id="ex-img-0-prev" style="width:100%;border-radius:10px;border:1.5px solid #A5D6A7;max-height:160px;object-fit:cover"></div>
+        <label style="display:flex;align-items:center;gap:8px;background:#F0FDF4;border:1.5px dashed #A5D6A7;border-radius:10px;padding:10px 14px;cursor:pointer">
+          <span style="font-size:20px">📁</span><span style="font-size:13px;font-weight:700;color:#166534">เลือกรูปตัวอย่าง</span>
+          <input type="file" accept="image/*" style="display:none" onchange="setExampleImg(0,this)">
+        </label>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <div style="font-size:12px;font-weight:800;color:#374151;margin-bottom:6px">📦 รูปซองซิม</div>
+        <div id="ex-img-1" style="display:none;margin-bottom:6px"><img id="ex-img-1-prev" style="width:100%;border-radius:10px;border:1.5px solid #A5D6A7;max-height:160px;object-fit:cover"></div>
+        <label style="display:flex;align-items:center;gap:8px;background:#F0FDF4;border:1.5px dashed #A5D6A7;border-radius:10px;padding:10px 14px;cursor:pointer">
+          <span style="font-size:20px">📁</span><span style="font-size:13px;font-weight:700;color:#166534">เลือกรูปตัวอย่าง</span>
+          <input type="file" accept="image/*" style="display:none" onchange="setExampleImg(1,this)">
+        </label>
+      </div>
+
+      <div style="margin-bottom:4px">
+        <div style="font-size:12px;font-weight:800;color:#374151;margin-bottom:6px">✅ รูปยืนยันลงทะเบียน</div>
+        <div id="ex-img-2" style="display:none;margin-bottom:6px"><img id="ex-img-2-prev" style="width:100%;border-radius:10px;border:1.5px solid #A5D6A7;max-height:160px;object-fit:cover"></div>
+        <label style="display:flex;align-items:center;gap:8px;background:#F0FDF4;border:1.5px dashed #A5D6A7;border-radius:10px;padding:10px 14px;cursor:pointer">
+          <span style="font-size:20px">📁</span><span style="font-size:13px;font-weight:700;color:#166534">เลือกรูปตัวอย่าง</span>
+          <input type="file" accept="image/*" style="display:none" onchange="setExampleImg(2,this)">
+        </label>
+      </div>
+    </div>
+
+    <button class="btn btn-blue" onclick="saveFormSettings()">💾 บันทึกการตั้งค่า</button>
+  </div>
+</div>
+
 </body>
 </html>
