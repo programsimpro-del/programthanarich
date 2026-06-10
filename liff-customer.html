@@ -588,7 +588,7 @@ function renderConfirm(){
 
 /* ═══ FIREBASE + LINE NOTIFY ═══ */
 var FB_DB  = "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app";
-var API_URL = "https://programthanarichapi.vercel.app/api/notify";
+var API_URL = "https://programthanarich-api.netlify.app/.netlify/functions/notify";
 
 async function notifyAdmin(refNo,req,pkg){
   // 1. บันทึกลง Firebase (real-time)
