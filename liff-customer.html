@@ -238,8 +238,7 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#fff;min-heigh
     <div class="pg" id="p7" style="align-items:center;justify-content:center;text-align:center">
       <div style="font-size:60px;margin-bottom:14px">⚠️</div>
       <div class="dupwarn">
-        <div style="font-weight:900;font-size:18px;color:#BE123C;margin-bottom:8px">ใช้สิทธิ์ครบแล้ว</div>
-        <div id="dup-msg" style="font-size:13px;color:#9F1239;margin-bottom:10px;line-height:1.7">เลขคำสั่งซื้อนี้ได้รับสิทธิ์เน็ตฟรีเดือนแรกครบแล้วนะคะ</div>
+        <div id="dup-msg" style="display:none"></div>
         <div id="quota-summary" style="background:#FFF1F2;border:1.5px solid #FECDD3;border-radius:12px;padding:12px 14px;margin-bottom:12px;text-align:left">
           <div id="quota-detail" style="font-size:13px;color:#111;line-height:1.8"></div>
         </div>
@@ -351,57 +350,57 @@ function closeLiff(){ try{liff.closeWindow();}catch(_){window.close();} }
 var formCfg = {}; // ตั้งค่าจาก Admin
 
 async function loadSettings(){
+  var FB = "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app";
   try{
-    var r = await fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/form.json");
-    if(r.ok){
-      var d = await r.json();
-      if(d){
-        formCfg = d;
-        // อัพเดทคำอธิบายฟอร์ม
+    // 1. โหลด config (text)
+    var r1 = await fetch(FB+"/settings/form/config.json");
+    if(r1.ok){
+      var cfg = await r1.json();
+      if(cfg){
         var oHint = document.getElementById("orderNo");
-        if(oHint && d.orderHint) oHint.placeholder = d.orderHint;
+        if(oHint && cfg.orderHint) oHint.placeholder = cfg.orderHint;
         var sHint = document.getElementById("simCode");
-        if(sHint && d.simCodeHint) sHint.placeholder = d.simCodeHint;
-        // อัพเดท platforms
-        if(d.platforms && d.platforms.length){
-          renderPlatformBtns(d.platforms);
-        }
-        // อัพเดทรูปตัวอย่าง
-        [["exImg0",0],["exImg1",1],["exImg2",2]].forEach(function(x){
-          var src = d[x[0]]; var i = x[1];
-          if(!src) return;
-          var img  = document.getElementById("ex-hint-"+i);
-          var wrap = document.getElementById("ex-hint-wrap-"+i);
-          if(img)  img.src = src;
-          if(wrap) wrap.style.display = "block";
-        });
+        if(sHint && cfg.simCodeHint) sHint.placeholder = cfg.simCodeHint;
       }
     }
-  }catch(e){console.warn("settings load failed");}
+
+    // 2. โหลด platforms
+    var r2 = await fetch(FB+"/settings/form/platforms.json");
+    if(r2.ok){
+      var plts = await r2.json();
+      if(plts && plts.length){
+        // โหลด logos แยกต่างหาก
+        for(var i=0; i<plts.length; i++){
+          try{
+            var rl = await fetch(FB+"/settings/logos/plt_"+plts[i].id+".json");
+            if(rl.ok){
+              var logo = await rl.json();
+              if(logo && logo.length > 10) plts[i].logo = logo;
+            }
+          }catch(_){}
+        }
+        renderPlatformBtns(plts);
+      }
+    }
+
+    // 3. โหลดรูปตัวอย่าง
+    for(var j=0; j<3; j++){
+      try{
+        var ri = await fetch(FB+"/settings/exImages/img"+j+".json");
+        if(ri.ok){
+          var imgSrc = await ri.json();
+          if(imgSrc && imgSrc.length > 10){
+            var img  = document.getElementById("ex-hint-"+j);
+            var wrap = document.getElementById("ex-hint-wrap-"+j);
+            if(img)  img.src = imgSrc;
+            if(wrap) wrap.style.display = "block";
+          }
+        }
+      }catch(_){}
+    }
+  }catch(e){console.warn("settings load failed:", e.message);}
 }
 
-function renderPlatformBtns(platforms){
-  var el = document.getElementById("p1");
-  if(!el) return;
-  // สร้างปุ่มแพลตฟอร์มจาก settings
-  var btns = platforms.map(function(p){
-    var logo = p.logo
-      ? '<img src="'+p.logo+'" style="width:32px;height:32px;object-fit:contain;border-radius:8px">'
-      : '<span style="font-size:28px">'+p.emoji+'</span>';
-    return '<button class="pltbtn" onclick="selPlt(''+p.id+'')">'
-      +logo
-      +'<div style="flex:1"><div style="font-weight:800;font-size:15px;color:#111">'+p.name+'</div>'
-      +'<div style="font-size:11px;color:#BDBDBD">สั่งซื้อผ่าน '+p.name+'</div></div>'
-      +'<span style="color:#BDBDBD;font-size:20px">›</span>'
-      +'</button>';
-  }).join("");
-  // แทนที่ปุ่มเดิมใน p1
-  var dotsEl = document.getElementById("d1");
-  var hintEl = el.querySelector('p');
-  var existing = el.querySelectorAll('.pltbtn');
-  existing.forEach(function(b){b.remove();});
-  el.insertAdjacentHTML('beforeend', btns);
-}
 
 function loadPkgs(){
   try{pkgs=JSON.parse(localStorage.getItem("pt_packages")||"null")||DEFPKGS;}catch(_){pkgs=DEFPKGS;}
@@ -561,7 +560,18 @@ async function submitForm(){
   var dup=await checkDup(orderNo);
   if(dup){
     var qd=$("quota-detail");
-    if(qd)qd.innerHTML='<div>📦 เลขออเดอร์: <b style="font-family:monospace">'+orderNo+'</b></div><div>✅ จำนวนสิทธิ์: <b>'+(dup.maxQuota||1)+' ซิม</b></div><div>🎁 ใช้ไปแล้ว: <b>'+dup.usedCount+' ครั้ง</b></div><div style="color:#BE123C;font-weight:700">❌ สิทธิ์เหลือ: 0</div>';
+    if(qd)qd.innerHTML=
+      '<div style="text-align:center;padding:8px 0">'
+        +'<div style="font-size:36px;margin-bottom:6px">⛔</div>'
+        +'<div style="font-weight:900;font-size:15px;color:#BE123C;margin-bottom:8px">คำสั่งซื้อนี้ได้รับสิทธิ์<br>เน็ตฟรีเดือนแรกครบแล้ว</div>'
+        +'<div style="background:#FFF1F2;border-radius:10px;padding:10px 12px;text-align:left;font-size:12px;line-height:1.9">'
+          +'📦 เลขออเดอร์: <b style="font-family:monospace;color:#E53935">'+orderNo+'</b><br>'
+          +'🎫 สิทธิ์ทั้งหมด: <b>'+(dup.maxQuota||1)+' ซิม</b><br>'
+          +'✅ ใช้ไปแล้ว: <b>'+dup.usedCount+' ซิม</b><br>'
+          +'❌ สิทธิ์คงเหลือ: <b style="color:#BE123C">0 ซิม</b>'
+        +'</div>'
+        +'<div style="font-size:11px;color:#BDBDBD;margin-top:8px">หากมีข้อสงสัยกรุณาติดต่อ LINE @programthanarich</div>'
+      +'</div>';
     var dd=$("dup-date");
     if(dd&&dup.lastAt){var d=new Date(dup.lastAt);dd.textContent="ใช้สิทธิ์ล่าสุด: "+d.toLocaleDateString("th-TH")+" "+d.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});}
     goP(7); return;
