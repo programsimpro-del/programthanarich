@@ -1531,12 +1531,60 @@ function openLb(src){$("lb-img").src=src;$("lb").classList.add("on");}
 function closeLb(){$("lb").classList.remove("on");}
 
 /* ══════ PKG MGR ══════ */
-function showPkgMgr(){
-  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("on"));
+function renderPkgMgrList(){
+  var el = $("pkg-mgr-list");
+  if(!el) return;
+  if(!pkgs || !pkgs.length){
+    el.innerHTML = '<div style="text-align:center;padding:28px;color:#BDBDBD;font-size:13px">ยังไม่มีแพ็คเกจ กด ➕ เพิ่มได้เลยค่ะ</div>';
+    return;
+  }
+  el.innerHTML = "";
+  pkgs.forEach(function(p){
+    var card = document.createElement("div");
+    card.className = "mgr-card";
+    card.innerHTML =
+      '<div style="width:34px;height:34px;border-radius:9px;background:'+p.color+'18;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">'+(p.emoji||"📶")+'</div>'
+     +'<div style="flex:1;min-width:0">'
+       +'<div style="font-weight:800;font-size:13px;color:#111">'+p.name+'</div>'
+       +'<div style="font-size:10px;font-family:monospace;color:#9E9E9E">'+p.code+' · ฿'+p.price+'</div>'
+       +(p.confirmMsg ? '<div style="font-size:10px;color:#1565C0;margin-top:2px">💬 มีข้อความยืนยัน</div>' : '')
+       +(p.activateMsg ? '<div style="font-size:10px;color:#2E7D32;margin-top:1px">✅ มีข้อความสมัครเสร็จ</div>' : '')
+     +'</div>'
+     +'<button class="btn-sm" style="background:#E3F2FD;color:#1565C0" data-pid="'+p.id+'">✏️ แก้ไข</button>'
+     +'<button class="btn-sm" style="background:#FFEBEE;color:#C62828;margin-left:3px" data-did="'+p.id+'">🗑️</button>';
+    // ใช้ DOM onclick ป้องกัน quote ซ้อน
+    card.querySelector('[data-pid]').onclick = function(){ openPkgForm(this.dataset.pid); };
+    card.querySelector('[data-did]').onclick = function(){ delPkg(this.dataset.did); };
+    el.appendChild(card);
+  });
+}
+
+async function showPkgMgr(){
+  document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("on");});
   $("sc-pkgs").classList.add("on");
   $("tabbar").style.display="none";
-  setTopbar("จัดการแพ็คเกจ",()=>{$("sc-pkgs").classList.remove("on");switchTab(curTab);$("tabbar").style.display="flex";},"");
-  $("pkg-mgr-list").innerHTML=pkgs.map(p=>`<div class="mgr-card"><div style="width:34px;height:34px;border-radius:9px;background:${p.color}18;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${p.emoji||"📶"}</div><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:12px;color:#111">${p.name}</div><div style="font-size:10px;font-family:monospace;color:#9E9E9E">${p.code} · ฿${p.price}</div></div><button class="btn-sm" style="background:#E3F2FD;color:#1565C0" onclick="openPkgForm('${p.id}')">✏️</button><button class="btn-sm" style="background:#FFEBEE;color:#C62828;margin-left:3px" onclick="delPkg('${p.id}')">🗑️</button></div>`).join("")||`<div style="text-align:center;padding:28px;color:#BDBDBD;font-size:13px">ยังไม่มีแพ็คเกจ</div>`;
+  setTopbar("จัดการแพ็คเกจ", function(){
+    $("sc-pkgs").classList.remove("on");
+    switchTab(curTab);
+    $("tabbar").style.display="flex";
+  }, "");
+
+  // โหลดจาก Firebase ก่อนแสดง
+  var loading = $("pkg-mgr-list");
+  if(loading) loading.innerHTML = '<div style="text-align:center;padding:20px;color:#9E9E9E;font-size:12px">⏳ กำลังโหลด...</div>';
+
+  try{
+    if(fbDB||initFirebase()){
+      var snap = await fbDB.ref("/packages").once("value");
+      var fbPkgs = snap.val();
+      if(fbPkgs && Array.isArray(fbPkgs) && fbPkgs.length>0){
+        pkgs = fbPkgs;
+        localStorage.setItem("pt_packages", JSON.stringify(pkgs));
+      }
+    }
+  }catch(e){ console.warn("loadPkgs:", e.message); }
+
+  renderPkgMgrList();
 }
 function delPkg(id){if(!confirm("ลบแพ็คเกจนี้?"))return;pkgs=pkgs.filter(p=>p.id!==id);showPkgMgr();}
 function openPkgForm(id){
