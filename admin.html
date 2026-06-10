@@ -286,9 +286,18 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
       <div style="font-size:12px;font-weight:800;color:#1565C0;margin-bottom:4px">ราคา (฿) *</div><input class="finput" id="pf-price" type="number" placeholder="149">
       <div style="font-size:12px;font-weight:800;color:#1565C0;margin-bottom:4px">วิธีสมัครเน็ต</div><textarea class="finput" id="pf-method" rows="3" placeholder="กด *900*9# โทรออก&#10;หรือ SMS: ACT → 1800"></textarea>
       <div style="height:12px"></div>
-      <div style="font-size:12px;font-weight:800;color:#2E7D32;margin-bottom:4px">💬 ข้อความแจ้งลูกค้าหลังเปิดเน็ต</div>
-      <div style="font-size:11px;color:#9E9E9E;margin-bottom:6px">ระบบจะส่งข้อความนี้ไปหาลูกค้าอัตโนมัติเมื่อ Admin กดเปิดเน็ต<br>ใช้ {simPhone} แทนเบอร์ซิม, {orderNo} แทนเลขออเดอร์</div>
-      <textarea class="finput" id="pf-activateMsg" rows="6" placeholder="ตัวอย่าง:&#10;✅ เปิดเน็ตฟรีเดือนแรกเรียบร้อยแล้วค่ะ 🎉&#10;&#10;📱 เบอร์: {simPhone}&#10;📵 กรุณาปิดเน็ตมือถือก่อนนะคะ&#10;รอสักครู่เน็ตจะเข้าอัตโนมัติค่ะ 😊"></textarea>
+      <!-- ข้อความ 1: ตอนยืนยันแพ็คเกจ -->
+      <div style="height:12px"></div>
+      <div style="font-size:12px;font-weight:800;color:#1565C0;margin-bottom:4px">💬 ข้อความตอน "ยืนยันแพ็คเกจ — ส่งวิธีสมัครเน็ต"</div>
+      <div style="font-size:11px;color:#9E9E9E;margin-bottom:6px">ส่งให้ลูกค้าเมื่อ Admin กด <b>ยืนยันแพ็คเกจ</b><br>ใช้ {simPhone} {orderNo} {pkgName} {simCode}</div>
+      <textarea class="finput" id="pf-confirmMsg" rows="5" placeholder="ตัวอย่าง:&#10;✅ ยืนยันคำสั่งซื้อแล้วค่ะ&#10;📦 แพ็คเกจ: {pkgName}&#10;📶 วิธีสมัคร: (ใส่วิธีสมัครที่นี่)&#10;📵 ปิดเน็ตก่อนนะคะ รอสักครู่"></textarea>
+
+      <!-- ข้อความ 2: ตอนสมัครเน็ตเสร็จแล้ว -->
+      <div style="height:12px"></div>
+      <div style="font-size:12px;font-weight:800;color:#2E7D32;margin-bottom:4px">✅ ข้อความตอน "สมัครเน็ตแล้ว — กดยืนยัน"</div>
+      <div style="font-size:11px;color:#9E9E9E;margin-bottom:6px">ส่งให้ลูกค้าเมื่อ Admin กด <b>สมัครเน็ตแล้ว</b><br>ใช้ {simPhone} {orderNo} {pkgName} {remaining} {maxQuota}</div>
+      <textarea class="finput" id="pf-activateMsg" rows="5" placeholder="ตัวอย่าง:&#10;✅ สมัครเน็ตฟรีเดือนแรกให้คุณเสร็จแล้วค่ะ 🎉&#10;📱 เบอร์: {simPhone}&#10;🎫 สิทธิ์คงเหลือ: {remaining}/{maxQuota} ซิม&#10;ขอบคุณที่ใช้บริการค่ะ 🙏"></textarea>
+
       <button class="btn btn-blue" onclick="savePkgForm()">💾 บันทึกแพ็คเกจ</button>
     </div>
   </div>
@@ -1068,12 +1077,20 @@ async function sendPackageAndProcess(ref, pkgId){
   if(!req||!pkg) return;
 
   // ส่งวิธีสมัครเน็ตให้ลูกค้า
-  var method = pkg.method || "-";
-  var msg = "✅ ทางร้านยืนยันคำสั่งซื้อของคุณแล้วค่ะ 🎉\n\n"
-    +"📦 แพ็คเกจ: "+pkg.name+"\n"
-    +"📶 วิธีสมัครเน็ต: "+method+"\n\n"
-    +"📵 กรุณาปิดเน็ตมือถือก่อนนะคะ\n"
-    +"จากนั้นทำตามวิธีด้านบน รอสักครู่เน็ตจะเข้าอัตโนมัติค่ะ 😊";
+  // ดึง confirmMsg จาก package
+  var rawConfirm = (pkg.confirmMsg && pkg.confirmMsg.trim())
+    ? pkg.confirmMsg
+    : ("✅ ทางร้านยืนยันคำสั่งซื้อของคุณแล้วค่ะ 🎉\n\n"
+      +"📦 แพ็คเกจ: {pkgName}\n"
+      +"📶 วิธีสมัครเน็ต: "+(pkg.method||"-")+"\n\n"
+      +"📵 กรุณาปิดเน็ตมือถือก่อนนะคะ\n"
+      +"จากนั้นทำตามวิธีด้านบน รอสักครู่เน็ตจะเข้าอัตโนมัติค่ะ 😊");
+  var msg = rawConfirm
+    .replace(/\{simPhone\}/g,  req.simPhone||"")
+    .replace(/\{orderNo\}/g,   req.orderNo||"")
+    .replace(/\{pkgName\}/g,   pkg.name||"")
+    .replace(/\{simCode\}/g,   req.simCode||"")
+    .replace(/\{branch\}/g,    req.branchName||"");
 
   if(req.lineUserId) sendLineMsg(req.lineUserId, msg);
   addMsgToReq(ref, "admin", msg);
@@ -1468,7 +1485,8 @@ function openPkgForm(id){
   if(ex){pfe=ex.emoji||"📶";pfc=ex.color||"#00C853";}
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("on"));$("sc-pkgform").classList.add("on");$("tabbar").style.display="none";
   setTopbar(id?"แก้ไขแพ็คเกจ":"เพิ่มใหม่",()=>{$("sc-pkgform").classList.remove("on");showPkgMgr();},"");
-  $("pf-name").value=ex?.name||"";$("pf-code").value=ex?.code||"";$("pf-price").value=ex?.price||"";$("pf-method").value=ex?.method||"";if($("pf-activateMsg"))$("pf-activateMsg").value=ex?.activateMsg||"";
+  $("pf-name").value=ex?.name||"";$("pf-code").value=ex?.code||"";$("pf-price").value=ex?.price||"";$("pf-method").value=ex?.method||"";if($("pf-confirmMsg"))$("pf-confirmMsg").value=ex?.confirmMsg||"";
+  if($("pf-activateMsg"))$("pf-activateMsg").value=ex?.activateMsg||"";
   $("ep").innerHTML=EMOJIS.map(e=>`<button onclick="sPfe('${e}')" style="width:34px;height:34px;border-radius:8px;border:none;font-size:17px;cursor:pointer;background:${pfe===e?"#E3F2FD":"#F5F5F5"};box-shadow:${pfe===e?"0 0 0 2px #1565C0":"none"}">${e}</button>`).join("");
   $("cp").innerHTML=COLORS.map(c=>`<button onclick="sPfc('${c}')" style="width:26px;height:26px;border-radius:50%;border:none;background:${c};cursor:pointer;box-shadow:${pfc===c?"0 0 0 3px #fff, 0 0 0 5px "+c:"none"}"></button>`).join("");
 }
@@ -1477,7 +1495,7 @@ function sPfc(c){pfc=c;openPkgForm(peid);}
 function savePkgForm(){
   const n=$("pf-name").value.trim(),co=$("pf-code").value.trim(),pr=$("pf-price").value.trim(),m=$("pf-method").value.trim();
   if(!n||!co||!pr){alert("กรุณากรอกข้อมูลให้ครบ");return;}
-  const am=$("pf-activateMsg")?$("pf-activateMsg").value.trim():"";const p={id:peid||("PKG"+Date.now()),name:n,code:co,price:Number(pr),emoji:pfe,color:pfc,method:m,activateMsg:am};
+  const am=$("pf-activateMsg")?$("pf-activateMsg").value.trim():"";const cm=$("pf-confirmMsg")?$("pf-confirmMsg").value.trim():"";const p={id:peid||("PKG"+Date.now()),name:n,code:co,price:Number(pr),emoji:pfe,color:pfc,method:m,confirmMsg:cm,activateMsg:am};
   pkgs=peid?pkgs.map(x=>x.id===peid?p:x):[...pkgs,p];
   $("sc-pkgform").classList.remove("on");showPkgMgr();
 }
