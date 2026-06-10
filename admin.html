@@ -214,6 +214,7 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
           <div id="dash-months" style="display:flex;gap:6px"></div>
         </div>
       </div>
+
       <!-- ── สถิติแยกสาขา ── -->
       <div style="background:#fff;border:1.5px solid #E8E8E8;border-radius:14px;padding:12px 14px;margin:0 12px 8px">
         <div style="font-size:12px;font-weight:800;color:#374151;margin-bottom:10px">🏪 สถิติแยกสาขา</div>
@@ -833,34 +834,6 @@ function renderDashboard(){
     }).join("");
   }
 
-  // ── นับแยกสาขา ─────────────────────────────────
-  var bKMonth=0, bLMonth=0, bKToday=0, bLToday=0;
-  reqs.forEach(function(r){
-    var d   = new Date(r.createdAt||0);
-    var mk  = d.getFullYear()+"-"+(d.getMonth()+1).toString().padStart(2,"0");
-    var ds  = d.toLocaleDateString("th-TH");
-    var br  = (r.branchCode||"").toUpperCase();
-    if(!br){
-      // ดูจาก simPhone prefix หรือ orderNo ถ้าไม่มี branchCode
-      br = "?";
-    }
-    if(mk===thisMonth){
-      if(br==="K") bKMonth++;
-      if(br==="L") bLMonth++;
-    }
-    if(ds===today){
-      if(br==="K") bKToday++;
-      if(br==="L") bLToday++;
-    }
-  });
-  var bK  = document.getElementById("dash-branch-K");
-  var bL  = document.getElementById("dash-branch-L");
-  var bKT = document.getElementById("dash-branch-K-today");
-  var bLT = document.getElementById("dash-branch-L-today");
-  if(bK)  bK.textContent  = bKMonth;
-  if(bL)  bL.textContent  = bLMonth;
-  if(bKT) bKT.textContent = bKToday;
-  if(bLT) bLT.textContent = bLToday;
 }
 
 function renderOrdList(){
