@@ -1561,32 +1561,62 @@ function setExampleImg(idx, input){
   reader.readAsDataURL(file);
 }
 
-function saveFormSettings(){
+async function saveFormSettings(){
   var fs = {
     orderHint:   (document.getElementById("fs-orderHint")||{}).value||"",
     simCodeHint: (document.getElementById("fs-simCodeHint")||{}).value||""
   };
   localStorage.setItem("pt_formSettings", JSON.stringify(fs));
-  // บันทึก Firebase — ให้ liff ดึงได้
-  var plts = getPlatforms();
-  var toSave = {
-    orderHint:   fs.orderHint,
-    simCodeHint: fs.simCodeHint,
-    platforms:   plts.map(function(p){ return {id:p.id,name:p.name,emoji:p.emoji,color:p.color,logo:p.logo||""}; }),
-    exImg0: localStorage.getItem("pt_exImg_0")||"",
-    exImg1: localStorage.getItem("pt_exImg_1")||"",
-    exImg2: localStorage.getItem("pt_exImg_2")||""
-  };
-  if(fbDB){
-    fbDB.ref("/settings/form").set(toSave).then(function(){
-      alert("✅ บันทึกเรียบร้อยแล้วค่ะ");
-    }).catch(function(){ alert("✅ บันทึก local แล้วค่ะ"); });
-  } else {
-    alert("✅ บันทึกเรียบร้อยแล้วค่ะ");
+
+  if(!fbDB && !initFirebase()){
+    alert("⚠️ Firebase ยังไม่พร้อม ลองบันทึกใหม่อีกครั้งนะคะ");
+    return;
   }
+
+  var plts = getPlatforms();
+  var btn  = document.querySelector("#sc-formsettings .btn-blue");
+  if(btn){ btn.textContent="⏳ กำลังบันทึก..."; btn.disabled=true; }
+
+  try{
+    // 1. บันทึก text settings ก่อน
+    await fbDB.ref("/settings/form/config").set({
+      orderHint:   fs.orderHint,
+      simCodeHint: fs.simCodeHint,
+      updatedAt:   new Date().toISOString()
+    });
+
+    // 2. บันทึก platforms (ลบ logo ออกก่อน บันทึกแยก)
+    var pltsNoLogo = plts.map(function(p){
+      return {id:p.id, name:p.name, emoji:p.emoji, color:p.color};
+    });
+    await fbDB.ref("/settings/form/platforms").set(pltsNoLogo);
+
+    // 3. บันทึก logos แยกทีละ platform
+    for(var i=0; i<plts.length; i++){
+      if(plts[i].logo){
+        await fbDB.ref("/settings/logos/plt_"+plts[i].id).set(plts[i].logo);
+      }
+    }
+
+    // 4. บันทึกรูปตัวอย่าง แยกทีละรูป
+    for(var j=0; j<3; j++){
+      var imgData = localStorage.getItem("pt_exImg_"+j);
+      if(imgData){
+        await fbDB.ref("/settings/exImages/img"+j).set(imgData);
+      }
+    }
+
+    alert("✅ บันทึกเรียบร้อยแล้วค่ะ ลูกค้าจะเห็นการเปลี่ยนแปลงทันที");
+  }catch(e){
+    console.error(e);
+    alert("❌ บันทึกไม่สำเร็จ: "+e.message);
+  }
+
+  if(btn){ btn.textContent="💾 บันทึกการตั้งค่า"; btn.disabled=false; }
   document.getElementById("sc-formsettings").classList.remove("on");
   showPkgMgr();
 }
+
 
 /* ══════ INIT ══════ */
 // รอ window load เพื่อให้ Firebase SDK โหลดเสร็จก่อน
