@@ -771,30 +771,18 @@ function sendMsg(){
 function chatQuickSend(t){if(t&&t.target)t=t.target.dataset.t;addMsgToReq(activeChat,"admin",t);showQ=false;renderQP();$("qtoggle").style.background="#E8F5E9";$("qtoggle").style.color="#06C755";}
 // ส่งข้อความจาก Admin → ลูกค้า ผ่าน Vercel API (หลีกเลี่ยง CORS)
 async function sendLineMsg(userId, text) {
-  if(!userId){ console.warn("❌ sendLineMsg: userId ว่าง"); return; }
-  if(!text){ console.warn("❌ sendLineMsg: text ว่าง"); return; }
-  console.log("📤 sendLineMsg to:", userId, "msg:", text.slice(0,30));
+  if(!userId){ console.warn("❌ userId ว่าง"); return; }
+  if(!text){ console.warn("❌ text ว่าง"); return; }
+  console.log("📤 ส่งหา:", userId.slice(0,8)+"...");
   try {
-    var r = await fetch("https://programthanarich-api.netlify.app/.netlify/functions/send", {
+    var r = await fetch("https://hook.eu1.make.com/ehipcech2khgntluied4hrlkb2xlaax1", {
       method: "POST",
-      headers: {"Content-Type":"application/json"},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ to: userId, text: text })
     });
-    var d = await r.json();
-    if(d.success) console.log("✅ ส่งข้อความสำเร็จ");
-    else console.warn("❌ ส่งไม่ได้:", d.error);
-  } catch(e) { console.warn("sendLineMsg error:", e.message); }
-  // บันทึกใน Firebase
-  if(fbDB) {
-    var mid = "a"+Date.now();
-    var ts2 = new Date().toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});
-    fbDB.ref("/chats/"+userId+"/messages/"+mid).set({
-      id:mid, from:"admin", text:text, time:ts2, ts:Date.now()
-    }).catch(function(){});
-    fbDB.ref("/chats/"+userId+"/info").update({
-      lastMsg:"คุณ: "+text, lastTime:ts2, unread:false
-    }).catch(function(){});
-  }
+    var body = await r.text();
+    console.log(r.ok ? "✅ ส่งสำเร็จ" : ("❌ error: "+r.status+" "+body.slice(0,80)));
+  } catch(e) { console.warn("❌ sendLineMsg:", e.message); }
 }
 
 // ส่งข้อความจาก Admin ไปหาลูกค้า + บันทึก Firebase
