@@ -775,13 +775,12 @@ async function sendLineMsg(userId, text) {
   if(!text){ console.warn("❌ text ว่าง"); return; }
   console.log("📤 ส่งหา:", userId.slice(0,8)+"...");
   try {
-    var r = await fetch("https://hook.eu1.make.com/ehipcech2khgntluied4hrlkb2xlaax1", {
+    var r = await fetch("https://hook.eu1.make.com/ds038qh3rvi2rnei79x3nz3oig62ergi", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to: userId, text: text })
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({to: userId, text: text})
     });
-    var body = await r.text();
-    console.log(r.ok ? "✅ ส่งสำเร็จ" : ("❌ error: "+r.status+" "+body.slice(0,80)));
+    console.log(r.ok ? "✅ ส่งสำเร็จ" : "❌ error: "+r.status);
   } catch(e) { console.warn("❌ sendLineMsg:", e.message); }
 }
 
