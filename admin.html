@@ -787,7 +787,7 @@ async function sendLineMsg(userId, text) {
 // ส่งข้อความจาก Admin ไปหาลูกค้า + บันทึก Firebase
 async function sendAdminMsg(userId, text) {
   if(!userId) return;
-  const LINE_TOKEN = "gyGOWKxplun3sTEdVnsCP+HElAllcErYRUkWek2RPIlC1uTMpCu8iyXda7EX1yzwScdVCeVnus2Ud/qv8NZ42J3b3Nwec5/O+8pYcau+FkstYR/6k1J9RWWqdDtJi2fLo/68wjcQ9VWXv+h0EZoBugdB04t89/1O/w1cDnyilFU=";
+  const LINE_TOKEN = "mpLms1e0rLzOjYORU3YzyokEnn6u4VUUdu3WQoMlrUFV/FG/KFJ79P1SWQokv7CfScdVCeVnus2Ud/qv8NZ42J3b3Nwec5/O+8pYcau+FktDFkiQoLC778obQjMEMOBrzybFJNTUj3Zvcx8CaYt2OQdB04t89/1O/w1cDnyilFU=";
   // ส่งผ่าน Vercel API เพื่อหลีกเลี่ยง CORS
   try {
     await fetch("https://programthanarich-api.netlify.app/.netlify/functions/notify", {
