@@ -590,33 +590,49 @@ function renderConfirm(){
 var FB_DB  = "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app";
 var API_URL = "https://programthanarich-api.netlify.app/.netlify/functions/notify";
 
-async function notifyAdmin(refNo,req,pkg){
-  // 1. บันทึกลง Firebase (real-time)
+async function notifyAdmin(refNo, req, pkg){
+  var db = getLFB();
+
+  // 1. บันทึกลง Firebase SDK
+  if(db){
+    try{
+      var d = {
+        ref: req.ref, platform: req.platform, orderNo: req.orderNo,
+        simPhone: req.simPhone, simCode: req.simCode||"",
+        branchCode: req.branchCode||"", branchName: req.branchName||"",
+        pkgId: req.pkgId, pkgName: req.pkgName, pkgCode: req.pkgCode,
+        status: "pending", shopeeVerified: "pending",
+        submittedAt: req.submittedAt,
+        lineUserId: req.lineUserId||null,
+        lineDisplayName: req.lineDisplayName||null,
+        linePictureUrl: req.linePictureUrl||null,
+        lineMessages: req.lineMessages||[],
+        createdAt: new Date().toISOString()
+      };
+      await db.ref("/orders/"+refNo).set(d);
+      console.log("✅ Firebase saved:", refNo, "userId:", req.lineUserId);
+    } catch(e){ console.warn("Firebase save error:", e.message); }
+  }
+
+  // 2. แจ้ง Admin ผ่าน Make.com
   try{
-    var d={
-      ref:req.ref, platform:req.platform, orderNo:req.orderNo,
-      simPhone:req.simPhone, pkgId:req.pkgId, pkgName:req.pkgName,
-      pkgCode:req.pkgCode, status:"pending", shopeeVerified:"pending",
-      submittedAt:req.submittedAt, lineUserId:req.lineUserId||null,
-      lineDisplayName:req.lineDisplayName||null, linePictureUrl:req.linePictureUrl||null,
-      lineMessages:req.lineMessages||[], createdAt:new Date().toISOString()
-    };
-    await fetch(FB_DB+"/orders/"+refNo+".json",{
-      method:"PUT", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify(d)
-    });
-  }catch(e){console.warn("Firebase:",e.message);}
-  // 2. แจ้ง LINE Admin ผ่าน Vercel
-  try{
-    await fetch(API_URL,{
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        refNo:refNo, orderNo:req.orderNo, simPhone:req.simPhone,
-        pkgName:pkg?pkg.name:"", platform:req.platform,
-        lineDisplayName:req.lineDisplayName||""
+    var r = await fetch("https://hook.eu1.make.com/rn84tfw7raydmsmhh68jmi0ebawjwwmw", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        adminId:     "U691e3ef1428570af1de5045b11ede87c",
+        refNo:       refNo,
+        orderNo:     req.orderNo,
+        simPhone:    req.simPhone,
+        simCode:     req.simCode||"",
+        pkgName:     pkg ? pkg.name : "",
+        platform:    req.platform,
+        displayName: req.lineDisplayName||"",
+        adminUrl:    "https://programsimpro-del.github.io/programthanarich/admin.html?ref="+refNo
       })
     });
-  }catch(e){console.warn("LINE:",e.message);}
+    console.log(r.ok ? "✅ แจ้ง Admin สำเร็จ" : ("❌ notify error: "+r.status));
+  } catch(e){ console.warn("notify error:", e.message); }
 }
 
 /* ═══ SUBMIT ═══ */
