@@ -119,8 +119,8 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
 #lb-x{position:absolute;top:14px;right:14px;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:26px;cursor:pointer;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center}
 </style>
   <!-- Firebase SDK — โหลดแบบ sync ก่อน script อื่น -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 </head>
 <body>
 <div id="lb" onclick="closeLb()"><button id="lb-x" onclick="closeLb()">✕</button><img id="lb-img" src="" alt=""></div>
@@ -542,6 +542,7 @@ function startRealtimeSync(){
 
   // ── Orders real-time ────────────────────────────
   fbDB.ref("/orders").on("value", function(snap){
+    console.log("📡 Firebase orders received:", snap.val() ? Object.keys(snap.val()).length : 0);
     var data = snap.val();
     if(!data) return;
     var newReqs = Object.values(data);
