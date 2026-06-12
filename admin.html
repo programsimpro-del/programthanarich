@@ -777,7 +777,7 @@ async function sendLineMsg(userId, text) {
   var safeText = text.replace(/\r?\n/g, "\\n");
   console.log("📤 ส่งหา:", userId.slice(0,8)+"...");
   try {
-    var r = await fetch("https://hook.eu1.make.com/ds038qh3rvi2rnei79x3nz3oig62ergi", {
+    var r = await fetch("https://programthanarich.programsimpro.workers.dev/send", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify({to: userId, text: safeText})
@@ -792,7 +792,7 @@ async function sendAdminMsg(userId, text) {
   const LINE_TOKEN = "mpLms1e0rLzOjYORU3YzyokEnn6u4VUUdu3WQoMlrUFV/FG/KFJ79P1SWQokv7CfScdVCeVnus2Ud/qv8NZ42J3b3Nwec5/O+8pYcau+FktDFkiQoLC778obQjMEMOBrzybFJNTUj3Zvcx8CaYt2OQdB04t89/1O/w1cDnyilFU=";
   // ส่งผ่าน Vercel API เพื่อหลีกเลี่ยง CORS
   try {
-    await fetch("https://programthanarich-api.netlify.app/.netlify/functions/notify", {
+    await fetch("https://programthanarich.programsimpro.workers.dev/notify", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify({ _sendMsg: true, to: userId, text, token: LINE_TOKEN })
