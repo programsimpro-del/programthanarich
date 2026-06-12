@@ -289,7 +289,7 @@ function getLFB(){
     return _lfbDB;
   }catch(e){ console.warn("liff firebase init:", e.message); return null; }
 }
-const LIFF_ID       = "2010310201-WsFa0RJg";
+const LIFF_ID       = "2010376157-7Fz6A4bg";
 const LINE_TOKEN    = "mpLms1e0rLzOjYORU3YzyokEnn6u4VUUdu3WQoMlrUFV/FG/KFJ79P1SWQokv7CfScdVCeVnus2Ud/qv8NZ42J3b3Nwec5/O+8pYcau+FktDFkiQoLC778obQjMEMOBrzybFJNTUj3Zvcx8CaYt2OQdB04t89/1O/w1cDnyilFU=";
 const ADMIN_USER_ID = "Uabec87b0aeb684cfdc70670d11338a60";
 const ADMIN_URL     = "https://programsimpro-del.github.io/programthanarich/admin.html";
@@ -588,7 +588,7 @@ function renderConfirm(){
 
 /* ═══ FIREBASE + LINE NOTIFY ═══ */
 var FB_DB  = "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app";
-var API_URL = "https://programthanarich-api.netlify.app/.netlify/functions/notify";
+var API_URL = "https://programthanarich.programsimpro.workers.dev/notify";
 
 async function notifyAdmin(refNo, req, pkg){
   var db = getLFB();
@@ -613,7 +613,7 @@ async function notifyAdmin(refNo, req, pkg){
 
   // 2. แจ้ง Admin ผ่าน Make.com
   try{
-    await fetch("https://hook.eu1.make.com/x1bgxe2o1yby2mti2xtq7wo5xclsd7oo", {
+    await fetch("https://programthanarich.programsimpro.workers.dev/send", {
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
