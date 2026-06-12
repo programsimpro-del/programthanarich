@@ -774,13 +774,13 @@ async function sendLineMsg(userId, text) {
   if(!userId){ console.warn("❌ userId ว่าง"); return; }
   if(!text){ console.warn("❌ text ว่าง"); return; }
   // แปลง newline เป็น \n string เพื่อไม่ให้ JSON เสีย
-  var safeText = text.replace(/\r?\n/g, "\\n");
+  var safeText = text;
   console.log("📤 ส่งหา:", userId.slice(0,8)+"...");
   try {
     var r = await fetch("https://programthanarich.programsimpro.workers.dev/send", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({to: userId, text: safeText})
+      body: JSON.stringify({to: userId, text: safeText.replace(/\\n/g, "\n")})
     });
     console.log(r.ok ? "✅ ส่งสำเร็จ" : "❌ error: "+r.status);
   } catch(e) { console.warn("❌ sendLineMsg:", e.message); }
