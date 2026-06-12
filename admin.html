@@ -1077,17 +1077,7 @@ function renderOdActions(req){
 
   // ── STEP 1: pending ───────────────────────────────────
   if(s === "pending"){
-    var b1 = document.createElement("button");
-    b1.style.cssText = "flex:1;padding:11px;border-radius:11px;border:none;background:linear-gradient(135deg,#2E7D32,#388E3C);color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit";
-    b1.textContent = "✅ ยืนยันคำสั่งซื้อ";
-    b1.onclick = function(){ showQuotaDialog(aref, reqs.find(function(r){return r.ref===aref;})); };
-    el.appendChild(b1);
-    var b2 = document.createElement("button");
-    b2.style.cssText = "flex:1;padding:11px;border-radius:11px;border:none;background:#FFEBEE;color:#C62828;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit";
-    b2.textContent = "❌ ปฏิเสธ";
-    b2.onclick = function(){ confirmOrd(aref,"rejected"); };
-    el.appendChild(b2);
-    return;
+    return; // ไม่แสดงปุ่มยืนยัน/ปฏิเสธในหน้านี้
   }
 
   // ── STEP 2: confirmed — เลือก package + ยืนยัน ───────
@@ -1265,25 +1255,15 @@ function renderOrderBox(req){
     <!-- ── QUOTA BOX — สรุปสิทธิ์ ── -->
     ${renderQuotaBox(orderNo, req)}
     <!-- ปุ่มตรวจสอบ Shopee — <a> tag ธรรมดา เปิด browser native -->
-    <a href="https://seller.shopee.co.th/portal/sale/all?keyword=${orderNo}"
-      style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:14px 0;border-radius:13px;
-             background:linear-gradient(135deg,#EE4D2D,#C0392B);color:#fff;text-decoration:none;font-weight:900;font-size:15px;
-             box-shadow:0 6px 20px rgba(238,77,45,.4);margin-bottom:8px;-webkit-tap-highlight-color:transparent"
-      onclick="copyTxt('${orderNo}','_sb_copy')">
-      <span style="font-size:22px">🛍️</span>
-      <div style="text-align:left">
-        <div style="font-size:15px;font-weight:900">ตรวจสอบคำสั่งซื้อ Shopee</div>
-        <div style="font-size:10px;opacity:.85;font-weight:600">คัดลอกเลขพัสดุ → เปิด Shopee Seller</div>
-      </div>
-    </a>
-        ${!sv||sv==="pending"?`<div style="background:#fff;border-radius:11px;padding:11px 13px">
-      <div style="font-size:12px;font-weight:800;color:#374151;margin-bottom:8px">📋 หลังตรวจสอบใน Shopee แล้ว กดยืนยัน:</div>
-      ${[["📦","ลูกค้าสั่งซื้อจริง"],["🎁","เป็นแพ็คเกจฟรีเดือนแรก (FREE)"],["📱","เบอร์และแพ็คเกจตรงกัน"]].map(([ic,tx])=>`<div class="vstep"><div class="vicon">${ic}</div><div><div style="font-size:13px;font-weight:700;color:#111">${tx}</div></div></div>`).join("")}
-      <div style="display:flex;gap:8px;margin-top:9px">
-        <button class="btn btn-green btn-sm" onclick="confirmOrd('${req.ref}','confirmed')" style="flex:1;padding:10px 0">✅ ยืนยันคำสั่งซื้อ</button>
-        <button class="btn btn-red btn-sm" onclick="confirmOrd('${req.ref}','rejected')" style="flex:1;padding:10px 0">❌ ปฏิเสธ</button>
-      </div>
-    </div>`
+    
+
+
+
+
+
+
+
+
     :sv==="confirmed"?`<div style="background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:11px;padding:10px 12px;display:flex;align-items:center;gap:9px"><span style="font-size:20px">✅</span><div style="flex:1"><div style="font-weight:800;font-size:12px;color:#166534">ยืนยันแล้ว</div></div><button onclick="confirmOrd('${req.ref}','pending')" class="btn-sm" style="background:none;border:1px solid #BBF7D0;color:#166534">แก้</button></div>`
     :`<div style="background:#FFF1F2;border:1.5px solid #FECDD3;border-radius:11px;padding:10px 12px;display:flex;align-items:center;gap:9px"><span style="font-size:20px">❌</span><div style="flex:1"><div style="font-weight:800;font-size:12px;color:#BE123C">ปฏิเสธแล้ว</div></div><button onclick="confirmOrd('${req.ref}','pending')" class="btn-sm" style="background:none;border:1px solid #FECDD3;color:#BE123C">แก้</button></div>`}
   </div>`;
@@ -1525,6 +1505,33 @@ async function doActivate(pkgId){
     setTimeout(function(){
       showToast("✅ ออเดอร์ "+req.orderNo+" ใช้สิทธิ์ครบแล้ว ("+newUsed+"/"+q.maxQuota+" ซิม)","#166534","#DCFCE7");
     }, 500);
+  }
+
+  // อัพเดท simtracker — set scannedByCustomer: true
+  if(req.simCode){
+    var SIM_FB = "https://simtracker-3a70d-default-rtdb.asia-southeast1.firebasedatabase.app";
+    try{
+      // หา simKey จาก trackingNo
+      fetch(SIM_FB+"/sims_free.json?orderBy=\"trackingNo\"&equalTo=\""+req.simCode+"\"")
+        .then(function(r){return r.json();})
+        .then(function(data){
+          if(!data) return;
+          var keys = Object.keys(data);
+          if(keys.length===0) return;
+          var key = keys[0];
+          fetch(SIM_FB+"/sims_free/"+key+".json", {
+            method: "PATCH",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({
+              scannedByCustomer: true,
+              usedAt: new Date().toISOString(),
+              usedOrderNo: req.orderNo,
+              usedPhone: req.simPhone
+            })
+          });
+          console.log("✅ simtracker updated:", req.simCode);
+        });
+    }catch(e){ console.warn("simtracker update error:", e.message); }
   }
 
   saveReqs();
