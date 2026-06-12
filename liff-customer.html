@@ -660,17 +660,16 @@ async function notifyAdmin(refNo, req, pkg){
 
   // 2. แจ้ง Admin ผ่าน Make.com
   try{
-    await fetch("https://programthanarich.programsimpro.workers.dev/send", {
+    await fetch("https://programthanarich.programsimpro.workers.dev/notify", {
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
-        adminId:"Uabec87b0aeb684cfdc70670d11338a60",
         refNo:refNo,
         orderNo:req.orderNo,
         simPhone:req.simPhone,
         pkgName:pkg?pkg.name:"",
         platform:req.platform,
-        displayName:req.lineDisplayName||""
+        lineDisplayName:req.lineDisplayName||""
       })
     });
     console.log("✅ แจ้ง Admin สำเร็จ");
