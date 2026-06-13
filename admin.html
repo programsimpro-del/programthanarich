@@ -1023,7 +1023,24 @@ function openOrdDetail(ref){
   $("ord-list-view").style.display="none";
   $("ord-detail-view").style.display="flex";
   renderOrdDetail(ref);
-  setTopbar(reqs.find(r=>r.ref===ref)?.lineDisplayName||ref,()=>{$("ord-list-view").style.display="flex";$("ord-detail-view").style.display="none";setTopbar();renderOrdList();},"");
+  // แสดงปุ่มกลับหน้าหลัก
+  var homeBtn = $("home-btn");
+  if(homeBtn) homeBtn.style.display="block";
+  setTopbar(reqs.find(r=>r.ref===ref)?.lineDisplayName||ref,()=>{
+    $("ord-list-view").style.display="flex";
+    $("ord-detail-view").style.display="none";
+    if(homeBtn) homeBtn.style.display="none";
+    setTopbar();renderOrdList();
+  },"");
+}
+
+function goHome(){
+  $("ord-list-view").style.display="flex";
+  $("ord-detail-view").style.display="none";
+  var homeBtn = $("home-btn");
+  if(homeBtn) homeBtn.style.display="none";
+  setTopbar();
+  renderOrdList();
 }
 function getR(){return reqs.find(r=>r.ref===aref);}
 
