@@ -545,23 +545,36 @@ function selPlt(id){ plt=id; goP(2); }
 async function checkSimFree(simCode) {
   var SIM_FB = "https://simtracker-3a70d-default-rtdb.asia-southeast1.firebasedatabase.app";
   try {
-    // ค้นหา trackingNo ที่ตรงกับ simCode ที่ลูกค้ากรอก
+    // query แบบ index ก่อน
     var res = await fetch(SIM_FB + "/sims_free.json?orderBy=\"trackingNo\"&equalTo=\"" + simCode + "\"");
-    if (!res.ok) return {valid: false, reason: "ไม่สามารถตรวจสอบได้"};
-    var data = await res.json();
-    if (!data) return {valid: false, reason: "ไม่พบซิมหมายเลขนี้ในระบบ"};
-    
+    var data = null;
+    if (res.ok) {
+      data = await res.json();
+    } else {
+      // fallback: โหลดทั้งหมดแล้วค้นหาเอง (กรณี index ยังไม่มี)
+      console.warn("checkSimFree: index query failed, fallback to full scan");
+      var res2 = await fetch(SIM_FB + "/sims_free.json");
+      if (!res2.ok) { console.warn("simtracker unavailable"); return {valid: true}; }
+      var allData = await res2.json();
+      if (allData) {
+        data = {};
+        Object.keys(allData).forEach(function(k) {
+          if (allData[k] && allData[k].trackingNo === simCode) data[k] = allData[k];
+        });
+      }
+    }
+    if (!data || Object.keys(data).length === 0) {
+      return {valid: false, reason: "ไม่พบซิมหมายเลขนี้ในระบบ กรุณาตรวจสอบกับทางร้าน"};
+    }
     var keys = Object.keys(data);
-    if (keys.length === 0) return {valid: false, reason: "ไม่พบซิมหมายเลขนี้ในระบบ"};
-    
     var sim = data[keys[0]];
     if (sim.scannedByCustomer === true) {
-      return {valid: false, reason: "ซิมหมายเลขนี้ได้รับเน็ตฟรีเดือนแรกไปแล้ว"};
+      return {valid: false, reason: "ซิมหมายเลขนี้ได้รับเน็ตฟรีเดือนแรกไปแล้วค่ะ"};
     }
     return {valid: true, simKey: keys[0], sim: sim};
   } catch(e) {
     console.warn("checkSimFree error:", e.message);
-    return {valid: true}; // ถ้า error ให้ผ่านไปก่อน
+    return {valid: true}; // ถ้า error ให้ผ่านไปก่อน ไม่บล็อกลูกค้า
   }
 }
 
