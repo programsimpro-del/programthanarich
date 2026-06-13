@@ -1550,51 +1550,6 @@ async function doActivate(pkgId){
     }, 500);
   }
 
-  // อัพเดท simtracker — set scannedByCustomer: true
-  if(req.simCode){
-    var SIM_FB_ACT = "https://simtracker-3a70d-default-rtdb.asia-southeast1.firebasedatabase.app";
-    var simCodeAct = req.simCode;
-    var simUpdate = {
-      scannedByCustomer: true,
-      usedAt: new Date().toISOString(),
-      usedOrderNo: req.orderNo,
-      usedPhone: req.simPhone
-    };
-
-    function patchSim(key){
-      fetch(SIM_FB_ACT+"/sims_free/"+key+".json", {
-        method: "PATCH",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify(simUpdate)
-      }).then(function(r){
-        if(r.ok) console.log("✅ simtracker updated:", simCodeAct);
-        else console.warn("simtracker PATCH failed:", r.status);
-      }).catch(function(e){ console.warn("simtracker PATCH error:", e.message); });
-    }
-
-    // ลอง query index ก่อน ถ้าไม่ได้ → full scan
-    fetch(SIM_FB_ACT+"/sims_free.json?orderBy=\"trackingNo\"&equalTo=\""+simCodeAct+"\"")
-      .then(function(r){
-        if(r.ok) return r.json();
-        // fallback: full scan
-        return fetch(SIM_FB_ACT+"/sims_free.json").then(function(r2){ return r2.json(); })
-          .then(function(all){
-            if(!all) return null;
-            var filtered = {};
-            Object.keys(all).forEach(function(k){
-              if(all[k] && all[k].trackingNo === simCodeAct) filtered[k] = all[k];
-            });
-            return Object.keys(filtered).length > 0 ? filtered : null;
-          });
-      })
-      .then(function(data){
-        if(!data) return;
-        var keys = Object.keys(data);
-        if(keys.length === 0) return;
-        patchSim(keys[0]);
-      })
-      .catch(function(e){ console.warn("simtracker update error:", e.message); });
-  }
 
   saveReqs();
   renderOrdDetail(aref);
