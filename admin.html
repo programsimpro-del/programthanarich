@@ -1265,9 +1265,8 @@ function renderOrderBox(req){
 
 
 
-    :sv==="confirmed"?`<div style="background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:11px;padding:10px 12px;display:flex;align-items:center;gap:9px"><span style="font-size:20px">✅</span><div style="flex:1"><div style="font-weight:800;font-size:12px;color:#166534">ยืนยันแล้ว</div></div><button onclick="confirmOrd('${req.ref}','pending')" class="btn-sm" style="background:none;border:1px solid #BBF7D0;color:#166534">แก้</button></div>`
-    :`<div style="background:#FFF1F2;border:1.5px solid #FECDD3;border-radius:11px;padding:10px 12px;display:flex;align-items:center;gap:9px"><span style="font-size:20px">❌</span><div style="flex:1"><div style="font-weight:800;font-size:12px;color:#BE123C">ปฏิเสธแล้ว</div></div><button onclick="confirmOrd('${req.ref}','pending')" class="btn-sm" style="background:none;border:1px solid #FECDD3;color:#BE123C">แก้</button></div>`}
-  </div>`;
+    
+`
 }
 
 function detectType(no){const n=(no||"").trim().toUpperCase();if(/^TH[0-9A-Z]{10,}$/.test(n)&&/[A-Z]/.test(n.slice(2)))return"flash";if(/^TH[0-9]{10,}[A-Z]?$/.test(n))return"spx";if(/^(KA|KEX|KER)/.test(n))return"kerry";if(/^JT/.test(n))return"jt";if(/^\d{15,20}$/.test(n))return"shopee_order";return"unknown";}
@@ -1393,12 +1392,13 @@ async function doVerify(){
   const req=getR();if(!req)return;verifying=true;renderOdActions(req);
   addMsgToReq(aref,"admin","กำลังตรวจสอบรูปภาพกับ AI ค่ะ รอสักครู่นะคะ 🤖");
   const imgs=[];
-  for(const[k,lb]of[["imgOrder","รูปคำสั่งซื้อ"],["imgSim","รูปซองซิม"],["imgReg","รูปลงทะเบียน"]]){
-    if(req[k]){const b64=req[k].includes(",")?req[k].split(",")[1]:req[k];imgs.push({type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64}});imgs.push({type:"text",text:`[${lb}]`});}
-  }
+  [["imgOrder","รูปคำสั่งซื้อ"],["imgSim","รูปซองซิม"],["imgReg","รูปลงทะเบียน"]].forEach(function(pair){
+    var k=pair[0], lb=pair[1];
+    if(req[k]){var b64=req[k].includes(",")?req[k].split(",")[1]:req[k];imgs.push({type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64}});}
+  });
   try{
-    const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,messages:[{role:"user",content:[...imgs,{type:"text",text:`ข้อมูลลูกค้า: เลขพัสดุ: ${req.orderNo}, เบอร์: ${req.simPhone}, แพ็คเกจ: ${req.pkgName} (${req.pkgCode})\nตอบ JSON เท่านั้น ห้าม markdown:\n{"verdict":"pass/fail/unclear","detectedOrderNo":"","detectedPhone":"","price":"","isFreePackage":true/false,"issues":[],"summary":"1-2 ประโยค"}`}]}]})});
-    const d=await res.json();req.aiResult=JSON.parse((d.content||[]).map(c=>c.text||"").join("").replace(/```json|```/g,"").trim());
+    var promptText = "ข้อมูลลูกค้า: เลขพัสดุ: "+req.orderNo+" เบอร์ซิม: "+req.simPhone+" แพ็คเกจ: "+req.pkgName+" กรุณาตรวจสอบรูปภาพว่าตรงกับข้อมูลหรือไม่ ตอบเป็น JSON: {verdict:'approved'|'rejected'|'unclear',summary:'',issues:[]}";
+    var res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:600,messages:[{role:"user",content:[...imgs,{type:"text",text:promptText}]}]})});
   }catch(e){req.aiResult={verdict:"unclear",summary:"ไม่สามารถตรวจสอบอัตโนมัติได้ กรุณาตรวจสอบด้วยตนเอง",issues:[]};}
   verifying=false;saveReqs();renderOrdDetail(aref);
 }
@@ -1644,100 +1644,25 @@ function openPkgForm(id){
   setTopbar(id?"แก้ไขแพ็คเกจ":"เพิ่มใหม่",()=>{$("sc-pkgform").classList.remove("on");showPkgMgr();},"");
   $("pf-name").value=ex?.name||"";$("pf-code").value=ex?.code||"";$("pf-price").value=ex?.price||"";$("pf-method").value=ex?.method||"";if($("pf-confirmMsg"))$("pf-confirmMsg").value=ex?.confirmMsg||"";
   if($("pf-activateMsg"))$("pf-activateMsg").value=ex?.activateMsg||"";
-  $("ep").innerHTML=EMOJIS.map(e=>`<button onclick="sPfe('${e}')" style="width:34px;height:34px;border-radius:8px;border:none;font-size:17px;cursor:pointer;background:${pfe===e?"#E3F2FD":"#F5F5F5"};box-shadow:${pfe===e?"0 0 0 2px #1565C0":"none"}">${e}</button>`).join("");
-  $("cp").innerHTML=COLORS.map(c=>`<button onclick="sPfc('${c}')" style="width:26px;height:26px;border-radius:50%;border:none;background:${c};cursor:pointer;box-shadow:${pfc===c?"0 0 0 3px #fff, 0 0 0 5px "+c:"none"}"></button>`).join("");
-}
-function sPfe(e){pfe=e;openPkgForm(peid);}
-function sPfc(c){pfc=c;openPkgForm(peid);}
-function savePkgForm(){
-  const n=$("pf-name").value.trim(),co=$("pf-code").value.trim(),pr=$("pf-price").value.trim(),m=$("pf-method").value.trim();
-  if(!n||!co||!pr){alert("กรุณากรอกข้อมูลให้ครบ");return;}
-  const am=$("pf-activateMsg")?$("pf-activateMsg").value.trim():"";const cm=$("pf-confirmMsg")?$("pf-confirmMsg").value.trim():"";const p={id:peid||("PKG"+Date.now()),name:n,code:co,price:Number(pr),emoji:pfe,color:pfc,method:m,confirmMsg:cm,activateMsg:am};
-  pkgs = peid ? pkgs.map(function(x){return x.id===peid?p:x;}) : [...pkgs, p];
-  localStorage.setItem("pt_packages", JSON.stringify(pkgs));
-  // บันทึก Firebase ทันที
-  if(fbDB||initFirebase()){
-    fbDB.ref("/packages").set(pkgs)
-      .then(function(){ showToast("✅ บันทึกแพ็คเกจแล้วค่ะ","#166534","#DCFCE7"); })
-      .catch(function(){});
-  }
-  $("sc-pkgform").classList.remove("on");
-  renderPkgMgrList(); // รีเฟรชรายการทันที
-}
-function saveAllPkgs(){
-  localStorage.setItem("pt_packages",JSON.stringify(pkgs));
-  // บันทึกไป Firebase ให้ลูกค้าได้รับแพ็คเกจล่าสุดทันที
-  if(fbDB||initFirebase()){
-    fbDB.ref("/packages").set(pkgs)
-      .then(function(){showToast("✅ บันทึกแพ็คเกจแล้วค่ะ — ลูกค้าจะเห็นทันที","#166534","#DCFCE7");})
-      .catch(function(){showToast("✅ บันทึก local แล้วค่ะ","#166534","#DCFCE7");});
-  } else {
-    showToast("✅ บันทึกแพ็คเกจแล้วค่ะ","#166534","#DCFCE7");
-  }
-  renderPkgMgrList();
+  $("ep").innerHTML=EMOJIS.map(function(e){
+    var bg = pfe===e?"#E8F5E9":"#F5F5F5";
+    var btn=document.createElement("button");
+    btn.style.cssText="width:34px;height:34px;border-radius:8px;border:none;font-size:17px;cursor:pointer;background:"+bg;
+    btn.textContent=e;
+    btn.onclick=function(){sPfe(e);};
+    return btn.outerHTML;
+  }).join("");
+  setPkgColor(pfc);
 }
 
-function setTopbar(title,backFn,right){
-  const tlogo=document.getElementById("tlogo");
-  const backBtn=document.getElementById("back-btn");
-  const ttitle=document.getElementById("ttitle");
-  const tright=document.getElementById("tright");
-  if(tlogo)   tlogo.style.display   = backFn?"none":"flex";
-  if(backBtn) backBtn.style.display = backFn?"block":"none";
-  if(ttitle){ ttitle.style.display  = backFn?"block":"none"; ttitle.textContent=title||""; }
-  if(backBtn) backBtn.onclick = backFn||null;
-  if(tright)  tright.innerHTML = right!=null?right:`<button onclick="showPkgMgr()" style="padding:6px 12px;border-radius:20px;border:none;background:rgba(255,255,255,.2);color:#fff;font-weight:800;font-size:11px;cursor:pointer;font-family:inherit">📦 แพ็คเกจ</button>`;
-}
-function handleBack(){$("back-btn").onclick?.();}
-
-/* ══════ SHOPEE TAB ══════ */
-
-function copyAndToast(text){
-  // คัดลอกข้อความ
-  const done=()=>{
-    const t=$("clipboard-toast");
-    if(t){t.style.display="block";setTimeout(()=>t.style.display="none",3000);}
-  };
-  if(navigator.clipboard)navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopy(text,done));
-  else fallbackCopy(text,done);
-}
-
-
-/* ══════ SC2: SHOPEE CHECK CENTER ══════ */
-
-
-
-
-/* ══════ QUOTA RENDER HELPERS ══════ */
-function getQuotaBadge(orderNo) {
-  try {
-    var q = getQuotaSummary(orderNo);
-    if (q.maxQuota > 1 || q.usedCount > 0) {
-      var col = q.remaining <= 0 ? "#C62828" : q.remaining === 1 ? "#E65100" : "#166534";
-      var bg  = q.remaining <= 0 ? "#FFE4E6" : q.remaining === 1 ? "#FFF3E0" : "#DCFCE7";
-      return '<span style="background:' + bg + ';color:' + col + ';font-size:10px;font-weight:800;padding:2px 8px;border-radius:8px;margin-left:4px">🎫 ' + q.usedCount + '/' + q.maxQuota + ' ซิม</span>';
+function renderQuotaBox(orderNo, req){
+  try{
+    var q=getQuota(orderNo);
+    var opts="", pct=0, remBg="rgba(255,255,255,.12)", alert="";
+    if(q.maxQuota>0){
+      pct=Math.min(100,Math.round((q.usedCount/q.maxQuota)*100));
+      for(var i=1;i<=q.maxQuota;i++){opts+="<option value='"+i+"'"+(q.maxQuota===i?" selected":"")+">"+i+" ซิม</option>";}
     }
-  } catch(_) {}
-  return "";
-}
-
-function renderQuotaBox(orderNo, req) {
-  try {
-    var q    = getQuotaSummary(orderNo);
-    var pct  = Math.min(100, Math.round((q.usedCount / q.maxQuota) * 100));
-    var remBg = q.remaining <= 0 ? "rgba(198,40,40,.4)" : "rgba(255,255,255,.12)";
-    var remLb = q.remaining <= 0 ? "ครบแล้ว" : "เหลือ";
-    var alert = q.remaining <= 0
-      ? "<div style='margin-top:10px;background:rgba(198,40,40,.35);border:1.5px solid rgba(198,40,40,.5);border-radius:10px;padding:10px 12px;font-size:12px;font-weight:800;text-align:center;color:#fff'>"
-        +"⛔ คำสั่งซื้อนี้ได้รับสิทธิ์เน็ตฟรีเดือนแรกครบแล้ว"
-        +"<div style='font-size:10px;font-weight:600;opacity:.85;margin-top:3px'>ใช้ไปแล้ว "+q.usedCount+" / "+q.maxQuota+" ซิม</div>"
-        +"</div>"
-      : (q.remaining === 1
-        ? "<div style='margin-top:8px;background:rgba(230,81,0,.25);border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;text-align:center;color:#fff'>⚠️ เหลือสิทธิ์อีก 1 ซิม</div>"
-        : "");
-    var opts = [1,2,3,4,5].map(function(n){
-      return "<option value=" + n + (q.maxQuota===n?" selected":"") + ">" + n + " ซิม</option>";
-    }).join("");
     // เพิ่มตัวเลือก 0 และ "ครบแล้ว"
     opts = "<option value='0'" + (q.maxQuota===0?" selected":"") + ">0 — ยกเลิกสิทธิ์</option>" + opts;
     // ถ้าใช้ครบแล้ว เพิ่มตัวเลือกแสดงสถานะ
