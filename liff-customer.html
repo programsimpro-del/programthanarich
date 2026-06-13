@@ -68,8 +68,8 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#fff;min-heigh
 .dupwarn{background:#FFF1F2;border:2px solid #FECDD3;border-radius:14px;padding:18px 20px;text-align:center;width:100%}
 </style>
   <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
@@ -279,15 +279,26 @@ var _lfbDB = null;
 function getLFB(){
   if(_lfbDB) return _lfbDB;
   try{
+    if(typeof firebase === 'undefined'){
+      console.warn("Firebase SDK not loaded");
+      return null;
+    }
     var cfg = {
       apiKey:      "AIzaSyCnvEoyaadcOManjeyLcpkIM_rtWt3GLy8",
       databaseURL: "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId:   "programthanrich"
+      projectId:   "programthanrich",
+      appId:       "programthanrich"
     };
-    var app = firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(cfg);
+    var existingApp = null;
+    try{ existingApp = firebase.app(); }catch(_){}
+    var app = existingApp || firebase.initializeApp(cfg);
     _lfbDB = firebase.database(app);
+    console.log("✅ Firebase DB initialized");
     return _lfbDB;
-  }catch(e){ console.warn("liff firebase init:", e.message); return null; }
+  }catch(e){
+    console.warn("liff firebase init error:", e.message);
+    return null;
+  }
 }
 const LIFF_ID       = "2010376157-7Fz6A4bg";
 const LINE_TOKEN    = "mpLms1e0rLzOjYORU3YzyokEnn6u4VUUdu3WQoMlrUFV/FG/KFJ79P1SWQokv7CfScdVCeVnus2Ud/qv8NZ42J3b3Nwec5/O+8pYcau+FktDFkiQoLC778obQjMEMOBrzybFJNTUj3Zvcx8CaYt2OQdB04t89/1O/w1cDnyilFU=";
@@ -595,23 +606,49 @@ var API_URL = "https://programthanarich.programsimpro.workers.dev/notify";
 async function notifyAdmin(refNo, req, pkg){
   var db = getLFB();
 
-  // 1. บันทึก Firebase SDK
+  // 1. บันทึก Firebase — ลอง SDK ก่อน ถ้าไม่ได้ใช้ REST API
+  var orderData = {
+    ref:req.ref, platform:req.platform, orderNo:req.orderNo,
+    simPhone:req.simPhone, simCode:req.simCode||"",
+    branchCode:req.branchCode||"", branchName:req.branchName||"",
+    pkgId:req.pkgId, pkgName:req.pkgName, pkgCode:req.pkgCode,
+    status:"pending", submittedAt:req.submittedAt,
+    lineUserId:req.lineUserId||null,
+    lineDisplayName:req.lineDisplayName||null,
+    linePictureUrl:req.linePictureUrl||null,
+    createdAt:new Date().toISOString()
+  };
+
+  var savedToFirebase = false;
+
+  // วิธีที่ 1: Firebase SDK
   if(db){
     try{
-      await db.ref("/orders/"+refNo).set({
-        ref:req.ref, platform:req.platform, orderNo:req.orderNo,
-        simPhone:req.simPhone, simCode:req.simCode||"",
-        branchCode:req.branchCode||"", branchName:req.branchName||"",
-        pkgId:req.pkgId, pkgName:req.pkgName, pkgCode:req.pkgCode,
-        status:"pending", submittedAt:req.submittedAt,
-        lineUserId:req.lineUserId||null,
-        lineDisplayName:req.lineDisplayName||null,
-        linePictureUrl:req.linePictureUrl||null,
-        createdAt:new Date().toISOString()
-      });
-      console.log("✅ Firebase saved lineUserId:", req.lineUserId);
-    }catch(e){ console.warn("Firebase error:", e.message); }
+      await db.ref("/orders/"+refNo).set(orderData);
+      console.log("✅ Firebase SDK saved, lineUserId:", req.lineUserId);
+      savedToFirebase = true;
+    }catch(e){ console.warn("Firebase SDK error:", e.message); }
   }
+
+  // วิธีที่ 2: Firebase REST API (fallback)
+  if(!savedToFirebase){
+    try{
+      var fbUrl = "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/orders/"+refNo+".json";
+      var r2 = await fetch(fbUrl, {
+        method: "PUT",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(orderData)
+      });
+      if(r2.ok){
+        console.log("✅ Firebase REST saved");
+        savedToFirebase = true;
+      } else {
+        console.warn("Firebase REST error:", r2.status);
+      }
+    }catch(e){ console.warn("Firebase REST error:", e.message); }
+  }
+
+  if(!savedToFirebase){ console.error("❌ ไม่สามารถบันทึกข้อมูลได้"); }
 
   // 2. แจ้ง Admin ผ่าน Make.com
   try{
