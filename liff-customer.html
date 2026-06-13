@@ -604,68 +604,62 @@ var FB_DB  = "https://programthanrich-default-rtdb.asia-southeast1.firebasedatab
 var API_URL = "https://programthanarich.programsimpro.workers.dev/notify";
 
 async function notifyAdmin(refNo, req, pkg){
-  var db = getLFB();
+  var FB_URL = "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app";
 
-  // 1. บันทึก Firebase — ลอง SDK ก่อน ถ้าไม่ได้ใช้ REST API
   var orderData = {
-    ref:req.ref, platform:req.platform, orderNo:req.orderNo,
-    simPhone:req.simPhone, simCode:req.simCode||"",
-    branchCode:req.branchCode||"", branchName:req.branchName||"",
-    pkgId:req.pkgId, pkgName:req.pkgName, pkgCode:req.pkgCode,
-    status:"pending", submittedAt:req.submittedAt,
-    lineUserId:req.lineUserId||null,
-    lineDisplayName:req.lineDisplayName||null,
-    linePictureUrl:req.linePictureUrl||null,
-    createdAt:new Date().toISOString()
+    ref: req.ref,
+    platform: req.platform,
+    orderNo: req.orderNo,
+    simPhone: req.simPhone,
+    simCode: req.simCode || "",
+    branchCode: req.branchCode || "",
+    branchName: req.branchName || "",
+    pkgId: req.pkgId,
+    pkgName: req.pkgName,
+    pkgCode: req.pkgCode,
+    status: "pending",
+    submittedAt: req.submittedAt,
+    lineUserId: req.lineUserId || null,
+    lineDisplayName: req.lineDisplayName || null,
+    linePictureUrl: req.linePictureUrl || null,
+    createdAt: new Date().toISOString()
   };
 
-  var savedToFirebase = false;
-
-  // วิธีที่ 1: Firebase SDK
-  if(db){
-    try{
-      await db.ref("/orders/"+refNo).set(orderData);
-      console.log("✅ Firebase SDK saved, lineUserId:", req.lineUserId);
-      savedToFirebase = true;
-    }catch(e){ console.warn("Firebase SDK error:", e.message); }
-  }
-
-  // วิธีที่ 2: Firebase REST API (fallback)
-  if(!savedToFirebase){
-    try{
-      var fbUrl = "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/orders/"+refNo+".json";
-      var r2 = await fetch(fbUrl, {
-        method: "PUT",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify(orderData)
-      });
-      if(r2.ok){
-        console.log("✅ Firebase REST saved");
-        savedToFirebase = true;
-      } else {
-        console.warn("Firebase REST error:", r2.status);
-      }
-    }catch(e){ console.warn("Firebase REST error:", e.message); }
-  }
-
-  if(!savedToFirebase){ console.error("❌ ไม่สามารถบันทึกข้อมูลได้"); }
-
-  // 2. แจ้ง Admin ผ่าน Make.com
+  // บันทึก Firebase ด้วย REST API โดยตรง
   try{
-    await fetch("https://programthanarich.programsimpro.workers.dev/notify", {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        refNo:refNo,
-        orderNo:req.orderNo,
-        simPhone:req.simPhone,
-        pkgName:pkg?pkg.name:"",
-        platform:req.platform,
-        lineDisplayName:req.lineDisplayName||""
+    var r1 = await fetch(FB_URL + "/orders/" + refNo + ".json", {
+      method: "PUT",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(orderData)
+    });
+    if(r1.ok){
+      console.log("✅ Firebase saved:", refNo, "userId:", req.lineUserId);
+    } else {
+      var err = await r1.text();
+      console.warn("❌ Firebase REST error:", r1.status, err);
+    }
+  } catch(e){
+    console.warn("❌ Firebase fetch error:", e.message);
+  }
+
+  // แจ้ง Admin ผ่าน Cloudflare Worker
+  try{
+    var r2 = await fetch("https://programthanarich.programsimpro.workers.dev/notify", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        refNo: refNo,
+        orderNo: req.orderNo,
+        simPhone: req.simPhone,
+        pkgName: pkg ? pkg.name : "",
+        platform: req.platform,
+        lineDisplayName: req.lineDisplayName || ""
       })
     });
-    console.log("✅ แจ้ง Admin สำเร็จ");
-  }catch(e){ console.warn("notify error:", e.message); }
+    console.log(r2.ok ? "✅ แจ้ง Admin สำเร็จ" : "❌ Worker error: " + r2.status);
+  } catch(e){
+    console.warn("❌ Worker error:", e.message);
+  }
 }
 
 /* ═══ SUBMIT ═══ */
