@@ -334,24 +334,19 @@ function markActivated(orderNo,simPhone,refNo){
 window.markActivated=markActivated;
 
 async function checkDup(orderNo){
-  // ดึงจาก Firebase ก่อน — ข้อมูลจริงข้ามอุปกรณ์
+  // ตรวจจาก Firebase REST API โดยตรง
   try{
-    var db2 = getLFB();
-    if(db2){
-      var snap = await db2.ref("/quota/"+orderNo).once("value");
-      var entry = snap.val();
+    var FB_URL = "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app";
+    var r = await fetch(FB_URL + "/quota/" + orderNo + ".json");
+    if(r.ok){
+      var entry = await r.json();
       if(entry && entry.usedCount >= (entry.maxQuota||1)){
         var acts = entry.activations || [];
         return {usedCount:entry.usedCount, maxQuota:entry.maxQuota, lastAt: acts.length>0?acts[acts.length-1].at:null};
       }
       return null;
     }
-  }catch(e){}
-  // fallback localStorage
-  var db=getQDB(), entry=db[orderNo];
-  if(!entry)return null;
-  var rem=(entry.maxQuota||1)-(entry.usedCount||0);
-  if(rem<=0) return {usedCount:entry.usedCount, maxQuota:entry.maxQuota, lastAt:(entry.activations||[]).slice(-1)[0]?.at};
+  }catch(e){ console.warn("checkDup error:", e.message); }
   return null;
 }
 function recordReq(orderNo,simPhone,refNo){
