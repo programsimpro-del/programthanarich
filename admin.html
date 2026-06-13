@@ -958,6 +958,15 @@ function renderDashboard(){
   if(upd) upd.textContent="อัพเดท "+ts();
 }
 
+function getQuotaBadge(orderNo){
+  try{
+    var q=getQuota(orderNo); if(!q||!q.maxQuota) return "";
+    var rem=q.maxQuota-(q.usedCount||0), full=rem<=0;
+    return '<span style="background:'+(full?"#FFEBEE":"#E8F5E9")+';color:'+(full?"#C62828":"#2E7D32")+';font-size:9px;font-weight:800;padding:2px 7px;border-radius:20px;margin-left:4px">'+(full?"ครบแล้ว":rem+" สิทธิ์")+'</span>';
+  }catch(_){return "";}
+}
+
+
 function renderOrdList(){
   const pending=reqs.filter(r=>r.status==="pending").length;
   const confirmed=reqs.filter(r=>["confirmed","processing"].includes(r.status)).length;
@@ -1078,7 +1087,17 @@ function renderOdActions(req){
 
   // ── STEP 1: pending ───────────────────────────────────
   if(s === "pending"){
-    return; // ไม่แสดงปุ่มยืนยัน/ปฏิเสธในหน้านี้
+    var b1 = document.createElement("button");
+    b1.style.cssText = "width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#2E7D32,#388E3C);color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(46,125,50,.25);margin-bottom:8px";
+    b1.textContent = "✅ ยืนยันคำสั่งซื้อ";
+    b1.onclick = function(){ showQuotaDialog(aref, reqs.find(function(r){return r.ref===aref;})); };
+    el.appendChild(b1);
+    var b2 = document.createElement("button");
+    b2.style.cssText = "width:100%;padding:11px;border-radius:12px;border:none;background:#FFEBEE;color:#C62828;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit";
+    b2.textContent = "❌ ปฏิเสธคำสั่งซื้อ";
+    b2.onclick = function(){ confirmOrd(aref,"rejected"); };
+    el.appendChild(b2);
+    return;
   }
 
   // ── STEP 2: confirmed — เลือก package + ยืนยัน ───────
@@ -1918,3 +1937,4 @@ setInterval(function(){
 </script>
 </body>
 </html>
+
