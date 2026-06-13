@@ -321,28 +321,6 @@ function markActivated(orderNo,simPhone,refNo){
   saveQDB(db);
 }
 window.markActivated=markActivated;
-function showSimError(reason, simCode){
-  // ซ่อนทุกหน้า แสดงหน้า error
-  for(var i=0;i<8;i++){var p=$("p"+i);if(p)p.style.display="none";}
-  var el = document.getElementById("p-simerr");
-  if(!el){
-    el = document.createElement("div");
-    el.id = "p-simerr";
-    el.className = "page";
-    el.style.cssText = "display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px 20px";
-    document.querySelector(".app").appendChild(el);
-  }
-  el.style.display = "flex";
-  el.innerHTML =
-    '<div style="font-size:60px;margin-bottom:16px">⛔</div>'
-    +'<div style="font-weight:900;font-size:20px;color:#BE123C;margin-bottom:10px">ไม่สามารถรับเน็ตฟรีได้</div>'
-    +'<div style="background:#FFF1F2;border-radius:14px;padding:16px 20px;margin-bottom:20px;text-align:left;width:100%">'
-      +'<div style="font-size:13px;font-weight:700;color:#BE123C;margin-bottom:8px">🔖 ซิมหมายเลข: <span style=\"font-family:monospace\">'+simCode+'</span></div>'
-      +'<div style="font-size:13px;color:#9F1239;line-height:1.8">'+reason+'</div>'
-    +'</div>'
-    +'<div style="font-size:12px;color:#9E9E9E;margin-bottom:20px">หากมีข้อสงสัยกรุณาติดต่อ<br><b style=\"color:#06C755\">LINE @programthanarich</b></div>'
-    +'<div style="font-size:11px;color:#BDBDBD;margin-top:8px">กรุณาปิดหน้าต่างนี้เองครับ/ค่ะ</div>';
-}
 
 async function checkDup(orderNo){
   // ดึงจาก Firebase ก่อน — ข้อมูลจริงข้ามอุปกรณ์
@@ -541,42 +519,6 @@ function goP(n){
 }
 function goBack(){ if(curP>0&&curP<5)goP(curP-1); }
 function selPlt(id){ plt=id; goP(2); }
-// ตรวจซิมหมายเลขใน simtracker
-async function checkSimFree(simCode) {
-  var SIM_FB = "https://simtracker-3a70d-default-rtdb.asia-southeast1.firebasedatabase.app";
-  try {
-    // query แบบ index ก่อน
-    var res = await fetch(SIM_FB + "/sims_free.json?orderBy=\"trackingNo\"&equalTo=\"" + simCode + "\"");
-    var data = null;
-    if (res.ok) {
-      data = await res.json();
-    } else {
-      // fallback: โหลดทั้งหมดแล้วค้นหาเอง (กรณี index ยังไม่มี)
-      console.warn("checkSimFree: index query failed, fallback to full scan");
-      var res2 = await fetch(SIM_FB + "/sims_free.json");
-      if (!res2.ok) { console.warn("simtracker unavailable"); return {valid: true}; }
-      var allData = await res2.json();
-      if (allData) {
-        data = {};
-        Object.keys(allData).forEach(function(k) {
-          if (allData[k] && allData[k].trackingNo === simCode) data[k] = allData[k];
-        });
-      }
-    }
-    if (!data || Object.keys(data).length === 0) {
-      return {valid: false, reason: "ไม่พบซิมหมายเลขนี้ในระบบ กรุณาตรวจสอบกับทางร้าน"};
-    }
-    var keys = Object.keys(data);
-    var sim = data[keys[0]];
-    if (sim.scannedByCustomer === true) {
-      return {valid: false, reason: "ซิมหมายเลขนี้ได้รับเน็ตฟรีเดือนแรกไปแล้วค่ะ"};
-    }
-    return {valid: true, simKey: keys[0], sim: sim};
-  } catch(e) {
-    console.warn("checkSimFree error:", e.message);
-    return {valid: true}; // ถ้า error ให้ผ่านไปก่อน ไม่บล็อกลูกค้า
-  }
-}
 
 function onSimCodeInput(val){
   val = val.toUpperCase();
@@ -691,17 +633,6 @@ async function notifyAdmin(refNo, req, pkg){
 
 /* ═══ SUBMIT ═══ */
 async function submitForm(){
-  // ตรวจซิมหมายเลขก่อน submit
-  var simCodeVal = ($("simCode")||{}).value?.trim().toUpperCase()||"";
-  if(simCodeVal){
-    var simCheck = await checkSimFree(simCodeVal);
-    if(!simCheck.valid){
-      showSimError(simCheck.reason, simCodeVal);
-      return;
-    }
-    window._simKey = simCheck.simKey||null;
-  }
-
   goP(5);
   var logEl=$("loglist");
   function log(msg){var d=document.createElement("div");d.className="logline";d.textContent=msg;logEl.appendChild(d);}
