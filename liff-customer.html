@@ -637,7 +637,7 @@ async function notifyAdmin(refNo, req, pkg){
     console.warn("❌ Firebase fetch error:", e.message);
   }
 
-  // แจ้ง Admin ผ่าน Cloudflare Worker
+  // แจ้ง Admin + บันทึก Firebase ผ่าน Cloudflare Worker
   try{
     var r2 = await fetch("https://programthanarich.programsimpro.workers.dev/notify", {
       method: "POST",
@@ -648,10 +648,11 @@ async function notifyAdmin(refNo, req, pkg){
         simPhone: req.simPhone,
         pkgName: pkg ? pkg.name : "",
         platform: req.platform,
-        lineDisplayName: req.lineDisplayName || ""
+        lineDisplayName: req.lineDisplayName || "",
+        orderData: orderData
       })
     });
-    console.log(r2.ok ? "✅ แจ้ง Admin สำเร็จ" : "❌ Worker error: " + r2.status);
+    console.log(r2.ok ? "✅ แจ้ง Admin + Firebase สำเร็จ" : "❌ Worker error: " + r2.status);
   } catch(e){
     console.warn("❌ Worker error:", e.message);
   }
