@@ -1928,9 +1928,37 @@ if(document.readyState === "complete"){
   window.addEventListener("load", function(){ loadAll(); });
 }
 setInterval(function(){
-  if(fbDB) return; // Firebase listener ดูแลอยู่แล้ว
-  loadAll();       // fallback ถ้า Firebase ยังไม่พร้อม
+  if(fbDB) return;
+  loadAll();
 }, 15000);
+
+// Fallback: poll Firebase REST ทุก 10 วินาที ถ้า SDK ไม่ทำงาน
+setInterval(function(){
+  if(!fbDB) {
+    // ลอง init Firebase อีกครั้ง
+    if(initFirebase()) startRealtimeSync();
+    return;
+  }
+  // Firebase SDK ทำงานอยู่ — ไม่ต้อง poll
+}, 10000);
+
+// Poll Firebase REST ทันทีตอนโหลด (backup)
+setTimeout(function(){
+  fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/orders.json")
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(!data) return;
+      if(fbDB) return; // SDK ทำงานแล้ว ไม่ต้องทำ
+      var newReqs = Object.values(data);
+      newReqs.sort(function(a,b){return (b.createdAt||"").localeCompare(a.createdAt||"");});
+      reqs = newReqs;
+      localStorage.setItem("pt_requests", JSON.stringify(reqs));
+      renderOrdList();
+      updateBadges();
+      console.log("✅ Fallback REST loaded:", newReqs.length, "orders");
+    })
+    .catch(function(e){ console.warn("REST fallback error:", e.message); });
+}, 2000);
 </script>
 </body>
 </html>
