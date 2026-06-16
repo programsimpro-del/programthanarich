@@ -193,6 +193,27 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
       </div>
     </div>
     <!-- Report View -->
+    <!-- Order detail view -->
+    <div class="ord-detail" id="ord-detail-view" style="display:none">
+      <div class="ord-scroll" id="od-scroll">
+        <div id="od-steps" style="background:#fff;border-bottom:1px solid #F0F0F0;padding:10px 13px 4px"></div>
+        <div id="od-info"  style="background:#fff;padding:9px 13px;border-bottom:1px solid #E8E8E8"></div>
+        <div id="od-order"></div>
+        <div id="od-ai"></div>
+        <div id="od-actions" style="padding:8px 10px 0;display:flex;gap:7px;flex-wrap:wrap"></div>
+        <div id="od-netmenu" style="display:none;background:#fff;border-top:1px solid #E0E0E0;padding:10px 12px"></div>
+      </div>
+      <div id="od-photos" class="pstrip" style="display:none"></div>
+      <!-- inline chat for this order -->
+      <div class="msg-area" id="od-msgs" style="flex:1;background:#E8EDF2"></div>
+      <div class="qpanel" id="od-qp" style="display:none"></div>
+      <div class="ibar">
+        <button class="ibtn" id="od-qt" style="background:#E3F2FD;color:#1565C0" onclick="toggleOdQ()">⚡</button>
+        <textarea id="od-input" placeholder="ตอบลูกค้า..." rows="1" oninput="chkOdSend()"></textarea>
+        <button class="ibtn" id="od-send" style="background:#1565C0;color:#fff;font-size:18px" disabled onclick="sendOdMsg()">➤</button>
+      </div>
+    </div>
+  
     <div id="sc-report" style="display:none;flex-direction:column;flex:1;overflow:hidden">
   <div style="flex:1;overflow-y:auto" id="report-content">
     <div id="dashboard-row" style="padding:10px 12px 0;display:flex;flex-direction:column;gap:8px">
@@ -275,27 +296,7 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
         </div>
       </div>
   </div>
-    <!-- Order detail view -->
-    <div class="ord-detail" id="ord-detail-view" style="display:none">
-      <div class="ord-scroll" id="od-scroll">
-        <div id="od-steps" style="background:#fff;border-bottom:1px solid #F0F0F0;padding:10px 13px 4px"></div>
-        <div id="od-info"  style="background:#fff;padding:9px 13px;border-bottom:1px solid #E8E8E8"></div>
-        <div id="od-order"></div>
-        <div id="od-ai"></div>
-        <div id="od-actions" style="padding:8px 10px 0;display:flex;gap:7px;flex-wrap:wrap"></div>
-        <div id="od-netmenu" style="display:none;background:#fff;border-top:1px solid #E0E0E0;padding:10px 12px"></div>
-      </div>
-      <div id="od-photos" class="pstrip" style="display:none"></div>
-      <!-- inline chat for this order -->
-      <div class="msg-area" id="od-msgs" style="flex:1;background:#E8EDF2"></div>
-      <div class="qpanel" id="od-qp" style="display:none"></div>
-      <div class="ibar">
-        <button class="ibtn" id="od-qt" style="background:#E3F2FD;color:#1565C0" onclick="toggleOdQ()">⚡</button>
-        <textarea id="od-input" placeholder="ตอบลูกค้า..." rows="1" oninput="chkOdSend()"></textarea>
-        <button class="ibtn" id="od-send" style="background:#1565C0;color:#fff;font-size:18px" disabled onclick="sendOdMsg()">➤</button>
-      </div>
-    </div>
-  </div>
+</div>
 
 
   <!-- SCREEN: PKG MGR -->
