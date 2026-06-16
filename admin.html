@@ -304,7 +304,7 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
       <div id="pkg-mgr-list"></div>
       <button class="btn btn-od" style="margin-bottom:8px" onclick="openPkgForm(null)">➕ เพิ่มแพ็คเกจใหม่</button>
       <button class="btn btn-blue" style="margin-bottom:8px" onclick="saveAllPkgs()">✅ บันทึกและอัพเดทระบบ</button>
-      <button class="btn" style="margin-bottom:8px;background:#F3F4F6;color:#374151" onclick="switchTab(1);$("sc-pkgs").classList.remove("on");">🏠 กลับสู่หน้าแรก</button>
+      <button class="btn" style="margin-bottom:8px;background:#F3F4F6;color:#374151" onclick="goBackHome()">🏠 กลับสู่หน้าแรก</button>
     </div>
   </div>
 
@@ -333,7 +333,7 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
       <textarea class="finput" id="pf-activateMsg" rows="5" placeholder="ตัวอย่าง:&#10;✅ สมัครเน็ตฟรีเดือนแรกให้คุณเสร็จแล้วค่ะ 🎉&#10;📱 เบอร์: {simPhone}&#10;🎫 สิทธิ์คงเหลือ: {remaining}/{maxQuota} ซิม&#10;ขอบคุณที่ใช้บริการค่ะ 🙏"></textarea>
 
       <button class="btn btn-blue" onclick="savePkgForm()">💾 บันทึกแพ็คเกจ</button>
-      <button class="btn" style="margin-top:8px;background:#F3F4F6;color:#374151" onclick="$('sc-pkgform').classList.remove('on');$('tabbar').style.display='flex';switchTab(1);">🏠 กลับสู่หน้าแรก</button>
+      <button class="btn" style="margin-top:8px;background:#F3F4F6;color:#374151" onclick="goBackHome()">🏠 กลับสู่หน้าแรก</button>
     </div>
   </div>
 
@@ -1048,6 +1048,16 @@ function openOrdDetail(ref){
     if(homeBtn) homeBtn.style.display="none";
     setTopbar();renderOrdList();
   },"");
+}
+
+function goBackHome(){
+  // ปิดทุก screen พิเศษ
+  ["sc-pkgs","sc-pkgform","sc-formsettings"].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.classList.remove("on");
+  });
+  $("tabbar").style.display = "flex";
+  switchTab(1);
 }
 
 function goHome(){
