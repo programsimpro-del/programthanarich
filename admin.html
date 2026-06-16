@@ -1933,9 +1933,8 @@ function renderReport(){
   if(!el) return;
 
   var total     = reqs.length;
-  var pending   = reqs.filter(function(r){ return r.status==="pending"; }).length;
-  var confirmed = reqs.filter(function(r){ return ["confirmed","processing"].includes(r.status); }).length;
   var activated = reqs.filter(function(r){ return r.status==="activated"; }).length;
+  var pending   = reqs.filter(function(r){ return r.status==="pending"; }).length;
   var rejected  = reqs.filter(function(r){ return r.status==="rejected"; }).length;
 
   // รายได้
@@ -1945,17 +1944,7 @@ function renderReport(){
     if(pkg) revenue += Number(pkg.price)||0;
   });
 
-  // แพลตฟอร์ม
-  var byPlat = {};
-  reqs.forEach(function(r){ var p=r.platform||"อื่นๆ"; byPlat[p]=(byPlat[p]||0)+1; });
-  var PLTS = {shopee:"🛍️ Shopee",lazada:"🛒 Lazada",tiktok:"🎵 TikTok"};
-  var platHTML = Object.keys(byPlat).map(function(k){
-    return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #F3F4F6">'
-      +'<span style="font-size:13px;color:#374151">'+(PLTS[k]||k)+'</span>'
-      +'<span style="font-weight:800;color:#1565C0">'+byPlat[k]+' รายการ</span></div>';
-  }).join("");
-
-  // แพ็คเกจ
+  // แยกตามแพ็คเกจ
   var byPkg = {};
   reqs.forEach(function(r){ var p=r.pkgName||"ไม่ระบุ"; byPkg[p]=(byPkg[p]||0)+1; });
   var pkgHTML = Object.keys(byPkg).map(function(k){
@@ -1964,8 +1953,30 @@ function renderReport(){
       +'<span style="font-weight:800;color:#6A1B9A">'+byPkg[k]+' รายการ</span></div>';
   }).join("");
 
+  // บันทึกเบอร์ที่สมัครเน็ต (จาก activated orders)
+  var activatedReqs = reqs.filter(function(r){ return r.status==="activated"; });
+  activatedReqs.sort(function(a,b){ return (b.activatedAt||b.submittedAt||"").localeCompare(a.activatedAt||a.submittedAt||""); });
+  var phoneHTML = activatedReqs.length === 0
+    ? '<div style="text-align:center;padding:16px;color:#BDBDBD;font-size:13px">ยังไม่มีรายการสมัครเน็ต</div>'
+    : activatedReqs.map(function(r){
+        var pkg = pkgs.find(function(p){ return p.id===r.pkgId; });
+        var pkgColor = pkg ? pkg.color : "#6A1B9A";
+        var dateStr = r.activatedAt || r.submittedAt || "";
+        var displayDate = dateStr ? new Date(dateStr).toLocaleDateString("th-TH",{day:"2-digit",month:"short",year:"2-digit"}) : "-";
+        return '<div style="padding:10px 0;border-bottom:1px solid #F3F4F6;cursor:pointer" onclick="openOrdDetail(''+r.ref+'')">'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+            +'<span style="font-weight:800;font-size:14px;color:#111">📱 '+( r.simPhone||"-")+'</span>'
+            +'<span style="font-size:11px;color:#9E9E9E">'+displayDate+'</span>'
+          +'</div>'
+          +'<div style="display:flex;align-items:center;gap:6px">'
+            +'<span style="background:'+pkgColor+';color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px">'+(r.pkgName||"-")+'</span>'
+            +'<span style="font-size:11px;color:#6B7280">'+( r.lineDisplayName||"")+'</span>'
+          +'</div>'
+        +'</div>';
+      }).join("");
+
   el.innerHTML =
-    // ตัวเลขหลัก 4 กล่อง
+    // ตัวเลขหลัก
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'
       +'<div style="background:#E3F2FD;border-radius:12px;padding:14px;text-align:center">'
         +'<div style="font-size:30px;font-weight:900;color:#1565C0">'+total+'</div>'
@@ -1982,434 +1993,19 @@ function renderReport(){
     +'</div>'
     // รายได้
     +'<div style="background:linear-gradient(135deg,#1565C0,#1976D2);border-radius:12px;padding:16px;margin-bottom:14px;text-align:center;color:#fff">'
-      +'<div style="font-size:12px;opacity:.85;margin-bottom:4px">💰 รายได้ประมาณการ (จากที่สมัครแล้ว)</div>'
+      +'<div style="font-size:12px;opacity:.85;margin-bottom:4px">💰 รายได้ประมาณการ</div>'
       +'<div style="font-size:32px;font-weight:900">฿'+revenue.toLocaleString()+'</div>'
     +'</div>'
-    // แพลตฟอร์ม
+    // บันทึกเบอร์ที่สมัครเน็ต
     +'<div style="background:#fff;border-radius:12px;padding:14px;margin-bottom:12px;border:1.5px solid #E5E7EB">'
-      +'<div style="font-weight:800;font-size:13px;color:#374151;margin-bottom:8px">📊 แยกตามแพลตฟอร์ม</div>'
-      +platHTML
+      +'<div style="font-weight:800;font-size:13px;color:#374151;margin-bottom:8px">📱 เบอร์ที่สมัครเน็ต ('+activated+' เบอร์)</div>'
+      +phoneHTML
     +'</div>'
-    // แพ็คเกจ
+    // แยกตามแพ็คเกจ
     +'<div style="background:#fff;border-radius:12px;padding:14px;border:1.5px solid #E5E7EB">'
       +'<div style="font-weight:800;font-size:13px;color:#374151;margin-bottom:8px">🎁 แยกตามแพ็คเกจ</div>'
       +pkgHTML
     +'</div>';
 }
 
-
-function showSettings(){
-  switchTab(3);
-}
-
-function showPkgMgr(){
-  showScreen("sc-pkgs");
-  $("tabbar").style.display="none";
-  setTopbar("🗂️ จัดการแพ็คเกจ", function(){
-    $("sc-pkgs").classList.remove("on");
-    $("tabbar").style.display="flex";
-    switchTab(curTab);
-  }, "");
-
-  // แสดงจาก memory ทันที (ไม่รอ Firebase)
-  renderPkgMgrList();
-
-  // โหลดจาก Firebase REST ใน background แล้ว refresh
-  fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/packages.json")
-    .then(function(r){ return r.json(); })
-    .then(function(fbPkgs){
-      if(fbPkgs && Array.isArray(fbPkgs) && fbPkgs.length>0){
-        pkgs = fbPkgs;
-        localStorage.setItem("pt_packages", JSON.stringify(pkgs));
-        renderPkgMgrList();
-      }
-    })
-    .catch(function(e){ console.warn("loadPkgs:", e.message); });
-}
-function delPkg(id){
-  if(!confirm("ลบแพ็คเกจนี้?"))return;
-  pkgs = pkgs.filter(function(p){return p.id!==id;});
-  localStorage.setItem("pt_packages", JSON.stringify(pkgs));
-  if(fbDB||initFirebase()){
-    fbDB.ref("/packages").set(pkgs).catch(function(){});
-  }
-  renderPkgMgrList();
-  showToast("🗑️ ลบแพ็คเกจแล้วค่ะ","#C62828","#FFEBEE");
-}
-
-function openPkgForm(id){
-  peid=id;pfe="📶";pfc="#00C853";const ex=id?pkgs.find(p=>p.id===id):null;
-  if(ex){pfe=ex.emoji||"📶";pfc=ex.color||"#00C853";}
-  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("on"));$("sc-pkgform").classList.add("on");$("tabbar").style.display="none";
-  setTopbar(id?"แก้ไขแพ็คเกจ":"เพิ่มใหม่",()=>{$("sc-pkgform").classList.remove("on");showPkgMgr();},"");
-  $("pf-name").value=ex?.name||"";$("pf-code").value=ex?.code||"";$("pf-price").value=ex?.price||"";$("pf-method").value=ex?.method||"";if($("pf-confirmMsg"))$("pf-confirmMsg").value=ex?.confirmMsg||"";
-  if($("pf-activateMsg"))$("pf-activateMsg").value=ex?.activateMsg||"";
-  $("ep").innerHTML=EMOJIS.map(function(e){
-    var bg = pfe===e?"#E8F5E9":"#F5F5F5";
-    var btn=document.createElement("button");
-    btn.style.cssText="width:34px;height:34px;border-radius:8px;border:none;font-size:17px;cursor:pointer;background:"+bg;
-    btn.textContent=e;
-    btn.onclick=function(){sPfe(e);};
-    return btn.outerHTML;
-  }).join("");
-  setPkgColor(pfc);
-}
-
-function renderShopeeBox(req){
-  var si = req.shopeeInfo;
-  if(!si) {
-    // ยังไม่มีข้อมูล Shopee — แสดงปุ่มตรวจสอบ
-    return '<div style="background:#FFF3E0;border-radius:12px;padding:12px 14px;margin-bottom:10px;border:1.5px solid #FFCC02">'
-      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
-        +'<div style="font-weight:800;font-size:13px;color:#E65100">🛍️ ตรวจสอบ Shopee</div>'
-        +'<button onclick="checkShopeeNow(aref)" style="background:#FF5722;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">ตรวจสอบ</button>'
-      +'</div>'
-      +'<div style="font-size:12px;color:#9E9E9E">ยังไม่ได้ตรวจสอบ Shopee API</div>'
-      +'</div>';
-  }
-  if(!si.ready){
-    return '<div style="background:#FFF3E0;border-radius:12px;padding:12px 14px;margin-bottom:10px;border:1.5px solid #FFCC02">'
-      +'<div style="font-weight:800;font-size:13px;color:#E65100;margin-bottom:4px">⏳ Shopee API รอ Approve</div>'
-      +'<div style="font-size:12px;color:#9E9E9E">'+si.message+'</div>'
-      +'</div>';
-  }
-  if(!si.found){
-    return '<div style="background:#FFF1F2;border-radius:12px;padding:12px 14px;margin-bottom:10px;border:1.5px solid #FECDD3">'
-      +'<div style="font-weight:800;font-size:13px;color:#BE123C;margin-bottom:4px">❌ ไม่พบคำสั่งซื้อนี้ใน Shopee</div>'
-      +'<div style="font-size:12px;color:#9E9E9E">'+(si.error||"กรุณาตรวจสอบเลขพัสดุอีกครั้ง")+'</div>'
-      +'</div>';
-  }
-  // พบคำสั่งซื้อ
-  var items = (si.items||[]).map(function(i){
-    return '<div style="font-size:12px;padding:4px 0;border-bottom:1px solid #DCFCE7">'
-      +'📦 '+i.name+' | '+i.model+' | จำนวน: <b>'+i.qty+'</b> | ฿'+i.price
-      +'</div>';
-  }).join("");
-  return '<div style="background:#F0FDF4;border-radius:12px;padding:12px 14px;margin-bottom:10px;border:1.5px solid #BBF7D0">'
-    +'<div style="font-weight:800;font-size:13px;color:#166534;margin-bottom:8px">✅ ยืนยันจาก Shopee แล้ว</div>'
-    +'<div style="font-size:12px;color:#374151;line-height:1.8;margin-bottom:6px">'
-      +'👤 ผู้ซื้อ: <b>'+si.buyer+'</b><br>'
-      +'🔢 จำนวนซิมรวม: <b>'+si.totalSim+' ซิม</b><br>'
-      +'💰 ยอดรวม: <b>฿'+si.totalAmount+'</b>'
-    +'</div>'
-    +'<div>'+items+'</div>'
-    +'</div>';
-}
-
-async function checkShopeeNow(ref){
-  var req = reqs.find(function(r){ return r.ref===ref; });
-  if(!req) return;
-  showToast("⏳ กำลังตรวจสอบ Shopee...","#1565C0","#E3F2FD");
-  try{
-    var r = await fetch("https://programthanarich.programsimpro.workers.dev/shopee-check",{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({orderNo: req.orderNo})
-    });
-    var si = await r.json();
-    req.shopeeInfo = si;
-    // บันทึกลง Firebase
-    fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/orders/"+ref+"/shopeeInfo.json",{
-      method:"PUT",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify(si)
-    });
-    saveReqs();
-    renderOrdDetail(ref);
-    if(si.found) showToast("✅ พบคำสั่งซื้อใน Shopee","#166534","#DCFCE7");
-    else showToast("❌ ไม่พบคำสั่งซื้อใน Shopee","#BE123C","#FFF1F2");
-  }catch(e){
-    showToast("❌ ตรวจสอบไม่ได้: "+e.message,"#BE123C","#FFF1F2");
-  }
-}
-
-function renderQuotaBox(orderNo, req){
-  try{
-    var q=getQuota(orderNo);
-    var opts="", pct=0, remBg="rgba(255,255,255,.12)", alert="";
-    if(q.maxQuota>0){
-      pct=Math.min(100,Math.round((q.usedCount/q.maxQuota)*100));
-      for(var i=1;i<=q.maxQuota;i++){opts+="<option value='"+i+"'"+(q.maxQuota===i?" selected":"")+">"+i+" ซิม</option>";}
-    }
-    // เพิ่มตัวเลือก 0 และ "ครบแล้ว"
-    opts = "<option value='0'" + (q.maxQuota===0?" selected":"") + ">0 — ยกเลิกสิทธิ์</option>" + opts;
-    // ถ้าใช้ครบแล้ว เพิ่มตัวเลือกแสดงสถานะ
-    if(q.usedCount >= q.maxQuota && q.maxQuota > 0){
-      opts += "<option value='-1' disabled style='color:#C62828;font-weight:800'>⛔ ได้รับเน็ตฟรีครบแล้ว</option>";
-    }
-    var sel = "<select style='border:none;background:rgba(255,255,255,.25);color:#fff;font-weight:800;border-radius:6px;padding:2px 4px;font-size:12px;cursor:pointer' data-order='" + orderNo + "' data-ref='" + req.ref + "' onchange='setQuotaFromSel(this)'>" + opts + "</select>";
-    return "<div style='background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.35);border-radius:12px;padding:12px 14px;margin-bottom:9px'>" +
-      "<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:8px'>" +
-        "<div style='font-weight:800;font-size:12px'>🎫 สิทธิ์รับเน็ตฟรี</div>" +
-        "<div style='font-size:11px;opacity:.8'>ออเดอร์นี้มี " + sel + "</div>" +
-      "</div>" +
-      "<div style='background:rgba(255,255,255,.2);border-radius:99px;height:8px;margin-bottom:8px;overflow:hidden'>" +
-        "<div style='width:" + pct + "%;height:100%;background:#fff;border-radius:99px;transition:width .4s'></div>" +
-      "</div>" +
-      "<div style='display:flex;gap:12px;font-size:12px'>" +
-        "<div style='text-align:center;flex:1;background:rgba(255,255,255,.12);border-radius:8px;padding:6px 4px'><div style='font-weight:900;font-size:18px'>" + q.maxQuota + "</div><div style='opacity:.75;font-size:10px'>ทั้งหมด</div></div>" +
-        "<div style='text-align:center;flex:1;background:rgba(255,255,255,.12);border-radius:8px;padding:6px 4px'><div style='font-weight:900;font-size:18px'>" + q.usedCount + "</div><div style='opacity:.75;font-size:10px'>ใช้แล้ว</div></div>" +
-        "<div style='text-align:center;flex:1;background:" + remBg + ";border-radius:8px;padding:6px 4px'><div style='font-weight:900;font-size:18px'>" + q.remaining + "</div><div style='opacity:.9;font-size:10px'>" + remLb + "</div></div>" +
-      "</div>" +
-      alert +
-    "</div>";
-  } catch(e) { return ""; }
-}
-
-function setQuotaFromSel(sel) {
-  var orderNo = sel.dataset.order;
-  var ref     = sel.dataset.ref;
-  var quota   = Number(sel.value);
-  setQuota(orderNo, quota);
-  // บันทึก quota ลง Firebase
-  if(fbDB){
-    fbDB.ref("/orders/"+ref).update({ maxQuota: quota }).catch(function(){});
-    fbDB.ref("/quota/"+orderNo).set({ maxQuota: quota, updatedAt: new Date().toISOString() }).catch(function(){});
-  }
-  renderOrdDetail(ref);
-}
-
-
-/* ══════ URL PARAM ══════ */
-(function(){
-  const ref=new URLSearchParams(location.search).get("ref"); if(!ref)return;
-  let n=0;const t=setInterval(()=>{n++;const req=reqs.find(r=>r.ref===ref);if(req){clearInterval(t);switchTab(1);setTimeout(()=>openOrdDetail(ref),100);}else if(n>20)clearInterval(t);},300);
-})();
-
-/* ══════ FORM SETTINGS ══════ */
-var formSettings = JSON.parse(localStorage.getItem("pt_formSettings")||"{}");
-
-var DEFAULT_PLATFORMS = [
-  {id:"shopee",  name:"Shopee",       emoji:"🛍️", color:"#EE4D2D", logo:""},
-  {id:"lazada",  name:"Lazada",       emoji:"🛒", color:"#0F146D", logo:""},
-  {id:"tiktok",  name:"TikTok Shop",  emoji:"🎵", color:"#010101", logo:""}
-];
-
-function getPlatforms(){
-  try{
-    var saved = JSON.parse(localStorage.getItem("pt_platforms")||"null");
-    return saved || DEFAULT_PLATFORMS;
-  }catch(_){return DEFAULT_PLATFORMS;}
-}
-
-function showFormSettings(){
-  showScreen("sc-formsettings");
-  document.getElementById("tabbar").style.display="none";
-  setTopbar("ตั้งค่าแบบฟอร์ม", function(){
-    document.getElementById("sc-formsettings").classList.remove("on");
-    showPkgMgr();
-  }, "");
-  loadFormSettings();
-}
-
-async function loadFormSettings(){
-  // โหลดจาก Firebase ก่อน (ข้อมูลถาวร)
-  if(fbDB || initFirebase()){
-    try{
-      // รูปตัวอย่าง (0-4)
-      for(var i=0;i<5;i++){
-        var snap = await fbDB.ref("/settings/exImages/img"+i).once("value");
-        var src  = snap.val();
-        if(src){
-          localStorage.setItem("pt_exImg_"+i, src); // sync กลับ local
-          var wrap = document.getElementById("ex-img-"+i);
-          var img  = document.getElementById("ex-img-"+i+"-prev");
-          if(wrap) wrap.style.display="block";
-          if(img)  img.src = src;
-        }
-      }
-      // logos
-      var plts = getPlatforms();
-      for(var j=0;j<plts.length;j++){
-        var snapL = await fbDB.ref("/settings/logos/plt_"+plts[j].id).once("value");
-        var logo  = snapL.val();
-        if(logo){ plts[j].logo = logo; }
-      }
-      localStorage.setItem("pt_platforms", JSON.stringify(plts));
-    }catch(e){ console.warn("load from Firebase failed:", e.message); }
-  }
-
-  // โหลด text settings จาก localStorage
-  var fs = JSON.parse(localStorage.getItem("pt_formSettings")||"{}");
-  var oH = document.getElementById("fs-orderHint");
-  var sH = document.getElementById("fs-simCodeHint");
-  if(oH) oH.value = fs.orderHint || "ดูได้จากหน้าคำสั่งซื้อในแอป เช่น TH265354252413H";
-  if(sH) sH.value = fs.simCodeHint || "เลขที่เขียนบนซองซิม เช่น K12463 หรือ L26374";
-
-  renderPlatformList();
-}
-
-function renderPlatformList(){
-  var plts = getPlatforms();
-  var el   = document.getElementById("plt-list");
-  if(!el) return;
-  var html = "";
-  plts.forEach(function(p, i){
-    var logoHtml = p.logo
-      ? '<img src="'+p.logo+'" style="width:28px;height:28px;object-fit:contain;border-radius:6px">'
-      : (p.emoji||"🛍️");
-    html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #F3F4F6">';
-    html += '<div style="width:36px;height:36px;border-radius:10px;background:'+(p.color||"#eee")+';display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">'+logoHtml+'</div>';
-    html += '<div style="flex:1"><div style="font-weight:800;font-size:13px">'+p.name+'</div><div style="font-size:10px;color:#9E9E9E">id: '+p.id+'</div></div>';
-    html += '<label style="background:#E3F2FD;color:#1565C0;border-radius:8px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer">🖼️ โลโก้';
-    html += '<input type="file" accept="image/*" style="display:none" data-idx="'+i+'" onchange="setPlatformLogo(this,'+i+')"></label>';
-    html += '<button onclick="delPlatform('+i+')" style="background:#FFEBEE;color:#C62828;border:none;border-radius:8px;padding:5px 8px;font-size:12px;cursor:pointer">🗑️</button>';
-    html += '</div>';
-  });
-  el.innerHTML = html;
-}
-function setPlatformLogo(input, idx){
-  var file = input.files[0]; if(!file)return;
-  var reader = new FileReader();
-  reader.onload = function(e){
-    var src = e.target.result;
-    var plts = getPlatforms();
-    plts[idx].logo = src;
-    localStorage.setItem("pt_platforms", JSON.stringify(plts));
-    renderPlatformList();
-    // บันทึก Firebase ทันที
-    if(fbDB || initFirebase()){
-      fbDB.ref("/settings/logos/plt_"+plts[idx].id).set(src)
-        .then(function(){ showToast("✅ บันทึกโลโก้แล้วค่ะ","#166534","#DCFCE7"); })
-        .catch(function(e){ console.warn("save logo failed",e); });
-    }
-  };
-  reader.readAsDataURL(file);
-}
-
-function addPlatform(){
-  var name = prompt("ชื่อช่องทาง:");
-  if(!name) return;
-  var plts = getPlatforms();
-  plts.push({id:name.toLowerCase().replace(/\s+/g,"_"), name:name, emoji:"🛍️", color:"#9E9E9E", logo:""});
-  localStorage.setItem("pt_platforms", JSON.stringify(plts));
-  renderPlatformList();
-}
-
-function delPlatform(idx){
-  if(!confirm("ลบช่องทางนี้?")) return;
-  var plts = getPlatforms();
-  plts.splice(idx,1);
-  localStorage.setItem("pt_platforms", JSON.stringify(plts));
-  renderPlatformList();
-}
-
-function setExampleImg(idx, input){
-  var file = input.files[0]; if(!file) return;
-  var reader = new FileReader();
-  reader.onload = function(e){
-    var src = e.target.result;
-    localStorage.setItem("pt_exImg_"+idx, src);
-    var wrap = document.getElementById("ex-img-"+idx);
-    var img  = document.getElementById("ex-img-"+idx+"-prev");
-    if(wrap) wrap.style.display="block";
-    if(img)  img.src = src;
-    // บันทึก Firebase ทันที
-    if(fbDB || initFirebase()){
-      fbDB.ref("/settings/exImages/img"+idx).set(src)
-        .then(function(){ showToast("✅ บันทึกรูปตัวอย่างแล้วค่ะ","#166534","#DCFCE7"); })
-        .catch(function(e){ console.warn("save img failed",e); });
-    }
-  };
-  reader.readAsDataURL(file);
-}
-
-async function saveFormSettings(){
-  var fs = {
-    orderHint:   (document.getElementById("fs-orderHint")||{}).value||"",
-    simCodeHint: (document.getElementById("fs-simCodeHint")||{}).value||""
-  };
-  localStorage.setItem("pt_formSettings", JSON.stringify(fs));
-
-  if(!fbDB && !initFirebase()){
-    alert("⚠️ Firebase ยังไม่พร้อม ลองบันทึกใหม่อีกครั้งนะคะ");
-    return;
-  }
-
-  var plts = getPlatforms();
-  var btn  = document.querySelector("#sc-formsettings .btn-blue");
-  if(btn){ btn.textContent="⏳ กำลังบันทึก..."; btn.disabled=true; }
-
-  try{
-    // 1. บันทึก text settings ก่อน
-    await fbDB.ref("/settings/form/config").set({
-      orderHint:   fs.orderHint,
-      simCodeHint: fs.simCodeHint,
-      updatedAt:   new Date().toISOString()
-    });
-
-    // 2. บันทึก platforms (ลบ logo ออกก่อน บันทึกแยก)
-    var pltsNoLogo = plts.map(function(p){
-      return {id:p.id, name:p.name, emoji:p.emoji, color:p.color};
-    });
-    await fbDB.ref("/settings/form/platforms").set(pltsNoLogo);
-
-    // 3. บันทึก logos แยกทีละ platform
-    for(var i=0; i<plts.length; i++){
-      if(plts[i].logo){
-        await fbDB.ref("/settings/logos/plt_"+plts[i].id).set(plts[i].logo);
-      }
-    }
-
-    // 4. บันทึกรูปตัวอย่าง แยกทีละรูป (0-4)
-    for(var j=0; j<5; j++){
-      var imgData = localStorage.getItem("pt_exImg_"+j);
-      if(imgData){
-        await fbDB.ref("/settings/exImages/img"+j).set(imgData);
-      }
-    }
-
-    alert("✅ บันทึกเรียบร้อยแล้วค่ะ ลูกค้าจะเห็นการเปลี่ยนแปลงทันที");
-  }catch(e){
-    console.error(e);
-    alert("❌ บันทึกไม่สำเร็จ: "+e.message);
-  }
-
-  if(btn){ btn.textContent="💾 บันทึกการตั้งค่า"; btn.disabled=false; }
-  document.getElementById("sc-formsettings").classList.remove("on");
-  showPkgMgr();
-}
-
-
-/* ══════ INIT ══════ */
-// รอ window load เพื่อให้ Firebase SDK โหลดเสร็จก่อน
-if(document.readyState === "complete"){
-  loadAll();
-} else {
-  window.addEventListener("load", function(){ loadAll(); });
-}
-setInterval(function(){
-  if(fbDB) return;
-  startRealtimeSync();
-}, 30000);
-
-// Fallback: poll Firebase REST ทุก 10 วินาที ถ้า SDK ไม่ทำงาน
-setInterval(function(){
-  if(!fbDB) {
-    // ลอง init Firebase อีกครั้ง
-    if(initFirebase()) startRealtimeSync();
-    return;
-  }
-  // Firebase SDK ทำงานอยู่ — ไม่ต้อง poll
-}, 10000);
-
-// Poll Firebase REST ทันทีตอนโหลด (backup)
-setTimeout(function(){
-  fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/orders.json")
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      if(!data) return;
-      if(fbDB) return; // SDK ทำงานแล้ว ไม่ต้องทำ
-      var newReqs = Object.values(data);
-      newReqs.sort(function(a,b){return (b.createdAt||"").localeCompare(a.createdAt||"");});
-      reqs = newReqs;
-      localStorage.setItem("pt_requests", JSON.stringify(reqs));
-      renderOrdList();
-      updateBadges();
-      console.log("✅ Fallback REST loaded:", newReqs.length, "orders");
-    })
-    .catch(function(e){ console.warn("REST fallback error:", e.message); });
-}, 500);
-</script>
-</body>
-</html>
+>
