@@ -736,9 +736,15 @@ function switchTab(n){
     var odv = document.getElementById("ord-detail-view");
     if(olv) olv.style.display = "flex";
     if(odv) odv.style.display = "none";
+    renderOrdList();
     setTopbar("",null,"");
   } else if(n===2){
     showScreen("sc-report");
+    // ซ่อน ord-list-view ที่อยู่ใน sc1 ด้วย
+    var olv = document.getElementById("ord-list-view");
+    var odv = document.getElementById("ord-detail-view");
+    if(olv) olv.style.display = "none";
+    if(odv) odv.style.display = "none";
     renderReport();
     setTopbar("📊 รายงาน",null,"");
   } else if(n===3){
