@@ -717,6 +717,15 @@ function switchTab(n){
     var el = document.getElementById(id);
     if(el){ el.style.display="none"; el.classList.remove("on"); }
   });
+  // ซ่อน stats/filter เมื่อออกจากหน้า รับเน็ตฟรี
+  if(n!==1){
+    var sr=document.getElementById("stats-row");
+    var fr=document.getElementById("filter-row");
+    if(sr) sr.style.display="none";
+    if(fr) fr.style.display="none";
+    var sc1hide=document.getElementById("sc1");
+    if(sc1hide){ sc1hide.classList.remove("on"); sc1hide.style.display="none"; }
+  }
 
   var sc1 = document.getElementById("sc1");
 
@@ -727,6 +736,11 @@ function switchTab(n){
     var odv = document.getElementById("ord-detail-view");
     if(olv) olv.style.display = "flex";
     if(odv) odv.style.display = "none";
+    // แสดง stats และ filter
+    var sr = document.getElementById("stats-row");
+    var fr = document.getElementById("filter-row");
+    if(sr) sr.style.display = "";
+    if(fr) fr.style.display = "";
     setTopbar("",null,"");
   } else if(n===2){
     // รายงาน
@@ -2402,8 +2416,8 @@ if(document.readyState === "complete"){
 }
 setInterval(function(){
   if(fbDB) return;
-  loadAll();
-}, 15000);
+  startRealtimeSync();
+}, 30000);
 
 // Fallback: poll Firebase REST ทุก 10 วินาที ถ้า SDK ไม่ทำงาน
 setInterval(function(){
@@ -2431,7 +2445,7 @@ setTimeout(function(){
       console.log("✅ Fallback REST loaded:", newReqs.length, "orders");
     })
     .catch(function(e){ console.warn("REST fallback error:", e.message); });
-}, 2000);
+}, 500);
 </script>
 </body>
 </html>
