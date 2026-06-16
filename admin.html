@@ -709,28 +709,36 @@ function updateBadges(){
 
 /* ══════ TAB SWITCH ══════ */
 function switchTab(n){
-  curTab=n;
-  var sc0=document.getElementById("sc0");
-  var sc1=document.getElementById("sc1");
-  // tab 0 = LINE OA (sc0)
-  // tab 1 = รับเน็ตฟรี / dashboard (sc1)
-  if(n===0){
-    if(sc0){sc0.style.display="flex";sc0.classList.add("on");}
-    if(sc1){sc1.classList.remove("on");}
-  } else {
-    if(sc0){sc0.style.display="none";sc0.classList.remove("on");}
-    if(sc1){sc1.classList.add("on");}
-    // แสดง ord-list-view ซ่อน detail
-    var olv=document.getElementById("ord-list-view");
-    var odv=document.getElementById("ord-detail-view");
-    if(olv) olv.style.display="flex";
-    if(odv) odv.style.display="none";
-  }
-  // อัพเดท active tab
-  document.querySelectorAll(".tab").forEach(function(t,i){
-    t.classList.toggle("active", i===n);
+  curTab = n;
+  // ซ่อนทุก special screen
+  ["sc-report","sc-shopee","sc-settings","sc-pkgs","sc-pkgform","sc-formsettings"].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el){ el.style.display="none"; el.classList.remove("on"); }
   });
-  setTopbar("",null,"");
+
+  var sc1 = document.getElementById("sc1");
+
+  if(n===1){
+    // รับเน็ตฟรี
+    if(sc1){ sc1.classList.add("on"); }
+    var olv = document.getElementById("ord-list-view");
+    var odv = document.getElementById("ord-detail-view");
+    if(olv) olv.style.display = "flex";
+    if(odv) odv.style.display = "none";
+    setTopbar("",null,"");
+  } else if(n===2){
+    // รายงาน
+    if(sc1){ sc1.classList.remove("on"); }
+    showReport(); return;
+  } else if(n===3){
+    // การตั้งค่า
+    if(sc1){ sc1.classList.remove("on"); }
+    showSettings(); return;
+  }
+
+  // อัพเดท active tab — tab1=index0, tab2=index1, tab3=index2
+  var tabs = document.querySelectorAll(".tab");
+  tabs.forEach(function(t, i){ t.classList.toggle("active", i===(n-1)); });
 }
 
 /* ══════════════════════════════
