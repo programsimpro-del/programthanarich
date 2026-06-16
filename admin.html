@@ -138,79 +138,43 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
 
   <!-- TAB BAR -->
   <div class="tabbar" id="tabbar" style="display:none">
-
     <div class="tab active" id="tab1" onclick="switchTab(1)">
-      <span style="font-size:18px">📦</span>
-      <span>รับเน็ตฟรี</span>
+      <span style="font-size:18px">📦🛍️</span>
+      <span style="font-size:10px;line-height:1.3">รับเน็ตฟรี<br>+ตรวจสอบ</span>
       <span id="notif-badge" class="tab-badge" style="display:none">0</span>
     </div>
-    <div class="tab" id="tab2" onclick="showShopeeCheck()">
-      <span style="font-size:18px">🛍️</span>
-      <span>Shopee</span>
+    <div class="tab" id="tab2" onclick="showReport()">
+      <span style="font-size:18px">📊</span>
+      <span>รายงาน</span>
     </div>
     <div class="tab" id="tab3" onclick="showSettings()">
       <span style="font-size:18px">⚙️</span>
       <span>การตั้งค่า</span>
     </div>
-    <div class="tab" id="tab3" onclick="showFormSettings()">
-      <span style="font-size:18px">🖼️</span>
-      <span>รูปตัวอย่าง</span>
-    </div>
   </div>
 
-  <!-- Settings Screen -->
+  <!-- Report Screen -->
+<div id="sc-report" class="screen" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+  <div style="flex:1;overflow-y:auto;padding:14px" id="report-content">
+    <div style="text-align:center;padding:20px;color:#9E9E9E">⏳ กำลังโหลดรายงาน...</div>
+  </div>
+</div>
+
+<!-- Settings Screen -->
 <div id="sc-settings" class="screen" style="display:none;flex-direction:column;flex:1;overflow:hidden">
-  <div style="display:flex;gap:10px;padding:14px;background:#fff;border-bottom:1px solid #E8E8E8">
-    <button onclick="showPkgMgr()" style="flex:1;padding:12px;border-radius:12px;border:1.5px solid #E5E7EB;background:#fff;font-size:13px;font-weight:800;color:#374151;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:4px">
-      <span style="font-size:24px">🗂️</span>
+  <div style="display:flex;gap:12px;padding:20px 14px">
+    <button onclick="showPkgMgr()" style="flex:1;padding:20px 12px;border-radius:14px;border:1.5px solid #E5E7EB;background:#fff;font-size:13px;font-weight:800;color:#374151;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.06)">
+      <span style="font-size:32px">🗂️</span>
       <span>แพ็คเกจเน็ต</span>
     </button>
-    <button onclick="showFormSettings()" style="flex:1;padding:12px;border-radius:12px;border:1.5px solid #E5E7EB;background:#fff;font-size:13px;font-weight:800;color:#374151;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:4px">
-      <span style="font-size:24px">🖼️</span>
+    <button onclick="showFormSettings()" style="flex:1;padding:20px 12px;border-radius:14px;border:1.5px solid #E5E7EB;background:#fff;font-size:13px;font-weight:800;color:#374151;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.06)">
+      <span style="font-size:32px">🖼️</span>
       <span>รูปตัวอย่าง</span>
     </button>
   </div>
-  <div style="flex:1;overflow-y:auto;padding:14px">
-    <div style="background:#F9FAFB;border-radius:12px;padding:14px;margin-bottom:10px">
-      <div style="font-weight:800;font-size:14px;color:#374151;margin-bottom:8px">🗂️ จัดการแพ็คเกจเน็ต</div>
-      <div style="font-size:12px;color:#6B7280;margin-bottom:10px">เพิ่ม แก้ไข หรือลบแพ็คเกจเน็ตที่ร้านมีให้บริการ พร้อมตั้งค่าข้อความตอบกลับลูกค้า</div>
-      <button onclick="showPkgMgr()" style="width:100%;padding:10px;border-radius:10px;border:none;background:#1565C0;color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">เข้าจัดการแพ็คเกจ →</button>
-    </div>
-    <div style="background:#F9FAFB;border-radius:12px;padding:14px">
-      <div style="font-weight:800;font-size:14px;color:#374151;margin-bottom:8px">🖼️ รูปตัวอย่างคำสั่งซื้อ</div>
-      <div style="font-size:12px;color:#6B7280;margin-bottom:10px">ตั้งค่ารูปตัวอย่างที่แสดงให้ลูกค้าดูในแบบฟอร์ม LIFF</div>
-      <button onclick="showFormSettings()" style="width:100%;padding:10px;border-radius:10px;border:none;background:#6A1B9A;color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">เข้าตั้งค่ารูปตัวอย่าง →</button>
-    </div>
-  </div>
 </div>
 
-<!-- Shopee Check Screen -->
-<div id="sc-shopee" class="screen" style="display:none;flex-direction:column;flex:1;overflow:hidden">
-  <div class="pad" style="flex:1;overflow-y:auto">
-    <div style="background:#FF5722;border-radius:14px;padding:16px;margin-bottom:16px;color:#fff;text-align:center">
-      <div style="font-size:32px;margin-bottom:8px">🛍️</div>
-      <div style="font-weight:900;font-size:16px">ตรวจสอบคำสั่งซื้อ Shopee</div>
-      <div style="font-size:12px;opacity:.85;margin-top:4px">ระบบจะตรวจสอบอัตโนมัติเมื่อ API พร้อมใช้งาน</div>
-    </div>
 
-    <div id="shopee-status-box" style="background:#FFF3E0;border-radius:12px;padding:14px;margin-bottom:16px;border:1.5px solid #FFCC02">
-      <div style="font-weight:800;font-size:13px;color:#E65100;margin-bottom:6px">⏳ รอการเชื่อมต่อ Shopee API</div>
-      <div style="font-size:12px;color:#6B7280;line-height:1.6">Shopee กำลัง Review App อยู่ครับ<br>เมื่อได้รับ Approve จะเชื่อมต่ออัตโนมัติ</div>
-    </div>
-
-    <div style="font-weight:800;font-size:14px;color:#374151;margin-bottom:10px">📋 ตรวจสอบด้วยตนเอง</div>
-    <div style="background:#fff;border-radius:12px;padding:14px;border:1.5px solid #E5E7EB;margin-bottom:10px">
-      <div style="font-size:12px;color:#6B7280;margin-bottom:8px">กรอกเลขพัสดุเพื่อตรวจสอบ</div>
-      <input id="shopee-order-input" type="text" placeholder="เลขพัสดุ เช่น TH123456789" 
-        style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:8px">
-      <button onclick="manualShopeeCheck()" 
-        style="width:100%;padding:11px;border-radius:10px;border:none;background:#FF5722;color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">
-        🔍 ตรวจสอบ
-      </button>
-    </div>
-    <div id="shopee-result" style="display:none"></div>
-  </div>
-</div>
 
 <!-- ══════════════════════════════
        SCREEN 0: LINE OA CHAT LIST
@@ -738,12 +702,9 @@ function demoReqs(){return[
 ];}
 
 function updateBadges(){
-  const chatUnread=reqs.filter(r=>r.lineMessages?.slice(-1)[0]?.from==="customer"&&!r._chatRead).length;
-  const notifPend=reqs.filter(r=>r.status==="pending").length;
-  const cb=$("chat-badge"),nb=$("notif-badge");
-  cb.style.display=chatUnread>0?"inline":"none"; cb.textContent=chatUnread;
-  nb.style.display=notifPend>0?"inline":"none"; nb.textContent=notifPend;
-
+  var notifPend = reqs.filter(function(r){ return r.status==="pending"; }).length;
+  var nb = $("notif-badge");
+  if(nb){ nb.style.display=notifPend>0?"inline":"none"; nb.textContent=notifPend; }
 }
 
 /* ══════ TAB SWITCH ══════ */
@@ -1413,6 +1374,18 @@ function renderOdActions(req){
 
   // ── STEP 1: pending ───────────────────────────────────
   if(s === "pending"){
+    // ปุ่มตรวจสอบ Shopee
+    var bs = document.createElement("button");
+    bs.style.cssText = "width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#FF5722,#E64A19);color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(255,87,34,.25);margin-bottom:8px";
+    bs.textContent = "🛍️ ตรวจสอบคำสั่งซื้อ Shopee";
+    bs.onclick = function(){
+      checkShopeeNow(aref);
+      // scroll ไปที่ shopee box
+      var box = document.querySelector("#od-scroll");
+      if(box) box.scrollTo({top:0,behavior:"smooth"});
+    };
+    el.appendChild(bs);
+    // ปุ่มยืนยัน
     var b1 = document.createElement("button");
     b1.style.cssText = "width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#2E7D32,#388E3C);color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(46,125,50,.25);margin-bottom:8px";
     b1.textContent = "✅ ยืนยันคำสั่งซื้อ";
@@ -1925,6 +1898,111 @@ function renderPkgMgrList(){
     card.querySelector('[data-did]').onclick = function(){ delPkg(this.dataset.did); };
     el.appendChild(card);
   });
+}
+
+function showReport(){
+  document.querySelectorAll(".screen").forEach(function(s){ s.classList.remove("on"); });
+  ["sc-shopee","sc-settings","sc-pkgs","sc-pkgform","sc-formsettings"].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el){el.style.display="none";}
+  });
+  var sc1=document.getElementById("sc1");
+  if(sc1) sc1.classList.remove("on");
+  var scr=document.getElementById("sc-report");
+  if(scr){scr.style.display="flex";scr.classList.add("on");}
+  document.getElementById("tabbar").style.display="flex";
+  setTopbar("📊 รายงานยอดขาย",null,"");
+  document.querySelectorAll(".tab").forEach(function(t,i){ t.classList.toggle("active",i===1); });
+  renderReport();
+}
+
+function renderReport(){
+  var el = document.getElementById("report-content");
+  if(!el) return;
+
+  var total    = reqs.length;
+  var pending  = reqs.filter(function(r){ return r.status==="pending"; }).length;
+  var confirmed= reqs.filter(function(r){ return r.status==="confirmed"; }).length;
+  var proc     = reqs.filter(function(r){ return r.status==="processing"; }).length;
+  var activated= reqs.filter(function(r){ return r.status==="activated"; }).length;
+  var rejected = reqs.filter(function(r){ return r.status==="rejected"; }).length;
+
+  // แยกตามแพลตฟอร์ม
+  var byPlat = {};
+  reqs.forEach(function(r){
+    var p = r.platform||"อื่นๆ";
+    if(!byPlat[p]) byPlat[p]=0;
+    byPlat[p]++;
+  });
+
+  // แยกตามแพ็คเกจ
+  var byPkg = {};
+  reqs.forEach(function(r){
+    var p = r.pkgName||"ไม่ระบุ";
+    if(!byPkg[p]) byPkg[p]=0;
+    byPkg[p]++;
+  });
+
+  // รายได้ประมาณการ (นับจากแพ็คเกจ)
+  var revenue = 0;
+  reqs.filter(function(r){ return r.status==="activated"; }).forEach(function(r){
+    var pkg = pkgs.find(function(p){ return p.id===r.pkgId; });
+    if(pkg) revenue += Number(pkg.price)||0;
+  });
+
+  var platHTML = Object.keys(byPlat).map(function(k){
+    var PLTS = {shopee:"🛍️ Shopee",lazada:"🛒 Lazada",tiktok:"🎵 TikTok"};
+    return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #F3F4F6">'
+      +'<span style="font-size:13px;color:#374151">'+(PLTS[k]||k)+'</span>'
+      +'<span style="font-weight:800;color:#1565C0">'+byPlat[k]+' รายการ</span>'
+      +'</div>';
+  }).join("");
+
+  var pkgHTML = Object.keys(byPkg).map(function(k){
+    return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #F3F4F6">'
+      +'<span style="font-size:13px;color:#374151">'+k+'</span>'
+      +'<span style="font-weight:800;color:#6A1B9A">'+byPkg[k]+' รายการ</span>'
+      +'</div>';
+  }).join("");
+
+  el.innerHTML =
+    // สรุปหลัก
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'
+      +'<div style="background:#E3F2FD;border-radius:12px;padding:14px;text-align:center">'
+        +'<div style="font-size:28px;font-weight:900;color:#1565C0">'+total+'</div>'
+        +'<div style="font-size:11px;color:#1565C0;font-weight:700">คำสั่งซื้อทั้งหมด</div>'
+      +'</div>'
+      +'<div style="background:#E8F5E9;border-radius:12px;padding:14px;text-align:center">'
+        +'<div style="font-size:28px;font-weight:900;color:#2E7D32">'+activated+'</div>'
+        +'<div style="font-size:11px;color:#2E7D32;font-weight:700">สมัครเน็ตแล้ว</div>'
+      +'</div>'
+      +'<div style="background:#FFF3E0;border-radius:12px;padding:14px;text-align:center">'
+        +'<div style="font-size:28px;font-weight:900;color:#E65100">'+pending+'</div>'
+        +'<div style="font-size:11px;color:#E65100;font-weight:700">รอตรวจสอบ</div>'
+      +'</div>'
+      +'<div style="background:#FCE4EC;border-radius:12px;padding:14px;text-align:center">'
+        +'<div style="font-size:28px;font-weight:900;color:#C62828">'+rejected+'</div>'
+        +'<div style="font-size:11px;color:#C62828;font-weight:700">ปฏิเสธ</div>'
+      +'</div>'
+    +'</div>'
+
+    // รายได้
+    +'<div style="background:linear-gradient(135deg,#1565C0,#1976D2);border-radius:12px;padding:16px;margin-bottom:14px;text-align:center;color:#fff">'
+      +'<div style="font-size:12px;opacity:.85;margin-bottom:4px">💰 รายได้ประมาณการ (จากที่สมัครแล้ว)</div>'
+      +'<div style="font-size:32px;font-weight:900">฿'+revenue.toLocaleString()+'</div>'
+    +'</div>'
+
+    // แยกตามแพลตฟอร์ม
+    +'<div style="background:#fff;border-radius:12px;padding:14px;margin-bottom:14px;border:1.5px solid #E5E7EB">'
+      +'<div style="font-weight:800;font-size:13px;color:#374151;margin-bottom:8px">📊 แยกตามแพลตฟอร์ม</div>'
+      +platHTML
+    +'</div>'
+
+    // แยกตามแพ็คเกจ
+    +'<div style="background:#fff;border-radius:12px;padding:14px;border:1.5px solid #E5E7EB">'
+      +'<div style="font-weight:800;font-size:13px;color:#374151;margin-bottom:8px">🎁 แยกตามแพ็คเกจ</div>'
+      +pkgHTML
+    +'</div>';
 }
 
 function showSettings(){
