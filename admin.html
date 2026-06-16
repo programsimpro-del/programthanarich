@@ -137,7 +137,7 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
   </div>
 
   <!-- TAB BAR -->
-  <div class="tabbar" style="display:none">
+  <div class="tabbar" id="tabbar" style="display:none">
     <div class="tab active" id="tab0" onclick="switchTab(0)">
       <span style="font-size:18px">💬</span>
       <span>LINE OA</span>
@@ -147,6 +147,14 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
       <span style="font-size:18px">📦</span>
       <span>รับเน็ตฟรี</span>
       <span id="notif-badge" class="tab-badge" style="display:none">0</span>
+    </div>
+    <div class="tab" id="tab2" onclick="showPkgMgr()">
+      <span style="font-size:18px">🗂️</span>
+      <span>แพ็คเกจ</span>
+    </div>
+    <div class="tab" id="tab3" onclick="showFormSettings()">
+      <span style="font-size:18px">🖼️</span>
+      <span>รูปตัวอย่าง</span>
     </div>
   </div>
 
@@ -583,7 +591,7 @@ function loadAll(){
   updateBadges();
   renderDashboard();
   $("rts").textContent="อัพเดท "+ts();
-  setTopbar("",null,'<button onclick="showPkgMgr()" style="padding:6px 14px;border-radius:20px;border:none;background:rgba(255,255,255,.2);color:#fff;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit">📦 แพ็คเกจ</button>');
+  setTopbar("",null,"");
   if(ORDERS_API) syncFromAPI();
   startRealtimeSync();
   // sync pkgs จาก Firebase ใน background
