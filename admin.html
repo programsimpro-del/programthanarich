@@ -1982,4 +1982,47 @@ setTimeout(function(){
 </script>
 </body>
 </html>
+function savePkgForm(){
+  var n  = $("pf-name")  ? $("pf-name").value.trim()  : "";
+  var co = $("pf-code")  ? $("pf-code").value.trim()  : "";
+  var pr = $("pf-price") ? $("pf-price").value.trim() : "0";
+  var m  = $("pf-method")? $("pf-method").value.trim(): "";
+  var cm = $("pf-confirmMsg")  ? $("pf-confirmMsg").value.trim()  : "";
+  var am = $("pf-activateMsg") ? $("pf-activateMsg").value.trim() : "";
+
+  if(!n){ alert("กรุณากรอกชื่อแพ็คเกจค่ะ"); return; }
+  if(!co){ alert("กรุณากรอกรหัสสินค้าค่ะ"); return; }
+
+  var p = {
+    id:          peid || ("PKG"+Date.now()),
+    name:        n,
+    code:        co,
+    price:       Number(pr),
+    emoji:       pfe || "📶",
+    color:       pfc || "#06C755",
+    method:      m,
+    confirmMsg:  cm,
+    activateMsg: am
+  };
+
+  pkgs = peid ? pkgs.map(function(x){ return x.id===peid ? p : x; }) : [...pkgs, p];
+  localStorage.setItem("pt_packages", JSON.stringify(pkgs));
+
+  // บันทึก Firebase REST
+  fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/packages.json", {
+    method: "PUT",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify(pkgs)
+  }).then(function(r){
+    if(r.ok) showToast("✅ บันทึกแพ็คเกจแล้วค่ะ","#166534","#DCFCE7");
+    else showToast("✅ บันทึก local แล้วค่ะ","#166534","#DCFCE7");
+  }).catch(function(){
+    showToast("✅ บันทึกแพ็คเกจแล้วค่ะ","#166534","#DCFCE7");
+  });
+
+  $("sc-pkgform").classList.remove("on");
+  $("tabbar").style.display = "none";
+  showPkgMgr();
+}
+
 
