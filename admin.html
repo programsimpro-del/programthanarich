@@ -586,6 +586,13 @@ function loadAll(){
   // โหลด pkgs — ถ้ามีใน localStorage ใช้ก่อน
   try{pkgs=JSON.parse(localStorage.getItem("pt_packages")||"null")||DEFAULT_PKGS;}catch(_){pkgs=DEFAULT_PKGS;}
   try{reqs=JSON.parse(localStorage.getItem("pt_requests")||"null")||[];}catch(_){reqs=[];}
+  // แสดง tabbar และ sc1
+  var tb = $("tabbar");
+  if(tb) tb.style.display="flex";
+  var sc1 = document.getElementById("sc1");
+  if(sc1) sc1.classList.add("on");
+  // เริ่มที่ tab รับเน็ตฟรี (tab1) เป็น default
+  switchTab(1);
   renderChatList();
   renderOrdList();
   updateBadges();
@@ -594,7 +601,6 @@ function loadAll(){
   setTopbar("",null,"");
   if(ORDERS_API) syncFromAPI();
   startRealtimeSync();
-  // sync pkgs จาก Firebase ใน background
   syncPkgsFromFirebase();
 }
 
