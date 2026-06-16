@@ -139,8 +139,8 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
   <!-- TAB BAR -->
   <div class="tabbar" id="tabbar" style="display:none">
     <div class="tab active" id="tab1" onclick="switchTab(1)">
-      <span style="font-size:18px">📦🛍️</span>
-      <span style="font-size:10px;line-height:1.3">รับเน็ตฟรี<br>+ตรวจสอบ</span>
+      <span style="font-size:18px">📦</span>
+      <span>รับเน็ตฟรี</span>
       <span id="notif-badge" class="tab-badge" style="display:none">0</span>
     </div>
     <div class="tab" id="tab2" onclick="showReport()">
@@ -155,45 +155,8 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
 
   <!-- Report Screen -->
 <div id="sc-report" class="screen" style="display:none;flex-direction:column;flex:1;overflow:hidden">
-  <div style="flex:1;overflow-y:auto;padding:14px" id="report-content">
-    <div style="text-align:center;padding:20px;color:#9E9E9E">⏳ กำลังโหลดรายงาน...</div>
-  </div>
-</div>
-
-<!-- Settings Screen -->
-<div id="sc-settings" class="screen" style="display:none;flex-direction:column;flex:1;overflow:hidden">
-  <div style="display:flex;gap:12px;padding:20px 14px">
-    <button onclick="showPkgMgr()" style="flex:1;padding:20px 12px;border-radius:14px;border:1.5px solid #E5E7EB;background:#fff;font-size:13px;font-weight:800;color:#374151;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.06)">
-      <span style="font-size:32px">🗂️</span>
-      <span>แพ็คเกจเน็ต</span>
-    </button>
-    <button onclick="showFormSettings()" style="flex:1;padding:20px 12px;border-radius:14px;border:1.5px solid #E5E7EB;background:#fff;font-size:13px;font-weight:800;color:#374151;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.06)">
-      <span style="font-size:32px">🖼️</span>
-      <span>รูปตัวอย่าง</span>
-    </button>
-  </div>
-</div>
-
-
-
-<!-- ══════════════════════════════
-       SCREEN 0: LINE OA CHAT LIST
-  ══════════════════════════════ -->
-  
-
-  <!-- ══════════════════════════════
-       SCREEN 1: NOTIFICATIONS
-  ══════════════════════════════ -->
-  <div id="sc1" class="screen on">
-    <!-- Order list view -->
-    <div id="ord-list-view" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
-      <div class="notif-hdr">
-        <span id="rts">กำลังโหลด...</span>
-        <button onclick="loadAll()" style="background:none;border:none;color:#1565C0;font-weight:700;font-size:12px;cursor:pointer">🔄 รีเฟรช</button>
-      </div>
-      <div class="notif-wrap">
-        <!-- ── DASHBOARD นับรายวัน/รายเดือน ── -->
-      <div id="dashboard-row" style="padding:10px 12px 0;display:flex;flex-direction:column;gap:8px">
+  <div style="flex:1;overflow-y:auto" id="report-content">
+    <div id="dashboard-row" style="padding:10px 12px 0;display:flex;flex-direction:column;gap:8px">
         <!-- วันนี้ / เดือนนี้ -->
         <div style="display:flex;gap:8px">
           <div style="flex:1;background:linear-gradient(135deg,#1565C0,#1976D2);border-radius:14px;padding:12px 14px;color:#fff">
@@ -224,8 +187,10 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
           <div id="dash-months" style="display:flex;gap:6px"></div>
         </div>
       </div>
-
-      <!-- ── สถิติแยกสาขา Real-time ── -->
+    <div id="report-stats" style="padding:14px"></div>
+    <div style="text-align:center;padding:20px;color:#9E9E9E">⏳ กำลังโหลดรายงาน...</div>
+  </div>
+    <!-- ── สถิติแยกสาขา Real-time ── -->
       <div style="background:#fff;border:1.5px solid #E8E8E8;border-radius:14px;padding:12px 14px;margin:0 12px 8px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
           <div style="font-size:12px;font-weight:800;color:#374151">🏪 สถิติแยกสาขา</div>
@@ -270,6 +235,44 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
           <div id="bL-pkgs" style="font-size:10px;opacity:.85;line-height:1.8"></div>
         </div>
       </div>
+  </div>
+
+<!-- Settings Screen -->
+<div id="sc-settings" class="screen" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+  <div style="display:flex;gap:12px;padding:20px 14px">
+    <button onclick="showPkgMgr()" style="flex:1;padding:20px 12px;border-radius:14px;border:1.5px solid #E5E7EB;background:#fff;font-size:13px;font-weight:800;color:#374151;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.06)">
+      <span style="font-size:32px">🗂️</span>
+      <span>แพ็คเกจเน็ต</span>
+    </button>
+    <button onclick="showFormSettings()" style="flex:1;padding:20px 12px;border-radius:14px;border:1.5px solid #E5E7EB;background:#fff;font-size:13px;font-weight:800;color:#374151;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.06)">
+      <span style="font-size:32px">🖼️</span>
+      <span>รูปตัวอย่าง</span>
+    </button>
+  </div>
+</div>
+
+
+
+<!-- ══════════════════════════════
+       SCREEN 0: LINE OA CHAT LIST
+  ══════════════════════════════ -->
+  
+
+  <!-- ══════════════════════════════
+       SCREEN 1: NOTIFICATIONS
+  ══════════════════════════════ -->
+  <div id="sc1" class="screen on">
+    <!-- Order list view -->
+    <div id="ord-list-view" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+      <div class="notif-hdr">
+        <span id="rts">กำลังโหลด...</span>
+        <button onclick="loadAll()" style="background:none;border:none;color:#1565C0;font-weight:700;font-size:12px;cursor:pointer">🔄 รีเฟรช</button>
+      </div>
+      <div class="notif-wrap">
+        <!-- ── DASHBOARD นับรายวัน/รายเดือน ── -->
+      
+
+      
       <div class="stats" id="stats-row"></div>
         <div class="filter-row" id="filter-row"></div>
         <div id="ord-list"></div>
@@ -300,7 +303,7 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
 
 
   <!-- SCREEN: PKG MGR -->
-  <div class="screen" id="sc-pkgs">
+  <div class="screen" id="sc-pkgs" class="screen" style="display:none;flex-direction:column;flex:1;overflow-y:auto">
     <div class="pad">
       <div id="pkg-mgr-list"></div>
       <button class="btn btn-od" style="margin-bottom:8px" onclick="openPkgForm(null)">➕ เพิ่มแพ็คเกจใหม่</button>
@@ -310,7 +313,7 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
   </div>
 
   <!-- SCREEN: PKG FORM -->
-  <div class="screen" id="sc-pkgform">
+  <div class="screen" id="sc-pkgform" class="screen" style="display:none;flex-direction:column;flex:1;overflow-y:auto">
     <div class="pad">
       <div style="font-size:12px;font-weight:800;color:#1565C0;margin-bottom:7px">ไอคอน</div>
       <div id="ep" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px"></div>
@@ -610,7 +613,6 @@ function loadAll(){
   renderChatList();
   renderOrdList();
   updateBadges();
-  renderDashboard();
   $("rts").textContent="อัพเดท "+ts();
   setTopbar("",null,"");
   if(ORDERS_API) syncFromAPI();
@@ -720,7 +722,7 @@ function switchTab(n){
 
   if(n===1){
     // รับเน็ตฟรี
-    if(sc1){ sc1.classList.add("on"); }
+    if(sc1){ sc1.style.display="flex"; sc1.classList.add("on"); }
     var olv = document.getElementById("ord-list-view");
     var odv = document.getElementById("ord-detail-view");
     if(olv) olv.style.display = "flex";
@@ -1303,13 +1305,19 @@ function manualShopeeCheck(){
 }
 
 function goBackHome(){
-  // ปิดทุก screen พิเศษ
-  ["sc-pkgs","sc-pkgform","sc-formsettings"].forEach(function(id){
+  ["sc-pkgs","sc-pkgform","sc-formsettings","sc-settings","sc-report"].forEach(function(id){
     var el = document.getElementById(id);
-    if(el) el.classList.remove("on");
+    if(el){ el.style.display="none"; el.classList.remove("on"); }
   });
   $("tabbar").style.display = "flex";
-  switchTab(1);
+  var sc1 = document.getElementById("sc1");
+  if(sc1){ sc1.classList.add("on"); }
+  var olv = document.getElementById("ord-list-view");
+  var odv = document.getElementById("ord-detail-view");
+  if(olv) olv.style.display = "flex";
+  if(odv) odv.style.display = "none";
+  document.querySelectorAll(".tab").forEach(function(t,i){ t.classList.toggle("active", i===0); });
+  setTopbar("",null,"");
 }
 
 function goHome(){
@@ -1925,7 +1933,10 @@ function showReport(){
 }
 
 function renderReport(){
-  var el = document.getElementById("report-content");
+  // render dashboard ก่อน
+  renderDashboard();
+
+  var el = document.getElementById("report-stats");
   if(!el) return;
 
   var total     = reqs.length;
@@ -2004,8 +2015,12 @@ function showSettings(){
 }
 
 function showPkgMgr(){
-  document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("on");});
-  $("sc-pkgs").classList.add("on");
+  document.querySelectorAll(".screen").forEach(function(s){
+    s.classList.remove("on");
+    s.style.display="none";
+  });
+  var scPkgs = $("sc-pkgs");
+  if(scPkgs){ scPkgs.style.display="flex"; scPkgs.classList.add("on"); }
   $("tabbar").style.display="none";
   setTopbar("🗂️ จัดการแพ็คเกจ", function(){
     $("sc-pkgs").classList.remove("on");
@@ -2195,8 +2210,12 @@ function getPlatforms(){
 }
 
 function showFormSettings(){
-  document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("on");});
-  document.getElementById("sc-formsettings").classList.add("on");
+  document.querySelectorAll(".screen").forEach(function(s){
+    s.classList.remove("on");
+    s.style.display="none";
+  });
+  var scForm = document.getElementById("sc-formsettings");
+  if(scForm){ scForm.style.display="flex"; scForm.classList.add("on"); }
   document.getElementById("tabbar").style.display="none";
   setTopbar("ตั้งค่าแบบฟอร์ม", function(){
     document.getElementById("sc-formsettings").classList.remove("on");
