@@ -1920,90 +1920,71 @@ function renderReport(){
   var el = document.getElementById("report-content");
   if(!el) return;
 
-  var total    = reqs.length;
-  var pending  = reqs.filter(function(r){ return r.status==="pending"; }).length;
-  var confirmed= reqs.filter(function(r){ return r.status==="confirmed"; }).length;
-  var proc     = reqs.filter(function(r){ return r.status==="processing"; }).length;
-  var activated= reqs.filter(function(r){ return r.status==="activated"; }).length;
-  var rejected = reqs.filter(function(r){ return r.status==="rejected"; }).length;
+  var total     = reqs.length;
+  var pending   = reqs.filter(function(r){ return r.status==="pending"; }).length;
+  var confirmed = reqs.filter(function(r){ return ["confirmed","processing"].includes(r.status); }).length;
+  var activated = reqs.filter(function(r){ return r.status==="activated"; }).length;
+  var rejected  = reqs.filter(function(r){ return r.status==="rejected"; }).length;
 
-  // แยกตามแพลตฟอร์ม
-  var byPlat = {};
-  reqs.forEach(function(r){
-    var p = r.platform||"อื่นๆ";
-    if(!byPlat[p]) byPlat[p]=0;
-    byPlat[p]++;
-  });
-
-  // แยกตามแพ็คเกจ
-  var byPkg = {};
-  reqs.forEach(function(r){
-    var p = r.pkgName||"ไม่ระบุ";
-    if(!byPkg[p]) byPkg[p]=0;
-    byPkg[p]++;
-  });
-
-  // รายได้ประมาณการ (นับจากแพ็คเกจ)
+  // รายได้
   var revenue = 0;
   reqs.filter(function(r){ return r.status==="activated"; }).forEach(function(r){
     var pkg = pkgs.find(function(p){ return p.id===r.pkgId; });
     if(pkg) revenue += Number(pkg.price)||0;
   });
 
+  // แพลตฟอร์ม
+  var byPlat = {};
+  reqs.forEach(function(r){ var p=r.platform||"อื่นๆ"; byPlat[p]=(byPlat[p]||0)+1; });
+  var PLTS = {shopee:"🛍️ Shopee",lazada:"🛒 Lazada",tiktok:"🎵 TikTok"};
   var platHTML = Object.keys(byPlat).map(function(k){
-    var PLTS = {shopee:"🛍️ Shopee",lazada:"🛒 Lazada",tiktok:"🎵 TikTok"};
-    return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #F3F4F6">'
+    return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #F3F4F6">'
       +'<span style="font-size:13px;color:#374151">'+(PLTS[k]||k)+'</span>'
-      +'<span style="font-weight:800;color:#1565C0">'+byPlat[k]+' รายการ</span>'
-      +'</div>';
+      +'<span style="font-weight:800;color:#1565C0">'+byPlat[k]+' รายการ</span></div>';
   }).join("");
 
+  // แพ็คเกจ
+  var byPkg = {};
+  reqs.forEach(function(r){ var p=r.pkgName||"ไม่ระบุ"; byPkg[p]=(byPkg[p]||0)+1; });
   var pkgHTML = Object.keys(byPkg).map(function(k){
-    return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #F3F4F6">'
+    return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #F3F4F6">'
       +'<span style="font-size:13px;color:#374151">'+k+'</span>'
-      +'<span style="font-weight:800;color:#6A1B9A">'+byPkg[k]+' รายการ</span>'
-      +'</div>';
+      +'<span style="font-weight:800;color:#6A1B9A">'+byPkg[k]+' รายการ</span></div>';
   }).join("");
 
   el.innerHTML =
-    // สรุปหลัก
+    // ตัวเลขหลัก 4 กล่อง
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'
       +'<div style="background:#E3F2FD;border-radius:12px;padding:14px;text-align:center">'
-        +'<div style="font-size:28px;font-weight:900;color:#1565C0">'+total+'</div>'
-        +'<div style="font-size:11px;color:#1565C0;font-weight:700">คำสั่งซื้อทั้งหมด</div>'
-      +'</div>'
+        +'<div style="font-size:30px;font-weight:900;color:#1565C0">'+total+'</div>'
+        +'<div style="font-size:11px;color:#1565C0;font-weight:700">ทั้งหมด</div></div>'
       +'<div style="background:#E8F5E9;border-radius:12px;padding:14px;text-align:center">'
-        +'<div style="font-size:28px;font-weight:900;color:#2E7D32">'+activated+'</div>'
-        +'<div style="font-size:11px;color:#2E7D32;font-weight:700">สมัครเน็ตแล้ว</div>'
-      +'</div>'
+        +'<div style="font-size:30px;font-weight:900;color:#2E7D32">'+activated+'</div>'
+        +'<div style="font-size:11px;color:#2E7D32;font-weight:700">สมัครแล้ว ✅</div></div>'
       +'<div style="background:#FFF3E0;border-radius:12px;padding:14px;text-align:center">'
-        +'<div style="font-size:28px;font-weight:900;color:#E65100">'+pending+'</div>'
-        +'<div style="font-size:11px;color:#E65100;font-weight:700">รอตรวจสอบ</div>'
-      +'</div>'
+        +'<div style="font-size:30px;font-weight:900;color:#E65100">'+pending+'</div>'
+        +'<div style="font-size:11px;color:#E65100;font-weight:700">รอตรวจสอบ ⏳</div></div>'
       +'<div style="background:#FCE4EC;border-radius:12px;padding:14px;text-align:center">'
-        +'<div style="font-size:28px;font-weight:900;color:#C62828">'+rejected+'</div>'
-        +'<div style="font-size:11px;color:#C62828;font-weight:700">ปฏิเสธ</div>'
-      +'</div>'
+        +'<div style="font-size:30px;font-weight:900;color:#C62828">'+rejected+'</div>'
+        +'<div style="font-size:11px;color:#C62828;font-weight:700">ปฏิเสธ ❌</div></div>'
     +'</div>'
-
     // รายได้
     +'<div style="background:linear-gradient(135deg,#1565C0,#1976D2);border-radius:12px;padding:16px;margin-bottom:14px;text-align:center;color:#fff">'
       +'<div style="font-size:12px;opacity:.85;margin-bottom:4px">💰 รายได้ประมาณการ (จากที่สมัครแล้ว)</div>'
       +'<div style="font-size:32px;font-weight:900">฿'+revenue.toLocaleString()+'</div>'
     +'</div>'
-
-    // แยกตามแพลตฟอร์ม
-    +'<div style="background:#fff;border-radius:12px;padding:14px;margin-bottom:14px;border:1.5px solid #E5E7EB">'
+    // แพลตฟอร์ม
+    +'<div style="background:#fff;border-radius:12px;padding:14px;margin-bottom:12px;border:1.5px solid #E5E7EB">'
       +'<div style="font-weight:800;font-size:13px;color:#374151;margin-bottom:8px">📊 แยกตามแพลตฟอร์ม</div>'
       +platHTML
     +'</div>'
-
-    // แยกตามแพ็คเกจ
+    // แพ็คเกจ
     +'<div style="background:#fff;border-radius:12px;padding:14px;border:1.5px solid #E5E7EB">'
       +'<div style="font-weight:800;font-size:13px;color:#374151;margin-bottom:8px">🎁 แยกตามแพ็คเกจ</div>'
       +pkgHTML
     +'</div>';
 }
+
 
 function showSettings(){
   document.querySelectorAll(".screen").forEach(function(s){ s.classList.remove("on"); });
