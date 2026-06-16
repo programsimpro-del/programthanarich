@@ -303,8 +303,8 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
     <div class="pad">
       <div id="pkg-mgr-list"></div>
       <button class="btn btn-od" style="margin-bottom:8px" onclick="openPkgForm(null)">➕ เพิ่มแพ็คเกจใหม่</button>
-      <button class="btn" style="margin-bottom:8px;background:#E8F5E9;color:#2E7D32;border:1.5px solid #A5D6A7" onclick="showFormSettings()">⚙️ ตั้งค่าแบบฟอร์มลูกค้า</button>
-      <button class="btn btn-blue" onclick="saveAllPkgs()">✅ บันทึกและอัพเดทระบบ</button>
+      <button class="btn btn-blue" style="margin-bottom:8px" onclick="saveAllPkgs()">✅ บันทึกและอัพเดทระบบ</button>
+      <button class="btn" style="margin-bottom:8px;background:#F3F4F6;color:#374151" onclick="switchTab(1);$("sc-pkgs").classList.remove("on");">🏠 กลับสู่หน้าแรก</button>
     </div>
   </div>
 
@@ -1635,25 +1635,31 @@ function showPkgMgr(){
   document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("on");});
   $("sc-pkgs").classList.add("on");
   $("tabbar").style.display="none";
-  setTopbar("จัดการแพ็คเกจ", function(){
+  setTopbar("🗂️ จัดการแพ็คเกจ", function(){
     $("sc-pkgs").classList.remove("on");
-    switchTab(curTab);
     $("tabbar").style.display="flex";
+    switchTab(curTab);
   }, "");
 
-  // แสดง pkgs จาก memory ทันที
-  renderPkgMgrList();
+  // แสดง loading ก่อน
+  var el = $("pkg-mgr-list");
+  if(el) el.innerHTML = "<div style='text-align:center;padding:20px;color:#9E9E9E'>⏳ กำลังโหลด...</div>";
 
-  // โหลดจาก Firebase REST (ไม่พึ่ง SDK)
+  // โหลดจาก Firebase REST ก่อน
   fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/packages.json")
     .then(function(r){ return r.json(); })
     .then(function(fbPkgs){
       if(fbPkgs && Array.isArray(fbPkgs) && fbPkgs.length>0){
         pkgs = fbPkgs;
         localStorage.setItem("pt_packages", JSON.stringify(pkgs));
-        renderPkgMgrList();
       }
-    }).catch(function(e){ console.warn("loadPkgs:", e.message); });
+      renderPkgMgrList();
+    })
+    .catch(function(e){
+      console.warn("loadPkgs:", e.message);
+      // fallback: แสดงจาก memory/localStorage
+      renderPkgMgrList();
+    });
 }
 function delPkg(id){
   if(!confirm("ลบแพ็คเกจนี้?"))return;
