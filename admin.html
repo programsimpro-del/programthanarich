@@ -1642,25 +1642,20 @@ function showPkgMgr(){
     switchTab(curTab);
   }, "");
 
-  // แสดง loading ก่อน
-  var el = $("pkg-mgr-list");
-  if(el) el.innerHTML = "<div style='text-align:center;padding:20px;color:#9E9E9E'>⏳ กำลังโหลด...</div>";
+  // แสดงจาก memory ทันที (ไม่รอ Firebase)
+  renderPkgMgrList();
 
-  // โหลดจาก Firebase REST ก่อน
+  // โหลดจาก Firebase REST ใน background แล้ว refresh
   fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/packages.json")
     .then(function(r){ return r.json(); })
     .then(function(fbPkgs){
       if(fbPkgs && Array.isArray(fbPkgs) && fbPkgs.length>0){
         pkgs = fbPkgs;
         localStorage.setItem("pt_packages", JSON.stringify(pkgs));
+        renderPkgMgrList();
       }
-      renderPkgMgrList();
     })
-    .catch(function(e){
-      console.warn("loadPkgs:", e.message);
-      // fallback: แสดงจาก memory/localStorage
-      renderPkgMgrList();
-    });
+    .catch(function(e){ console.warn("loadPkgs:", e.message); });
 }
 function delPkg(id){
   if(!confirm("ลบแพ็คเกจนี้?"))return;
