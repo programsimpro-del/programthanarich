@@ -161,7 +161,7 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
   <!-- ══════════════════════════════
        SCREEN 0: LINE OA CHAT LIST
   ══════════════════════════════ -->
-  <div id="sc0" class="screen" style="display:none">
+  <div id="sc0" class="screen" style="display:none;flex-direction:column;flex:1;overflow:hidden">
     <!-- Chat list (LINE style) -->
     <div id="chat-list-view" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
       <div class="chat-search"><input id="chat-search" placeholder="🔍 ค้นหาชื่อหรือข้อความ..." oninput="filterChats()"></div>
@@ -550,6 +550,18 @@ function startRealtimeSync(){
   });
 
 
+  // ── Chats real-time (LINE OA) ────────────────────
+  fbDB.ref("/chats").on("value", function(snap){
+    var data = snap.val();
+    window._chats = data ? Object.values(data) : [];
+    window._chats.sort(function(a,b){
+      return ((b.info||b).lastTs||0) - ((a.info||a).lastTs||0);
+    });
+    if(document.getElementById("sc0") && document.getElementById("sc0").classList.contains("on")){
+      renderChatListFB();
+    }
+  });
+
   // ── Orders real-time ────────────────────────────
   fbDB.ref("/orders").on("value", function(snap){
     console.log("📡 Firebase orders received:", snap.val() ? Object.keys(snap.val()).length : 0);
@@ -700,44 +712,163 @@ function updateBadges(){
 /* ══════ TAB SWITCH ══════ */
 function switchTab(n){
   curTab=n;
-  // sc0 ถูกซ่อนไปแล้ว — sc1 แสดงเสมอ
+  var sc0=document.getElementById("sc0");
   var sc1=document.getElementById("sc1");
-  if(sc1){sc1.classList.add("on");}
-  const clv=document.getElementById("chat-list-view"),cdv=document.getElementById("chat-detail-view");
-  const olv=document.getElementById("ord-list-view"), odv=document.getElementById("ord-detail-view");
-  if(n===0){if(clv)clv.style.display="flex";if(cdv)cdv.style.display="none";}
-  if(n===1){if(olv)olv.style.display="flex";if(odv)odv.style.display="none";}
-  setTopbar();
+  // tab 0 = LINE OA (sc0)
+  // tab 1 = รับเน็ตฟรี / dashboard (sc1)
+  if(n===0){
+    if(sc0){sc0.style.display="flex";sc0.classList.add("on");}
+    if(sc1){sc1.classList.remove("on");}
+  } else {
+    if(sc0){sc0.style.display="none";sc0.classList.remove("on");}
+    if(sc1){sc1.classList.add("on");}
+    // แสดง ord-list-view ซ่อน detail
+    var olv=document.getElementById("ord-list-view");
+    var odv=document.getElementById("ord-detail-view");
+    if(olv) olv.style.display="flex";
+    if(odv) odv.style.display="none";
+  }
+  // อัพเดท active tab
+  document.querySelectorAll(".tab").forEach(function(t,i){
+    t.classList.toggle("active", i===n);
+  });
+  setTopbar("",null,"");
 }
 
 /* ══════════════════════════════
    TAB 0: LINE OA CHAT LIST
 ══════════════════════════════ */
+function renderChatListFB(){
+  var el = $("chat-list");
+  if(!el) return;
+  var chats = window._chats || [];
+  if(!chats.length){
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:#BDBDBD;font-size:13px">ยังไม่มีแชทค่ะ</div>';
+    return;
+  }
+  el.innerHTML = "";
+  chats.forEach(function(chat){
+    var info = chat.info || chat;
+    var userId = info.userId || "";
+    var name = info.displayName || userId;
+    var pic = info.pictureUrl || "";
+    var lastMsg = info.lastMsg || "";
+    var lastTime = info.lastTime || "";
+    var unread = info.unread || false;
+
+    var row = document.createElement("div");
+    row.className = "chat-row";
+    row.style.cssText = "display:flex;align-items:center;padding:12px 14px;gap:10px;cursor:pointer;border-bottom:1px solid #F5F5F5;" + (unread?"background:#F0FDF4":"");
+    row.innerHTML =
+      '<div style="width:44px;height:44px;border-radius:50%;background:#E8F5E9;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px">'
+      + (pic ? '<img src="'+pic+'" style="width:100%;height:100%;object-fit:cover">' : '👤')
+      + '</div>'
+      + '<div style="flex:1;min-width:0">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center">'
+          + '<div style="font-weight:'+(unread?'900':'700')+';font-size:14px;color:#111">' + name + '</div>'
+          + '<div style="font-size:11px;color:#9E9E9E">' + lastTime + '</div>'
+        + '</div>'
+        + '<div style="font-size:12px;color:'+(unread?'#111':'#9E9E9E')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:'+(unread?'700':'400')+'">' + lastMsg + '</div>'
+      + '</div>'
+      + (unread ? '<div style="width:10px;height:10px;border-radius:50%;background:#06C755;flex-shrink:0"></div>' : '');
+
+    row.onclick = function(){ openChatFB(userId, name, pic); };
+    el.appendChild(row);
+  });
+}
+
 function renderChatList(){
-  const el=$("chat-list"); if(!el)return;
-  const q=($("chat-search")?.value||"").toLowerCase();
-  const list=q?reqs.filter(r=>(r.lineDisplayName||"").toLowerCase().includes(q)||(r.orderNo||"").toLowerCase().includes(q)):reqs;
-  if(!list.length){el.innerHTML='<div style="text-align:center;padding:40px;color:#BDBDBD;font-size:13px">ยังไม่มีแชท</div>';return;}
-  el.innerHTML=list.map(r=>{
-    const last=r.lineMessages?.slice(-1)[0];
-    const unread=last?.from==="customer"&&!r._chatRead;
-    return`<div class="chat-item${unread?" unread":""}" onclick="openChat('${r.ref}')">
-      <div class="chat-avatar">
-        ${r.linePictureUrl?`<img src="${r.linePictureUrl}" alt="">`:'<span>👤</span>'}
-        <div class="online-dot"></div>
-      </div>
-      <div style="flex:1;min-width:0">
-        <div class="chat-name">${r.lineDisplayName||r.simPhone}</div>
-        <div class="chat-preview">${last?(last.from==="admin"?"คุณ: ":"")+last.text.split("\n")[0]:"ยังไม่มีข้อความ"}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-        <div class="chat-time">${r.submittedAt}</div>
-        ${unread?`<div class="chat-unread-badge">!</div>`:""}
-      </div>
-    </div>`;
-  }).join("");
+  // ถ้ามี chats จาก Firebase ใช้นั้น
+  if(window._chats && window._chats.length) {
+    renderChatListFB();
+    return;
+  }
+  // fallback: แสดงจาก reqs
+  var el=$("chat-list"); if(!el)return;
+  el.innerHTML='<div style="text-align:center;padding:40px;color:#BDBDBD;font-size:13px">ยังไม่มีแชทค่ะ</div>';
 }
 function filterChats(){renderChatList();}
+
+function openChatFB(userId, name, pic){
+  // mark as read
+  if(fbDB) fbDB.ref("/chats/"+userId+"/info/unread").set(false).catch(function(){});
+  // โหลดข้อความ
+  var cdv = $("chat-detail-view");
+  var clv = $("chat-list-view");
+  if(clv) clv.style.display = "none";
+  if(cdv){ cdv.style.display = "flex"; cdv.innerHTML = ""; }
+
+  // Header
+  var hdr = document.createElement("div");
+  hdr.style.cssText = "display:flex;align-items:center;gap:10px;padding:12px 14px;background:#06C755;color:#fff";
+  hdr.innerHTML =
+    '<button onclick="$(\'chat-list-view\').style.display=\'flex\';$(\'chat-detail-view\').style.display=\'none\';" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer">←</button>'
+    + '<div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);overflow:hidden;display:flex;align-items:center;justify-content:center">'
+    + (pic ? '<img src="'+pic+'" style="width:100%;height:100%">' : '👤')
+    + '</div>'
+    + '<div style="font-weight:800;font-size:15px">' + name + '</div>';
+  cdv.appendChild(hdr);
+
+  // Messages area
+  var msgArea = document.createElement("div");
+  msgArea.id = "chat-msgs-"+userId;
+  msgArea.style.cssText = "flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:#F5F5F5";
+  cdv.appendChild(msgArea);
+
+  // Input area
+  var inputArea = document.createElement("div");
+  inputArea.style.cssText = "display:flex;gap:8px;padding:10px 12px;background:#fff;border-top:1px solid #E8E8E8";
+  inputArea.innerHTML =
+    '<input id="chat-input-'+userId+'" type="text" placeholder="พิมพ์ข้อความ..." style="flex:1;border:1.5px solid #E8E8E8;border-radius:20px;padding:8px 14px;font-size:13px;font-family:inherit;outline:none"'
+    + ' onkeydown="if(event.key===\'Enter\')sendChatMsg(\''+userId+'\');">'
+    + '<button onclick="sendChatMsg(\''+userId+'\')" style="background:#06C755;color:#fff;border:none;border-radius:20px;padding:8px 16px;font-weight:800;cursor:pointer;font-family:inherit">ส่ง</button>';
+  cdv.appendChild(inputArea);
+
+  // โหลดข้อความจาก Firebase real-time
+  if(fbDB){
+    fbDB.ref("/chats/"+userId+"/messages").on("value", function(snap){
+      var msgs = snap.val();
+      var area = document.getElementById("chat-msgs-"+userId);
+      if(!area) return;
+      area.innerHTML = "";
+      if(!msgs){ area.innerHTML = '<div style="text-align:center;color:#BDBDBD;font-size:12px">ยังไม่มีข้อความ</div>'; return; }
+      Object.values(msgs).sort(function(a,b){return (a.ts||0)-(b.ts||0);}).forEach(function(msg){
+        var isAdmin = msg.from === "admin";
+        var bubble = document.createElement("div");
+        bubble.style.cssText = "display:flex;justify-content:"+(isAdmin?"flex-end":"flex-start");
+        bubble.innerHTML = '<div style="max-width:75%;padding:8px 12px;border-radius:'+(isAdmin?"16px 16px 4px 16px":"16px 16px 16px 4px")+';background:'+(isAdmin?"#06C755":"#fff")+';color:'+(isAdmin?"#fff":"#111")+';font-size:13px;box-shadow:0 1px 4px rgba(0,0,0,.08)">'
+          + msg.text
+          + '<div style="font-size:10px;opacity:.6;text-align:right;margin-top:2px">'+( msg.time||"")+'</div>'
+          + '</div>';
+        area.appendChild(bubble);
+      });
+      area.scrollTop = area.scrollHeight;
+    });
+  }
+}
+
+async function sendChatMsg(userId){
+  var inp = document.getElementById("chat-input-"+userId);
+  if(!inp) return;
+  var text = inp.value.trim();
+  if(!text) return;
+  inp.value = "";
+
+  var now = new Date();
+  var ts = now.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});
+  var msgId = "m"+Date.now();
+
+  // บันทึก Firebase
+  if(fbDB){
+    fbDB.ref("/chats/"+userId+"/messages/"+msgId).set({
+      id: msgId, from: "admin", text: text, time: ts, ts: Date.now()
+    });
+    fbDB.ref("/chats/"+userId+"/info").update({lastMsg: text, lastTime: ts, lastTs: Date.now(), unread: false});
+  }
+
+  // ส่งผ่าน Worker
+  sendLineMsg(userId, text);
+}
 
 function openChat(ref){
   activeChat=ref;
