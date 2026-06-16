@@ -856,6 +856,7 @@ function deleteChat(userId){
 
 
 function renderChatList(){
+  if(curTab !== 0 && curTab !== 1) return;
   // ถ้ามี chats จาก Firebase ใช้นั้น
   if(window._chats && window._chats.length) {
     renderChatListFB();
@@ -1193,6 +1194,8 @@ function getQuotaBadge(orderNo){
 
 
 function renderOrdList(){
+  // ถ้าไม่ได้อยู่ใน tab รับเน็ตฟรี ไม่ต้อง render
+  if(curTab !== 1) return;
   const pending=reqs.filter(r=>r.status==="pending").length;
   const confirmed=reqs.filter(r=>["confirmed","processing"].includes(r.status)).length;
   const activated=reqs.filter(r=>r.status==="activated").length;
