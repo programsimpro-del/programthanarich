@@ -1958,6 +1958,42 @@ function openLb(src){$("lb-img").src=src;$("lb").classList.add("on");}
 function closeLb(){$("lb").classList.remove("on");}
 
 /* ══════ PKG MGR ══════ */
+function showSettings(){
+  showScreen("sc-settings");
+  document.getElementById("tabbar").style.display="flex";
+  setTopbar("⚙️ การตั้งค่า",null,"");
+  document.querySelectorAll(".tab").forEach(function(t,i){ t.classList.toggle("active",i===1); });
+}
+
+function showPkgMgr(){
+  showScreen("sc-pkgs");
+  document.getElementById("tabbar").style.display="none";
+  setTopbar("🗂️ จัดการแพ็คเกจ", function(){
+    showSettings();
+    document.getElementById("tabbar").style.display="flex";
+  }, "");
+  renderPkgMgrList();
+  fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/packages.json")
+    .then(function(r){ return r.json(); })
+    .then(function(fbPkgs){
+      if(fbPkgs && Array.isArray(fbPkgs) && fbPkgs.length>0){
+        pkgs = fbPkgs;
+        localStorage.setItem("pt_packages", JSON.stringify(pkgs));
+        renderPkgMgrList();
+      }
+    }).catch(function(){});
+}
+
+function showFormSettings(){
+  showScreen("sc-formsettings");
+  document.getElementById("tabbar").style.display="none";
+  setTopbar("🖼️ รูปตัวอย่าง", function(){
+    showSettings();
+    document.getElementById("tabbar").style.display="flex";
+  }, "");
+  loadExImages();
+}
+
 function renderPkgMgrList(){
   var el = $("pkg-mgr-list");
   if(!el) return;
