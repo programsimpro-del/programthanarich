@@ -1560,6 +1560,83 @@ function odQuickSend(t){if(t&&t.target)t=t.target.dataset.t;addMsgToReq(aref,"ad
 function toggleNet(){showActivateMenu();}
 
 /* ══════ ORDER BOX ══════ */
+async function checkShopeeNow(ref){
+  var req = reqs.find(function(r){ return r.ref===ref; });
+  if(!req) return;
+  showToast("⏳ กำลังตรวจสอบ Shopee...","#1565C0","#E3F2FD");
+  try{
+    var r = await fetch("https://programthanarich.programsimpro.workers.dev/shopee-check",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({orderNo:req.orderNo})
+    });
+    var si = await r.json();
+    req.shopeeInfo = si;
+    fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/orders/"+ref+"/shopeeInfo.json",{
+      method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(si)
+    });
+    saveReqs(); renderOrdDetail(ref);
+    if(si.found) showToast("✅ พบคำสั่งซื้อใน Shopee","#166534","#DCFCE7");
+    else if(!si.ready) showToast("⏳ "+si.message,"#E65100","#FFF3E0");
+    else showToast("❌ ไม่พบคำสั่งซื้อ","#BE123C","#FFF1F2");
+  }catch(e){ showToast("❌ "+e.message,"#BE123C","#FFF1F2"); }
+}
+
+function renderShopeeBox(req){
+  var si = req.shopeeInfo;
+  if(!si){
+    return '<div style="background:#FFF3E0;border-radius:12px;padding:12px 14px;margin-bottom:10px;border:1.5px solid #FFCC02">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between">'
+        +'<div style="font-weight:800;font-size:13px;color:#E65100">🛍️ ยังไม่ได้ตรวจสอบ Shopee</div>'
+        +'<button onclick="checkShopeeNow(aref)" style="background:#FF5722;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit">ตรวจสอบ</button>'
+      +'</div></div>';
+  }
+  if(!si.ready){
+    return '<div style="background:#FFF3E0;border-radius:12px;padding:12px 14px;margin-bottom:10px;border:1.5px solid #FFCC02">'
+      +'<div style="font-weight:800;font-size:13px;color:#E65100">⏳ Shopee API: '+si.message+'</div></div>';
+  }
+  if(!si.found){
+    return '<div style="background:#FFF1F2;border-radius:12px;padding:12px 14px;margin-bottom:10px;border:1.5px solid #FECDD3">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center">'
+        +'<div><div style="font-weight:800;font-size:13px;color:#BE123C">❌ ไม่พบคำสั่งซื้อใน Shopee</div>'
+        +'<div style="font-size:12px;color:#9E9E9E">'+(si.error||"กรุณาตรวจสอบเลขพัสดุ")+'</div></div>'
+        +'<button onclick="checkShopeeNow(aref)" style="background:#FF5722;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit">ตรวจอีกครั้ง</button>'
+      +'</div></div>';
+  }
+  var itemsHTML = (si.items||[]).map(function(i){
+    return '<div style="font-size:12px;padding:4px 0;border-bottom:1px solid #DCFCE7">📦 '+i.name+' | '+i.model+' | x'+i.qty+' | ฿'+i.price+'</div>';
+  }).join("");
+  return '<div style="background:#F0FDF4;border-radius:12px;padding:12px 14px;margin-bottom:10px;border:1.5px solid #BBF7D0">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+      +'<div style="font-weight:800;font-size:13px;color:#166534">✅ Shopee ยืนยันแล้ว</div>'
+      +'<button onclick="checkShopeeNow(aref)" style="background:none;border:1px solid #BBF7D0;border-radius:8px;padding:4px 10px;font-size:11px;color:#166534;cursor:pointer;font-family:inherit">รีเฟรช</button>'
+    +'</div>'
+    +'<div style="font-size:12px;color:#374151;line-height:1.8;margin-bottom:6px">'
+      +'👤 ผู้ซื้อ: <b>'+si.buyer+'</b><br>'
+      +'🔢 จำนวนซิม: <b>'+si.totalSim+' ซิม</b><br>'
+      +'💰 ยอดรวม: <b>฿'+si.totalAmount+'</b>'
+    +'</div>'
+    +'<div>'+itemsHTML+'</div>'
+    +'</div>';
+}
+
+function renderQuotaBox(orderNo, req){
+  try{
+    var q=getQuotaSummary(orderNo);
+    if(!q||!q.maxQuota) return "";
+    var rem=Math.max(0,q.maxQuota-(q.usedCount||0));
+    var pct=Math.min(100,Math.round(((q.usedCount||0)/q.maxQuota)*100));
+    return "<div style='background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:10px;border:1.5px solid #E5E7EB'>"
+      +"<div style='font-weight:800;font-size:13px;color:#374151;margin-bottom:6px'>🎫 สิทธิ์การใช้งาน</div>"
+      +"<div style='display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px'>"
+        +"<span>ใช้แล้ว "+(q.usedCount||0)+" / "+q.maxQuota+" ซิม</span>"
+        +"<span style='font-weight:800;color:"+(rem<=0?"#C62828":"#166534")+"'>คงเหลือ "+rem+" สิทธิ์</span>"
+      +"</div>"
+      +"<div style='background:#E8E8E8;border-radius:20px;height:6px'>"
+        +"<div style='background:"+(rem<=0?"#C62828":"#06C755")+";width:"+pct+"%;height:6px;border-radius:20px'></div>"
+      +"</div></div>";
+  }catch(_){ return ""; }
+}
+
 function renderOrderBox(req){
   const orderNo=(req.orderNo||"").trim(),simPhone=(req.simPhone||"").trim();
   const enc=encodeURIComponent(orderNo);
