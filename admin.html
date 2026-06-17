@@ -1931,4 +1931,89 @@ function renderReport(){
   if(!el) return;
 
   var total     = reqs.length;
-  var activated = reqs.filter(function(r){ return r.status==="activated"; >
+  var activated = reqs.filter(function(r){ return r.status==="activated"; }).length;
+  var pending   = reqs.filter(function(r){ return r.status==="pending"; }).length;
+  var rejected  = reqs.filter(function(r){ return r.status==="rejected"; }).length;
+
+  var revenue = 0;
+  reqs.filter(function(r){ return r.status==="activated"; }).forEach(function(r){
+    var pkg = pkgs.find(function(p){ return p.id===r.pkgId; });
+    if(pkg) revenue += Number(pkg.price)||0;
+  });
+
+  var byPkg = {};
+  reqs.forEach(function(r){ var p=r.pkgName||"ไม่ระบุ"; byPkg[p]=(byPkg[p]||0)+1; });
+
+  var html = "";
+  html += "<div style='display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px'>";
+  html += "<div style='background:#E3F2FD;border-radius:12px;padding:14px;text-align:center'><div style='font-size:30px;font-weight:900;color:#1565C0'>"+total+"</div><div style='font-size:11px;color:#1565C0;font-weight:700'>ทั้งหมด</div></div>";
+  html += "<div style='background:#E8F5E9;border-radius:12px;padding:14px;text-align:center'><div style='font-size:30px;font-weight:900;color:#2E7D32'>"+activated+"</div><div style='font-size:11px;color:#2E7D32;font-weight:700'>สมัครแล้ว ✅</div></div>";
+  html += "<div style='background:#FFF3E0;border-radius:12px;padding:14px;text-align:center'><div style='font-size:30px;font-weight:900;color:#E65100'>"+pending+"</div><div style='font-size:11px;color:#E65100;font-weight:700'>รอตรวจสอบ ⏳</div></div>";
+  html += "<div style='background:#FCE4EC;border-radius:12px;padding:14px;text-align:center'><div style='font-size:30px;font-weight:900;color:#C62828'>"+rejected+"</div><div style='font-size:11px;color:#C62828;font-weight:700'>ปฏิเสธ ❌</div></div>";
+  html += "</div>";
+  html += "<div style='background:linear-gradient(135deg,#1565C0,#1976D2);border-radius:12px;padding:16px;margin-bottom:14px;text-align:center;color:#fff'>";
+  html += "<div style='font-size:12px;opacity:.85;margin-bottom:4px'>💰 รายได้ประมาณการ</div>";
+  html += "<div style='font-size:32px;font-weight:900'>฿"+revenue.toLocaleString()+"</div></div>";
+
+  var actReqs = reqs.filter(function(r){ return r.status==="activated"; });
+  actReqs.sort(function(a,b){ return (b.activatedAt||b.submittedAt||"").localeCompare(a.activatedAt||a.submittedAt||""); });
+  html += "<div style='background:#fff;border-radius:12px;padding:14px;margin-bottom:12px;border:1.5px solid #E5E7EB'>";
+  html += "<div style='font-weight:800;font-size:13px;color:#374151;margin-bottom:8px'>📱 เบอร์ที่สมัครเน็ต ("+activated+" เบอร์)</div>";
+  if(actReqs.length===0){
+    html += "<div style='text-align:center;padding:16px;color:#BDBDBD;font-size:13px'>ยังไม่มีรายการสมัครเน็ต</div>";
+  } else {
+    actReqs.forEach(function(r){
+      var pkg = pkgs.find(function(p){ return p.id===r.pkgId; });
+      var pkgColor = pkg ? pkg.color : "#6A1B9A";
+      var dateStr = r.activatedAt||r.submittedAt||"";
+      var displayDate = "-";
+      try{ displayDate = dateStr ? new Date(dateStr).toLocaleDateString("th-TH",{day:"2-digit",month:"short",year:"2-digit"}) : "-"; }catch(_){}
+      var ref=r.ref; html += "<div style='padding:10px 0;border-bottom:1px solid #F3F4F6;cursor:pointer' onclick='openOrdDetail(\"" + ref + "\")'>"; 
+      html += "<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:4px'>";
+      html += "<span style='font-weight:800;font-size:14px;color:#111'>📱 "+(r.simPhone||"-")+"</span>";
+      html += "<span style='font-size:11px;color:#9E9E9E'>"+displayDate+"</span></div>";
+      html += "<div style='display:flex;align-items:center;gap:6px'>";
+      html += "<span style='background:"+pkgColor+";color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px'>"+(r.pkgName||"-")+"</span>";
+      html += "<span style='font-size:11px;color:#6B7280'>"+(r.lineDisplayName||"")+"</span></div></div>";
+    });
+  }
+  html += "</div>";
+  html += "<div style='background:#fff;border-radius:12px;padding:14px;border:1.5px solid #E5E7EB'>";
+  html += "<div style='font-weight:800;font-size:13px;color:#374151;margin-bottom:8px'>🎁 แยกตามแพ็คเกจ</div>";
+  Object.keys(byPkg).forEach(function(k){
+    html += "<div style='display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #F3F4F6'>";
+    html += "<span style='font-size:13px;color:#374151'>"+k+"</span>";
+    html += "<span style='font-weight:800;color:#6A1B9A'>"+byPkg[k]+" รายการ</span></div>";
+  });
+  html += "</div>";
+  el.innerHTML = html;
+}
+
+if(document.readyState === "complete"){
+  loadAll();
+} else {
+  window.addEventListener("load", function(){ loadAll(); });
+}
+setInterval(function(){
+  if(fbDB) return;
+  startRealtimeSync();
+}, 30000);
+
+setTimeout(function(){
+  fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/orders.json")
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(!data) return;
+      if(fbDB) return;
+      var newReqs = Object.values(data);
+      newReqs.sort(function(a,b){return (b.createdAt||"").localeCompare(a.createdAt||"");});
+      reqs = newReqs;
+      localStorage.setItem("pt_requests", JSON.stringify(reqs));
+      renderOrdList();
+      updateBadges();
+    })
+    .catch(function(e){ console.warn("REST fallback:", e.message); });
+}, 500);
+</script>
+</body>
+</html>
