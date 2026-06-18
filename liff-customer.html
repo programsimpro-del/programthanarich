@@ -160,8 +160,9 @@ input:focus{border-color:#06C755!important;box-shadow:none!important}
       </div>
     </div>
       <button class="btn" id="btnform" disabled onclick="goP(4)">ถัดไป →</button>
+    </div><!-- /p2 -->
 
-    <!-- P3: PHOTOS -->
+    <!-- P4: CONFIRM -->
     <div class="pg" id="p4">
             <div class="scard">
         <div style="font-weight:800;font-size:13px;color:#14532D;margin-bottom:11px">📋 ตรวจสอบข้อมูลของคุณ</div>
@@ -500,7 +501,12 @@ function goP(n){
   if(n===4){renderDots("d4",4,3);renderConfirm();}
   window.scrollTo(0,0);
 }
-function goBack(){ if(curP>0&&curP<5)goP(curP-1); }
+function goBack(){
+  if(curP<=0||curP>=5) return;
+  // p3 is skipped in this flow (no photo page), so p4 goes back to p2
+  var prev = curP===4 ? 2 : curP-1;
+  goP(prev);
+}
 function selPlt(id){ plt=id; goP(2); }
 
 var _previewTimer = null;
