@@ -146,12 +146,13 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#fff;min-heigh
 
       <div class="field">
         <div class="flbl">เลขคำสั่งซื้อ Shopee <span style="color:#E53935;font-size:11px">*</span></div>
-        <div class="fhint">ดูได้จากหน้าคำสั่งซื้อในแอป เช่น TH265354252413H</div>
+        <div class="fhint">ดูได้ที่ คำสั่งซื้อของฉัน → กดเข้าคำสั่งซื้อ เช่น 25064XXXXXXXXX</div>
         <input class="inp" id="orderNo" type="text" placeholder="25064XXXXXXXXX" oninput="this.value=this.value.trim();chkForm();previewShopeeOrder(this.value)" autocomplete="off" spellcheck="false">
         <div id="shopee-preview" style="display:none;margin-top:8px;border-radius:10px;padding:10px 12px;border:1.5px solid #E5E7EB;background:#F9FAFB;font-size:12px"></div>
         <div id="ex-hint-wrap-4" style="display:none;margin-top:8px"><div style="font-size:11px;color:#9E9E9E;margin-bottom:4px">📌 ตัวอย่างเลขพัสดุ/เลขคำสั่งซื้อ</div><img id="ex-hint-4" style="width:100%;border-radius:8px;border:1.5px dashed #A5D6A7"></div>
       </div>
-      <div class="field">
+      <div id="p1-fields-lock" style="transition:opacity .3s">
+<div class="field">
         <div class="flbl">เบอร์โทรที่ได้รับหลังลงทะเบียนซิม <span style="color:#E53935;font-size:11px">*</span></div>
         <div class="fhint">เบอร์ที่ปรากฏบนซองซิม หลังลงทะเบียนเสร็จ</div>
         <input class="inp" id="simPhone" type="tel" placeholder="09XXXXXXXX" oninput="chkForm()" autocomplete="off" inputmode="numeric">
@@ -264,7 +265,8 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#fff;min-heigh
         <div id="quota-summary" style="background:#FFF1F2;border:1.5px solid #FECDD3;border-radius:12px;padding:12px 14px;margin-bottom:12px;text-align:left">
           <div id="quota-detail" style="font-size:13px;color:#111;line-height:1.8"></div>
         </div>
-        <div id="dup-date" style="font-size:11px;color:#BDBDBD;margin-bottom:12px"></div>
+        </div>
+<div id="dup-date" style="font-size:11px;color:#BDBDBD;margin-bottom:12px"></div>
         <button class="btn" onclick="goP(2)" style="background:#F3F4F6;color:#374151;box-shadow:none;margin-bottom:8px">← กรอกเลขใหม่</button>
         <div style="font-size:12px;color:#BDBDBD">หากมีปัญหา กรุณาติดต่อ LINE @programthanarich</div>
       </div>
@@ -528,15 +530,23 @@ function goBack(){ if(curP>0&&curP<5)goP(curP-1); }
 function selPlt(id){ plt=id; goP(2); }
 
 var _previewTimer = null;
+var _shopeeVerified = false; // ตรวจสอบผ่านแล้วไหม
+
 function previewShopeeOrder(val){
   var box = document.getElementById("shopee-preview");
   if(!box) return;
   val = (val||"").trim();
-  // เลขคำสั่งซื้อ Shopee มักขึ้นต้นด้วยตัวเลข และยาว 12-18 ตัว
+  _shopeeVerified = false;
+  // ซ่อนขั้นถัดไปก่อน
+  lockNextSteps(true);
+
   if(val.length < 10){ box.style.display="none"; return; }
   clearTimeout(_previewTimer);
   box.style.display="block";
-  box.innerHTML = "<div style='color:#9E9E9E'>⏳ กำลังตรวจสอบคำสั่งซื้อ...</div>";
+  box.style.background="#F9FAFB";
+  box.style.borderColor="#E5E7EB";
+  box.innerHTML = "<div style='color:#9E9E9E;text-align:center;padding:4px'>⏳ กำลังตรวจสอบคำสั่งซื้อ...</div>";
+
   _previewTimer = setTimeout(async function(){
     try{
       var r = await fetch("https://programthanarich.programsimpro.workers.dev/shopee-check",{
@@ -544,30 +554,111 @@ function previewShopeeOrder(val){
         body:JSON.stringify({orderNo:val})
       });
       var si = await r.json();
+
       if(!si.ready){
-        box.innerHTML = "<div style='color:#E65100'>⏳ "+si.message+"</div>";
-      } else if(!si.found){
-        box.innerHTML = "<div style='color:#BE123C;font-weight:700'>❌ ไม่พบคำสั่งซื้อนี้</div>"
-          +"<div style='color:#9E9E9E;font-size:11px;margin-top:2px'>"+(si.error||"กรุณาตรวจสอบเลขคำสั่งซื้อ")+"</div>";
+        box.style.background="#FFF3E0"; box.style.borderColor="#FFCC02";
+        box.innerHTML = "<div style='color:#E65100;font-weight:700'>⏳ "+si.message+"</div>";
+        return;
+      }
+
+      if(!si.found){
+        box.style.background="#FFF1F2"; box.style.borderColor="#FECDD3";
+        box.innerHTML = "<div style='color:#BE123C;font-weight:800;margin-bottom:4px'>❌ ไม่พบคำสั่งซื้อนี้</div>"
+          +"<div style='color:#6B7280;font-size:11px'>"+(si.error||"กรุณาตรวจสอบเลขคำสั่งซื้อ")+"</div>";
+        return;
+      }
+
+      // พบคำสั่งซื้อ — ตรวจว่ามีคำว่า FREE ไหม
+      var allItems = si.items || [];
+      var hasFree = allItems.some(function(i){
+        var name = ((i.name||"")+" "+(i.model||"")).toUpperCase();
+        return name.indexOf("FREE") >= 0;
+      });
+
+      var itemsHTML = allItems.map(function(i){
+        var isFree = ((i.name||"")+" "+(i.model||"")).toUpperCase().indexOf("FREE") >= 0;
+        return "<div style='padding:5px 0;border-bottom:1px solid #E5E7EB'>"
+          +"<div style='font-size:12px;font-weight:700'>"+i.name+"</div>"
+          +"<div style='font-size:11px;color:#6B7280'>ตัวเลือก: <b style='color:"+(isFree?"#166534":"#9E9E9E")+"'>"+i.model+"</b> | x"+i.qty+"</div>"
+          +"</div>";
+      }).join("");
+
+      var summaryHTML = "<div style='font-size:12px;color:#374151;line-height:1.8;margin:6px 0'>"
+        +"👤 ผู้ซื้อ: <b>"+si.buyer+"</b><br>"
+        +"💰 ยอด: <b>฿"+si.totalAmount+"</b><br>"
+        +"🔢 จำนวน: <b>"+si.totalSim+" ซิม</b>"
+        +"</div>"
+        +"<div style='margin-top:4px'>"+itemsHTML+"</div>";
+
+      if(hasFree){
+        // ✅ ผ่าน — อนุญาตกรอกข้อมูลต่อ
+        _shopeeVerified = true;
+        lockNextSteps(false);
+
+        // Auto-select package
+        var autoSelected = false;
+        if(typeof pkgs !== 'undefined' && pkgs.length > 0){
+          var freeItem = allItems.find(function(i){
+            return ((i.name||"")+" "+(i.model||"")).toUpperCase().indexOf("FREE") >= 0;
+          });
+          if(freeItem){
+            var itemStr = ((freeItem.name||"")+" "+(freeItem.model||"")).toLowerCase();
+            var matched = pkgs.find(function(p){
+              var pn = (p.name||"").toLowerCase();
+              var pc = (p.code||"").toLowerCase();
+              return itemStr.includes(pn) || itemStr.includes(pc) || pn.split(" ").some(function(w){ return w.length>3 && itemStr.includes(w); });
+            });
+            if(matched){
+              var selEl = document.getElementById("pkgId");
+              if(selEl){ selEl.value = matched.id; chkForm(); autoSelected = true; }
+            }
+          }
+        }
+
+        box.style.background="#F0FDF4"; box.style.borderColor="#BBF7D0";
+        box.innerHTML = "<div style='color:#166534;font-weight:800;margin-bottom:4px'>✅ ซิมฟรีเดือนแรก — ผ่านการตรวจสอบแล้ว"
+          +(autoSelected?" 🎉 เลือกแพ็คเกจให้แล้ว":"")+"</div>"
+          +summaryHTML;
       } else {
-        var itemsHTML = (si.items||[]).map(function(i){
-          return "<div style='padding:4px 0;border-bottom:1px solid #E5E7EB'>"
-            +"<b>"+i.name+"</b> | "+i.model+" | x"+i.qty+"</div>";
-        }).join("");
-        box.innerHTML = "<div style='color:#166534;font-weight:800;margin-bottom:6px'>✅ พบคำสั่งซื้อ</div>"
-          +"<div style='color:#374151;line-height:1.8'>"
-          +"👤 ผู้ซื้อ: <b>"+si.buyer+"</b><br>"
-          +"🔢 จำนวน: <b>"+si.totalSim+" ซิม</b><br>"
-          +"💰 ยอด: <b>฿"+si.totalAmount+"</b>"
-          +"</div>"
-          +(itemsHTML?"<div style='margin-top:6px'>"+itemsHTML+"</div>":"");
-        box.style.background="#F0FDF4";
-        box.style.borderColor="#BBF7D0";
+        // ❌ ไม่มี FREE — บล็อกและแจ้งเตือน
+        _shopeeVerified = false;
+        lockNextSteps(true);
+        box.style.background="#FFF1F2"; box.style.borderColor="#FECDD3";
+        box.innerHTML = "<div style='color:#BE123C;font-weight:800;font-size:13px;margin-bottom:6px'>⛔ คำสั่งซื้อนี้ไม่ใช่ซิมฟรีเดือนแรก</div>"
+          +"<div style='font-size:12px;color:#374151;margin-bottom:8px'>กรุณาตรวจสอบว่าสั่งซื้อ <b>ซิมฟรีเดือนแรก</b> ถูกต้องหรือไม่</div>"
+          +summaryHTML
+          +"<div style='margin-top:10px;padding:10px;background:#fff;border-radius:8px;border:1px solid #FECDD3'>"
+            +"<div style='font-size:12px;font-weight:700;color:#BE123C;margin-bottom:6px'>📩 หากมีข้อสงสัย</div>"
+            +"<div style='font-size:12px;color:#374151;line-height:1.8'>"
+              +"1. ถ่ายรูปคำสั่งซื้อที่เห็นชัดเจน<br>"
+              +"2. ส่งให้ Admin ตรวจสอบผ่าน LINE<br>"
+              +"<b style='color:#06C755'>@ProgramThanarich</b>"
+            +"</div>"
+          +"</div>";
       }
     }catch(e){
-      box.innerHTML = "<div style='color:#9E9E9E;font-size:11px'>ไม่สามารถตรวจสอบได้ในขณะนี้</div>";
+      box.style.background="#F9FAFB"; box.style.borderColor="#E5E7EB";
+      box.innerHTML = "<div style='color:#9E9E9E;font-size:11px;text-align:center'>ไม่สามารถตรวจสอบได้ในขณะนี้ กรุณากรอกข้อมูลต่อได้เลยค่ะ</div>";
+      // ถ้า error ให้ผ่านไปได้
+      lockNextSteps(false);
     }
   }, 800);
+}
+
+function lockNextSteps(lock){
+  // ซ่อน/แสดง fields หลังจากช่องเลขคำสั่งซื้อ
+  var fieldsToLock = ["p1-fields-lock"];
+  var el = document.getElementById("p1-fields-lock");
+  if(el){
+    el.style.opacity = lock ? "0.3" : "1";
+    el.style.pointerEvents = lock ? "none" : "";
+  }
+  // ปุ่มถัดไป
+  var btnNext = document.querySelector("#p1 .btn-next, #p1 button[onclick*='goP']");
+  if(btnNext){
+    btnNext.disabled = lock;
+    btnNext.style.opacity = lock ? "0.4" : "1";
+  }
 }
 
 function onSimCodeInput(val){
@@ -754,6 +845,8 @@ async function submitForm(){
 document.addEventListener("DOMContentLoaded",function(){
   applyLogos();
   initLiff();
+  // ล็อค fields ตอนเริ่ม
+  lockNextSteps(true);
 });
 </script>
 </body>
