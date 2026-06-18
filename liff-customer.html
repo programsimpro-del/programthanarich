@@ -131,6 +131,10 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#fff;min-heigh
       <div class="dots" id="d2"></div>
       <!-- ซิมหมายเลข -->
       <div class="field">
+        <div id="ex-hint-wrap-3" style="display:none;margin-bottom:8px;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB">
+          <div style="font-size:11px;color:#9E9E9E;padding:4px 8px;background:#F9FAFB">📌 ตัวอย่างซิมหมายเลข</div>
+          <img id="ex-hint-3" style="width:100%;display:block" src="">
+        </div>
         <div class="flbl">ซิมหมายเลข <span style="color:#E53935;font-size:11px">*</span></div>
         <div class="fhint">เลขที่เขียนบนซองซิม เช่น <b>K12463</b> หรือ <b>L26374</b></div>
         <input class="inp" id="simCode" type="text" placeholder="K12345 หรือ L12345"
@@ -138,18 +142,25 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#fff;min-heigh
           autocomplete="off" spellcheck="false" maxlength="10"
           style="font-family:monospace;font-size:18px;font-weight:800;letter-spacing:2px">
         <div id="simcode-hint" style="display:none"></div>
-        <div id="ex-hint-wrap-3" style="display:none;margin-top:8px">
-          <div style="font-size:11px;color:#9E9E9E;margin-bottom:4px">📌 ตัวอย่างซิมหมายเลข</div>
+          <img id="ex-hint-3" style="width:100%;border-radius:8px;border:1px solid #E5E7EB" src="">
+        </div>
+        
           <img id="ex-hint-3" style="width:100%;border-radius:8px;border:1.5px dashed #A5D6A7">
         </div>
       </div>
 
       <div class="field">
+        <div id="ex-hint-wrap-4" style="display:none;margin-bottom:8px;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB">
+          <div style="font-size:11px;color:#9E9E9E;padding:4px 8px;background:#F9FAFB">📌 ตัวอย่างเลขคำสั่งซื้อ Shopee</div>
+          <img id="ex-hint-4" style="width:100%;display:block" src="">
+        </div>
         <div class="flbl">เลขคำสั่งซื้อ Shopee <span style="color:#E53935;font-size:11px">*</span></div>
         <div class="fhint">ดูได้ที่ คำสั่งซื้อของฉัน → กดเข้าคำสั่งซื้อ เช่น 25064XXXXXXXXX</div>
         <input class="inp" id="orderNo" type="text" placeholder="25064XXXXXXXXX" oninput="this.value=this.value.trim();chkForm();previewShopeeOrder(this.value)" autocomplete="off" spellcheck="false">
         <div id="shopee-preview" style="display:none;margin-top:8px;border-radius:10px;padding:10px 12px;border:1.5px solid #E5E7EB;background:#F9FAFB;font-size:12px"></div>
-        <div id="ex-hint-wrap-4" style="display:none;margin-top:8px"><div style="font-size:11px;color:#9E9E9E;margin-bottom:4px">📌 ตัวอย่างเลขพัสดุ/เลขคำสั่งซื้อ</div><img id="ex-hint-4" style="width:100%;border-radius:8px;border:1.5px dashed #A5D6A7"></div>
+          <img id="ex-hint-4" style="width:100%;border-radius:8px;border:1px solid #E5E7EB" src="">
+        </div>
+        <img id="ex-hint-4" style="width:100%;border-radius:8px;border:1.5px dashed #A5D6A7"></div>
       </div>
       <div id="p1-fields-lock" style="transition:opacity .3s">
 <div class="field">
@@ -162,49 +173,10 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#fff;min-heigh
         <div class="fhint">เลือกแพ็คเกจที่ตรงกับที่คุณสั่งซื้อมา</div>
         <div id="pkglist"></div>
       </div>
-      <button class="btn" id="btnform" disabled onclick="goP(3)">ถัดไป →</button>
+      <button class="btn" id="btnform" disabled onclick="goP(4)">ถัดไป →</button>
     </div>
 
     <!-- P3: PHOTOS -->
-    <div class="pg" id="p3">
-      <div class="dots" id="d3"></div>
-      <div class="notice">
-        <span style="font-size:17px;flex-shrink:0">📌</span>
-        <div style="font-size:12px;color:#92400E;font-weight:600;line-height:1.7">กรุณาแนบรูปภาพให้ <b>ครบทั้ง 3 รูป</b> ก่อนกดส่ง</div>
-      </div>
-      <!-- Photo 0 -->
-      <div class="pbox">
-        <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:13px;font-weight:800;color:#14532D">📋 รูปคำสั่งซื้อ <span style="color:#E53935;font-size:11px">*</span></span><span id="b0" style="display:none;font-size:11px;color:#06C755;font-weight:800">✓ อัพโหลดแล้ว</span></div>
-        <div style="font-size:12px;color:#9E9E9E;margin-bottom:7px">สกรีนช็อตหน้าคำสั่งซื้อจากแอปช้อปปิ้ง</div>
-        <div id="pv0" style="display:none;position:relative"><img id="pi0" class="previmg" src="" alt=""><div style="background:rgba(6,199,85,.88);padding:6px 11px;display:flex;align-items:center;gap:5px"><span>✅</span><span style="font-size:11px;color:#fff;font-weight:700">อัพโหลดสำเร็จ</span></div></div>
-        <div id="pp0"><div class="pph"><span style="font-size:28px">📷</span><span style="font-size:13px;color:#374151;font-weight:700">เลือกรูปจากแกลเลอรี่</span><div id="ex-hint-wrap-0" style="display:none;width:100%;margin:4px 0"><img id="ex-hint-0" style="width:100%;border-radius:8px;opacity:.6;border:1.5px dashed #A5D6A7"></div><label for="fi0" class="uplbl">📁 เลือกรูป</label><input id="fi0" type="file" accept="image/*" style="display:none" onchange="handlePic(0,this)"></div></div>
-        <div id="pc0" style="display:none"><label for="fc0" class="chglbl">🔄 เปลี่ยนรูป</label><input id="fc0" type="file" accept="image/*" style="display:none" onchange="handlePic(0,this)"></div>
-      </div>
-      <!-- Photo 1 -->
-      <div class="pbox">
-        <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:13px;font-weight:800;color:#14532D">📦 รูปถ่ายซองซิมที่ได้รับ <span style="color:#E53935;font-size:11px">*</span></span><span id="b1" style="display:none;font-size:11px;color:#06C755;font-weight:800">✓ อัพโหลดแล้ว</span></div>
-        <div style="font-size:12px;color:#9E9E9E;margin-bottom:7px">ถ่ายรูปซองซิม ให้เห็นเบอร์และบาร์โค้ด</div>
-        <div id="pv1" style="display:none;position:relative"><img id="pi1" class="previmg" src="" alt=""><div style="background:rgba(6,199,85,.88);padding:6px 11px;display:flex;align-items:center;gap:5px"><span>✅</span><span style="font-size:11px;color:#fff;font-weight:700">อัพโหลดสำเร็จ</span></div></div>
-        <div id="pp1"><div class="pph"><span style="font-size:28px">📷</span><span style="font-size:13px;color:#374151;font-weight:700">เลือกรูปจากแกลเลอรี่</span><div id="ex-hint-wrap-1" style="display:none;width:100%;margin:4px 0"><img id="ex-hint-1" style="width:100%;border-radius:8px;opacity:.6;border:1.5px dashed #A5D6A7"></div><label for="fi1" class="uplbl">📁 เลือกรูป</label><input id="fi1" type="file" accept="image/*" style="display:none" onchange="handlePic(1,this)"></div></div>
-        <div id="pc1" style="display:none"><label for="fc1" class="chglbl">🔄 เปลี่ยนรูป</label><input id="fc1" type="file" accept="image/*" style="display:none" onchange="handlePic(1,this)"></div>
-      </div>
-      <!-- Photo 2 -->
-      <div class="pbox">
-        <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:13px;font-weight:800;color:#14532D">✅ รูปยืนยันการลงทะเบียน <span style="color:#E53935;font-size:11px">*</span></span><span id="b2" style="display:none;font-size:11px;color:#06C755;font-weight:800">✓ อัพโหลดแล้ว</span></div>
-        <div style="font-size:12px;color:#9E9E9E;margin-bottom:7px">สกรีนช็อตหน้ายืนยันลงทะเบียนซิมสำเร็จ</div>
-        <div id="pv2" style="display:none;position:relative"><img id="pi2" class="previmg" src="" alt=""><div style="background:rgba(6,199,85,.88);padding:6px 11px;display:flex;align-items:center;gap:5px"><span>✅</span><span style="font-size:11px;color:#fff;font-weight:700">อัพโหลดสำเร็จ</span></div></div>
-        <div id="pp2"><div class="pph"><span style="font-size:28px">📷</span><span style="font-size:13px;color:#374151;font-weight:700">เลือกรูปจากแกลเลอรี่</span><div id="ex-hint-wrap-2" style="display:none;width:100%;margin:4px 0"><img id="ex-hint-2" style="width:100%;border-radius:8px;opacity:.6;border:1.5px dashed #A5D6A7"></div><label for="fi2" class="uplbl">📁 เลือกรูป</label><input id="fi2" type="file" accept="image/*" style="display:none" onchange="handlePic(2,this)"></div></div>
-        <div id="pc2" style="display:none"><label for="fc2" class="chglbl">🔄 เปลี่ยนรูป</label><input id="fc2" type="file" accept="image/*" style="display:none" onchange="handlePic(2,this)"></div>
-      </div>
-      <div class="chips">
-        <div class="chip" id="chip0"><div style="font-size:13px">📋</div><div style="font-size:9px;color:#BDBDBD;font-weight:700;margin-top:2px">ยังไม่แนบ</div></div>
-        <div class="chip" id="chip1"><div style="font-size:13px">📦</div><div style="font-size:9px;color:#BDBDBD;font-weight:700;margin-top:2px">ยังไม่แนบ</div></div>
-        <div class="chip" id="chip2"><div style="font-size:13px">✅</div><div style="font-size:9px;color:#BDBDBD;font-weight:700;margin-top:2px">ยังไม่แนบ</div></div>
-      </div>
-      <button class="btn" id="btnphoto" disabled onclick="goP(4)">ถัดไป →</button>
-    </div>
-
-    <!-- P4: CONFIRM -->
     <div class="pg" id="p4">
       <div class="dots" id="d4"></div>
       <div class="scard">
@@ -337,21 +309,37 @@ function markActivated(orderNo,simPhone,refNo){
 window.markActivated=markActivated;
 
 async function checkDup(orderNo){
-  // ตรวจจาก Firebase REST API โดยตรง
+  var FB_URL = "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app";
   try{
-    var FB_URL = "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app";
     var r = await fetch(FB_URL + "/quota/" + orderNo + ".json");
     if(r.ok){
       var entry = await r.json();
-      if(entry && entry.usedCount >= (entry.maxQuota||1)){
-        var acts = entry.activations || [];
-        return {usedCount:entry.usedCount, maxQuota:entry.maxQuota, lastAt: acts.length>0?acts[acts.length-1].at:null};
+      if(entry && entry.usedCount !== undefined && entry.maxQuota !== undefined){
+        var used = entry.usedCount || 0;
+        var max  = entry.maxQuota || 1;
+        if(used >= max){
+          // ใช้หมดสิทธิ์แล้ว
+          var acts = entry.activations || [];
+          return {
+            usedCount: used,
+            maxQuota:  max,
+            lastAt:    acts.length > 0 ? acts[acts.length-1].at : null,
+            blocked:   true,
+            msg:       "เลขคำสั่งซื้อนี้รับเน็ตฟรีเดือนแรกครบแล้ว (" + used + "/" + max + " ซิม) ไม่สามารถรับเน็ตฟรีเดือนแรกได้อีกค่ะ"
+          };
+        }
+        if(used > 0 && used < max){
+          // ยังมีสิทธิ์เหลือ — อนุญาต
+          return null;
+        }
       }
       return null;
     }
-  }catch(e){ console.warn("checkDup error:", e.message); }
+  }catch(e){ console.warn("checkDup:", e.message); }
   return null;
 }
+
+
 function recordReq(orderNo,simPhone,refNo){
   var db=getQDB();
   if(!db[orderNo])db[orderNo]={usedCount:0,maxQuota:1,activations:[]};
@@ -450,19 +438,22 @@ async function loadSettings(){
       renderPlatformBtns(plts);
     }
 
-    // 3. โหลดรูปตัวอย่าง (0-4)
-    for(var j=0; j<5; j++){
-      try{
-        var snapI = await db.ref("/settings/exImages/img"+j).once("value");
-        var imgSrc = snapI.val();
-        if(imgSrc && imgSrc.length > 10){
-          var img  = document.getElementById("ex-hint-"+j);
-          var wrap = document.getElementById("ex-hint-wrap-"+j);
-          if(img)  img.src = imgSrc;
-          if(wrap) wrap.style.display = "block";
-        }
-      }catch(_){}
-    }
+    // โหลดรูปตัวอย่าง img3=ซิมหมายเลข, img4=เลขคำสั่งซื้อ
+    try{
+      var snapEx = await db.ref("/settings/exImages").once("value");
+      var exData = snapEx.val();
+      if(exData){
+        [3,4].forEach(function(j){
+          var imgSrc = exData["img"+j];
+          if(imgSrc && imgSrc.length > 10){
+            var img  = document.getElementById("ex-hint-"+j);
+            var wrap = document.getElementById("ex-hint-wrap-"+j);
+            if(img)  img.src = imgSrc;
+            if(wrap) wrap.style.display = "block";
+          }
+        });
+      }
+    }catch(_){}
   }catch(e){ console.warn("loadSettings error:", e.message); }
 }
 
@@ -803,20 +794,16 @@ async function submitForm(){
   var dup=await checkDup(orderNo);
   if(dup){
     var qd=$("quota-detail");
-    if(qd)qd.innerHTML=
-      '<div style="text-align:center;padding:8px 0">'
-        +'<div style="font-size:36px;margin-bottom:6px">⛔</div>'
-        +'<div style="font-weight:900;font-size:15px;color:#BE123C;margin-bottom:8px">คำสั่งซื้อนี้ได้รับสิทธิ์<br>เน็ตฟรีเดือนแรกครบแล้ว</div>'
-        +'<div style="background:#FFF1F2;border-radius:10px;padding:10px 12px;text-align:left;font-size:12px;line-height:1.9">'
-          +'📦 เลขออเดอร์: <b style="font-family:monospace;color:#E53935">'+orderNo+'</b><br>'
-          +'🎫 สิทธิ์ทั้งหมด: <b>'+(dup.maxQuota||1)+' ซิม</b><br>'
-          +'✅ ใช้ไปแล้ว: <b>'+dup.usedCount+' ซิม</b><br>'
-          +'❌ สิทธิ์คงเหลือ: <b style="color:#BE123C">0 ซิม</b>'
-        +'</div>'
-        +'<div style="font-size:11px;color:#BDBDBD;margin-top:8px">หากมีข้อสงสัยกรุณาติดต่อ LINE @programthanarich</div>'
+    if(qd) qd.innerHTML =
+      '<div style="text-align:center;padding:12px 0">'
+      +'<div style="font-size:40px;margin-bottom:8px">⛔</div>'
+      +'<div style="font-weight:900;font-size:16px;color:#BE123C;margin-bottom:8px">ไม่สามารถรับเน็ตฟรีได้</div>'
+      +'<div style="background:#FFF1F2;border-radius:12px;padding:12px;margin-bottom:8px;text-align:left">'
+        +'<div style="font-size:13px;color:#BE123C;font-weight:700;margin-bottom:6px">📦 เลขคำสั่งซื้อ: '+orderNo+'</div>'
+        +'<div style="font-size:13px;color:#374151">'+(dup.msg||"เลขคำสั่งซื้อนี้รับเน็ตฟรีเดือนแรกไปแล้วค่ะ")+'</div>'
+      +'</div>'
+      +'<div style="font-size:12px;color:#6B7280">หากมีข้อสงสัยติดต่อ <b style="color:#06C755">@ProgramThanarich</b></div>'
       +'</div>';
-    var dd=$("dup-date");
-    if(dd&&dup.lastAt){var d=new Date(dup.lastAt);dd.textContent="ใช้สิทธิ์ล่าสุด: "+d.toLocaleDateString("th-TH")+" "+d.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});}
     goP(7); return;
   }
   await delay(600); log("📨 แจ้งเตือนทีมงาน...");
@@ -828,7 +815,7 @@ async function submitForm(){
     simCode:simCodeVal,
     branchCode:simCodeVal.length>0?simCodeVal[0]:"",
     branchName:simCodeVal[0]==="K"?"กาฬสินธุ์":simCodeVal[0]==="L"?"เลย":"ไม่ระบุ",
-    pkgId:pkgId,pkgName:pkg?pkg.name:"",pkgCode:pkg?pkg.code:"",imgOrder:photos[0],imgSim:photos[1],imgReg:photos[2],status:"pending",shopeeVerified:"pending",submittedAt:now,lineUserId:lp?lp.userId:null,lineDisplayName:lp?lp.displayName:null,linePictureUrl:lp?lp.pictureUrl:null,lineMessages:[{id:1,from:"customer",text:"สวัสดีค่ะ ขอรับเน็ตฟรีเดือนแรกค่ะ\nเลขพัสดุ "+orderNo+"\nเบอร์ซิม "+simPhone+"\nแพ็คเกจ "+(pkg?pkg.name:""),time:now}]};
+    pkgId:pkgId,pkgName:pkg?pkg.name:"",pkgCode:pkg?pkg.code:"",imgOrder:null,imgSim:null,imgReg:null,status:"pending",shopeeVerified:"pending",submittedAt:now,lineUserId:lp?lp.userId:null,lineDisplayName:lp?lp.displayName:null,linePictureUrl:lp?lp.pictureUrl:null,lineMessages:[{id:1,from:"customer",text:"สวัสดีค่ะ ขอรับเน็ตฟรีเดือนแรกค่ะ\nเลขพัสดุ "+orderNo+"\nเบอร์ซิม "+simPhone+"\nแพ็คเกจ "+(pkg?pkg.name:""),time:now}]};
   try{var list=JSON.parse(localStorage.getItem("pt_requests")||"[]");list.unshift(req);localStorage.setItem("pt_requests",JSON.stringify(list));}catch(_){}
   recordReq(orderNo,simPhone,refNo);
 
