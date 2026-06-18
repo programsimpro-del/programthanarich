@@ -23,8 +23,6 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#fff;min-heigh
 .pg{display:none;min-height:calc(100vh - 52px);padding:20px 20px 40px;flex-direction:column}
 .pg.on{display:flex;animation:fu .2s ease}
 /* dots */
-.dots{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:24px}
-.dot{height:8px;border-radius:99px;transition:all .35s}
 /* fields */
 .field{margin-bottom:18px}
 .flbl{font-size:13px;font-weight:800;color:#14532D;margin-bottom:4px}
@@ -166,11 +164,7 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#fff;min-heigh
         <div class="fhint">เบอร์ที่ปรากฏบนซองซิม หลังลงทะเบียนเสร็จ</div>
         <input class="inp" id="simPhone" type="tel" placeholder="09XXXXXXXX" oninput="chkForm()" autocomplete="off" inputmode="numeric">
       </div>
-      <div class="field">
-        <div class="flbl">แพ็คเกจที่สั่งซื้อ <span style="color:#E53935;font-size:11px">*</span></div>
-        <div class="fhint">เลือกแพ็คเกจที่ตรงกับที่คุณสั่งซื้อมา</div>
-        <div id="pkglist"></div>
-      </div>
+      
       <button class="btn" id="btnform" disabled onclick="goP(4)">ถัดไป →</button>
     </div>
 
@@ -183,7 +177,7 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#fff;min-heigh
         <div class="srow"><span style="font-size:12px;color:#16A34A;font-weight:600">เบอร์ซิม</span><span id="s-ph" style="font-size:12px;font-weight:800;color:#14532D;font-family:monospace"></span></div>
         <div class="srow"><span style="font-size:12px;color:#16A34A;font-weight:600">ซิมหมายเลข</span><span id="s-sc" style="font-size:12px;font-weight:800;color:#14532D;font-family:monospace"></span></div>
 
-        <div class="srow"><span style="font-size:12px;color:#16A34A;font-weight:600">แพ็คเกจ</span><span id="s-pkg" style="font-size:12px;font-weight:800;color:#14532D;text-align:right;max-width:58%"></span></div>
+        
       </div>
             <button class="btn" onclick="submitForm()">📤 ส่งข้อมูล</button>
     </div>
@@ -702,18 +696,10 @@ function chkPhotos(){
 function renderConfirm(){
   var p=PLTS[plt]||"";
   var simCodeVal=($("simCode")||{}).value?.trim().toUpperCase()||"";
-  $("s-plt").textContent=p;
-  $("s-ono").textContent=orderNo;
-  $("s-ph").textContent=simPhone;
+  if($("s-plt"))$("s-plt").textContent=p;
+  if($("s-ono"))$("s-ono").textContent=orderNo;
+  if($("s-ph"))$("s-ph").textContent=simPhone;
   if($("s-sc"))$("s-sc").textContent=simCodeVal;
-
-  $("s-pkg").textContent=pkgs.find(function(p){return p.id===pkgId;})||{name:"-"};
-  var pkg=pkgs.find(function(p){return p.id===pkgId;});
-  if($("s-pkg"))$("s-pkg").textContent=pkg?pkg.name:"-";
-  var lbs=["📋 คำสั่งซื้อ","📦 ซองซิม","✅ ลงทะเบียน"];
-  $("thumbrow").innerHTML=photos.map(function(s,i){
-    return '<div class="thumb"><img src="'+s+'" style="width:100%;height:60px;object-fit:cover;display:block"><div class="tlbl">'+lbs[i]+'</div></div>';
-  }).join("");
 }
 
 /* ═══ FIREBASE + LINE NOTIFY ═══ */
