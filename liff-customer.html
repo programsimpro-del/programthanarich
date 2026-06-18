@@ -145,9 +145,10 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#fff;min-heigh
       </div>
 
       <div class="field">
-        <div class="flbl">เลขพัสดุ หรือ เลขคำสั่งซื้อ <span style="color:#E53935;font-size:11px">*</span></div>
+        <div class="flbl">เลขคำสั่งซื้อ Shopee <span style="color:#E53935;font-size:11px">*</span></div>
         <div class="fhint">ดูได้จากหน้าคำสั่งซื้อในแอป เช่น TH265354252413H</div>
-        <input class="inp" id="orderNo" type="text" placeholder="TH..." oninput="this.value=this.value.toUpperCase();chkForm()" autocomplete="off" spellcheck="false">
+        <input class="inp" id="orderNo" type="text" placeholder="25064XXXXXXXXX" oninput="this.value=this.value.trim();chkForm();previewShopeeOrder(this.value)" autocomplete="off" spellcheck="false">
+        <div id="shopee-preview" style="display:none;margin-top:8px;border-radius:10px;padding:10px 12px;border:1.5px solid #E5E7EB;background:#F9FAFB;font-size:12px"></div>
         <div id="ex-hint-wrap-4" style="display:none;margin-top:8px"><div style="font-size:11px;color:#9E9E9E;margin-bottom:4px">📌 ตัวอย่างเลขพัสดุ/เลขคำสั่งซื้อ</div><img id="ex-hint-4" style="width:100%;border-radius:8px;border:1.5px dashed #A5D6A7"></div>
       </div>
       <div class="field">
@@ -525,6 +526,49 @@ function goP(n){
 }
 function goBack(){ if(curP>0&&curP<5)goP(curP-1); }
 function selPlt(id){ plt=id; goP(2); }
+
+var _previewTimer = null;
+function previewShopeeOrder(val){
+  var box = document.getElementById("shopee-preview");
+  if(!box) return;
+  val = (val||"").trim();
+  // เลขคำสั่งซื้อ Shopee มักขึ้นต้นด้วยตัวเลข และยาว 12-18 ตัว
+  if(val.length < 10){ box.style.display="none"; return; }
+  clearTimeout(_previewTimer);
+  box.style.display="block";
+  box.innerHTML = "<div style='color:#9E9E9E'>⏳ กำลังตรวจสอบคำสั่งซื้อ...</div>";
+  _previewTimer = setTimeout(async function(){
+    try{
+      var r = await fetch("https://programthanarich.programsimpro.workers.dev/shopee-check",{
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({orderNo:val})
+      });
+      var si = await r.json();
+      if(!si.ready){
+        box.innerHTML = "<div style='color:#E65100'>⏳ "+si.message+"</div>";
+      } else if(!si.found){
+        box.innerHTML = "<div style='color:#BE123C;font-weight:700'>❌ ไม่พบคำสั่งซื้อนี้</div>"
+          +"<div style='color:#9E9E9E;font-size:11px;margin-top:2px'>"+(si.error||"กรุณาตรวจสอบเลขคำสั่งซื้อ")+"</div>";
+      } else {
+        var itemsHTML = (si.items||[]).map(function(i){
+          return "<div style='padding:4px 0;border-bottom:1px solid #E5E7EB'>"
+            +"<b>"+i.name+"</b> | "+i.model+" | x"+i.qty+"</div>";
+        }).join("");
+        box.innerHTML = "<div style='color:#166534;font-weight:800;margin-bottom:6px'>✅ พบคำสั่งซื้อ</div>"
+          +"<div style='color:#374151;line-height:1.8'>"
+          +"👤 ผู้ซื้อ: <b>"+si.buyer+"</b><br>"
+          +"🔢 จำนวน: <b>"+si.totalSim+" ซิม</b><br>"
+          +"💰 ยอด: <b>฿"+si.totalAmount+"</b>"
+          +"</div>"
+          +(itemsHTML?"<div style='margin-top:6px'>"+itemsHTML+"</div>":"");
+        box.style.background="#F0FDF4";
+        box.style.borderColor="#BBF7D0";
+      }
+    }catch(e){
+      box.innerHTML = "<div style='color:#9E9E9E;font-size:11px'>ไม่สามารถตรวจสอบได้ในขณะนี้</div>";
+    }
+  }, 800);
+}
 
 function onSimCodeInput(val){
   val = val.toUpperCase();
