@@ -690,12 +690,15 @@ function chkPhotos(){
 
 /* ═══ CONFIRM ═══ */
 function renderConfirm(){
-  var p=PLTS[plt]||"";
-  var simCodeVal=($("simCode")||{}).value?.trim().toUpperCase()||"";
-  if($("s-plt"))$("s-plt").textContent=p;
-  if($("s-ono"))$("s-ono").textContent=orderNo;
-  if($("s-ph"))$("s-ph").textContent=simPhone;
-  if($("s-sc"))$("s-sc").textContent=simCodeVal;
+  // อ่านค่าตรงจาก DOM ทุกครั้ง
+  var p = PLTS[plt] || plt || "-";
+  var _orderNo  = $("orderNo")  ? $("orderNo").value.trim()  : orderNo;
+  var _simPhone = $("simPhone") ? $("simPhone").value.trim() : simPhone;
+  var _simCode  = $("simCode")  ? $("simCode").value.trim().toUpperCase()  : "";
+  if($("s-plt")) $("s-plt").textContent = p;
+  if($("s-ono")) $("s-ono").textContent = _orderNo;
+  if($("s-ph"))  $("s-ph").textContent  = _simPhone;
+  if($("s-sc"))  $("s-sc").textContent  = _simCode;
 }
 
 /* ═══ FIREBASE + LINE NOTIFY ═══ */
