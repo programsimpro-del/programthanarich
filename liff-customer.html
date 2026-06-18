@@ -159,23 +159,33 @@ input:focus{border-color:#06C755!important;box-shadow:none!important}
         <input class="inp" id="simPhone" type="tel" placeholder="09XXXXXXXX" oninput="chkForm()" autocomplete="off" inputmode="numeric">
       </div>
     </div>
-      <button class="btn" id="btnform" disabled onclick="goP(4)">ถัดไป →</button>
-    </div><!-- /p2 -->
 
-    <!-- P4: CONFIRM -->
-    <div class="pg" id="p4">
-            <div class="scard">
-        <div style="font-weight:800;font-size:13px;color:#14532D;margin-bottom:11px">📋 ตรวจสอบข้อมูลของคุณ</div>
-        <div class="srow"><span style="font-size:12px;color:#16A34A;font-weight:600">ช่องทาง</span><span id="s-plt" style="font-size:12px;font-weight:800;color:#14532D"></span></div>
-        <div class="srow"><span style="font-size:12px;color:#16A34A;font-weight:600">เลขคำสั่งซื้อ</span><span id="s-ono" style="font-size:12px;font-weight:800;color:#14532D;font-family:monospace;word-break:break-all;text-align:right;max-width:58%"></span></div>
-        <div class="srow"><span style="font-size:12px;color:#16A34A;font-weight:600">เบอร์ซิม</span><span id="s-ph" style="font-size:12px;font-weight:800;color:#14532D;font-family:monospace"></span></div>
-        <div class="srow"><span style="font-size:12px;color:#16A34A;font-weight:600">ซิมหมายเลข</span><span id="s-sc" style="font-size:12px;font-weight:800;color:#14532D;font-family:monospace"></span></div>
-
-        
+      <!-- สรุปข้อมูล -->
+      <div id="summary-box" style="display:none;background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:14px;padding:14px 16px;margin-bottom:14px">
+        <div style="font-weight:800;font-size:13px;color:#14532D;margin-bottom:10px">📋 ตรวจสอบข้อมูลของคุณ</div>
+        <div style="font-size:13px;color:#374151;line-height:2">
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #DCFCE7">
+            <span style="color:#16A34A;font-weight:600">ช่องทาง</span>
+            <span id="s-plt" style="font-weight:800;color:#14532D"></span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #DCFCE7">
+            <span style="color:#16A34A;font-weight:600">เลขคำสั่งซื้อ</span>
+            <span id="s-ono" style="font-weight:800;color:#14532D;font-family:monospace;font-size:12px;word-break:break-all;text-align:right;max-width:60%"></span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #DCFCE7">
+            <span style="color:#16A34A;font-weight:600">เบอร์ซิม</span>
+            <span id="s-ph" style="font-weight:800;color:#14532D;font-family:monospace"></span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0">
+            <span style="color:#16A34A;font-weight:600">ซิมหมายเลข</span>
+            <span id="s-sc" style="font-weight:800;color:#14532D;font-family:monospace"></span>
+          </div>
+        </div>
       </div>
-            <button class="btn" onclick="submitForm()">📤 ส่งข้อมูล</button>
-    </div>
 
+      <button class="btn" id="btnform" disabled onclick="confirmAndSubmit()">ยืนยันข้อมูล →</button>
+
+    <!-- P3: PHOTOS -->
     <!-- P5: LOADING -->
     <div class="pg" id="p5" style="align-items:center;justify-content:center">
       <div style="width:52px;height:52px;border:5px solid #DCFCE7;border-top:5px solid #06C755;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:18px"></div>
@@ -501,12 +511,7 @@ function goP(n){
   if(n===4){renderDots("d4",4,3);renderConfirm();}
   window.scrollTo(0,0);
 }
-function goBack(){
-  if(curP<=0||curP>=5) return;
-  // p3 is skipped in this flow (no photo page), so p4 goes back to p2
-  var prev = curP===4 ? 2 : curP-1;
-  goP(prev);
-}
+function goBack(){ if(curP>0&&curP<5)goP(curP-1); }
 function selPlt(id){ plt=id; goP(2); }
 
 var _previewTimer = null;
@@ -670,6 +675,25 @@ function chkForm(){
         && shopeeOk;
   var b = $("btnform");
   if(b){ b.disabled = !ok; b.style.opacity = ok ? "1" : "0.4"; }
+  // แสดงสรุปเมื่อครบ
+  var sb = document.getElementById("summary-box");
+  if(sb){
+    if(ok){
+      sb.style.display = "block";
+      // อัพเดทข้อมูลใน summary
+      var _plt = (typeof plt !== 'undefined' && plt) ? plt : "";
+      var _pName = {shopee:"🛍️ Shopee",lazada:"🛒 Lazada",tiktok:"🎵 TikTok Shop"}[_plt] || _plt || "-";
+      var _orderNo = document.getElementById("orderNo") ? document.getElementById("orderNo").value.trim() : "";
+      var _simPhone = document.getElementById("simPhone") ? document.getElementById("simPhone").value.trim() : "";
+      var _simCode = document.getElementById("simCode") ? document.getElementById("simCode").value.trim().toUpperCase() : "";
+      var sPlt = document.getElementById("s-plt"); if(sPlt) sPlt.textContent = _pName;
+      var sOno = document.getElementById("s-ono"); if(sOno) sOno.textContent = _orderNo;
+      var sPh  = document.getElementById("s-ph");  if(sPh)  sPh.textContent  = _simPhone;
+      var sSc  = document.getElementById("s-sc");  if(sSc)  sSc.textContent  = _simCode;
+    } else {
+      sb.style.display = "none";
+    }
+  }
 }
 
 /* ═══ PHOTOS ═══ */
@@ -775,6 +799,13 @@ async function notifyAdmin(refNo, req, pkg){
 }
 
 /* ═══ SUBMIT ═══ */
+async function confirmAndSubmit(){
+  // อัพเดท global vars ก่อนส่ง
+  orderNo  = document.getElementById("orderNo")  ? document.getElementById("orderNo").value.trim()  : orderNo;
+  simPhone = document.getElementById("simPhone") ? document.getElementById("simPhone").value.trim() : simPhone;
+  submitForm();
+}
+
 async function submitForm(){
   goP(5);
   var logEl=$("loglist");
