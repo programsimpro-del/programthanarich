@@ -2094,6 +2094,44 @@ function showSettings(){
   document.querySelectorAll(".tab").forEach(function(t,i){ t.classList.toggle("active",i===1); });
 }
 
+function loadExImages(){
+  // โหลดรูปตัวอย่างจาก Firebase REST
+  fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/exImages.json")
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      for(var i=0;i<5;i++){
+        var el = document.getElementById("ex-img-"+i);
+        if(el && data && data["img"+i]){
+          el.src = data["img"+i];
+          el.style.display = "block";
+        }
+      }
+    }).catch(function(){});
+}
+
+function setExampleImg(idx, input){
+  if(!input.files || !input.files[0]) return;
+  var file = input.files[0];
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var b64 = e.target.result;
+    // แสดงรูปทันที
+    var el = document.getElementById("ex-img-"+idx);
+    if(el){ el.src=b64; el.style.display="block"; }
+    // บันทึกลง Firebase REST
+    var data = {}; data["img"+idx] = b64;
+    fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/exImages.json",{
+      method:"PATCH",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(data)
+    }).then(function(r){
+      if(r.ok) showToast("✅ บันทึกรูปตัวอย่างแล้วค่ะ","#166534","#DCFCE7");
+      else showToast("❌ บันทึกไม่สำเร็จ","#BE123C","#FFF1F2");
+    }).catch(function(e){ showToast("❌ "+e.message,"#BE123C","#FFF1F2"); });
+  };
+  reader.readAsDataURL(file);
+}
+
 function showPkgMgr(){
   showScreen("sc-pkgs");
   document.getElementById("tabbar").style.display="none";
