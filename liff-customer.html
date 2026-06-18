@@ -158,9 +158,8 @@ input:focus{border-color:#06C755!important;box-shadow:none!important}
         <div class="fhint">เบอร์ที่ปรากฏบนซองซิม หลังลงทะเบียนเสร็จ</div>
         <input class="inp" id="simPhone" type="tel" placeholder="09XXXXXXXX" oninput="chkForm()" autocomplete="off" inputmode="numeric">
       </div>
-      
-      <button class="btn" id="btnform" disabled onclick="goP(4)">ถัดไป →</button>
     </div>
+      <button class="btn" id="btnform" disabled onclick="goP(4)">ถัดไป →</button>
 
     <!-- P3: PHOTOS -->
     <div class="pg" id="p4">
@@ -174,7 +173,6 @@ input:focus{border-color:#06C755!important;box-shadow:none!important}
         
       </div>
             <button class="btn" onclick="submitForm()">📤 ส่งข้อมูล</button>
-    </div>
     </div>
 
     <!-- P5: LOADING -->
@@ -692,14 +690,18 @@ function chkPhotos(){
 /* ═══ CONFIRM ═══ */
 function renderConfirm(){
   // อ่านค่าตรงจาก DOM ทุกครั้ง
-  var p = PLTS[plt] || plt || "-";
+  // plt อาจเป็น "shopee" หรือ key อื่น
+  var p = PLTS[plt] || (plt ? plt : "🛍️ Shopee");
   var _orderNo  = $("orderNo")  ? $("orderNo").value.trim()  : orderNo;
   var _simPhone = $("simPhone") ? $("simPhone").value.trim() : simPhone;
   var _simCode  = $("simCode")  ? $("simCode").value.trim().toUpperCase()  : "";
   if($("s-plt")) $("s-plt").textContent = p;
-  if($("s-ono")) $("s-ono").textContent = _orderNo;
-  if($("s-ph"))  $("s-ph").textContent  = _simPhone;
-  if($("s-sc"))  $("s-sc").textContent  = _simCode;
+  if($("s-ono")) $("s-ono").textContent = _orderNo  || "-";
+  if($("s-ph"))  $("s-ph").textContent  = _simPhone || "-";
+  if($("s-sc"))  $("s-sc").textContent  = _simCode  || "-";
+  // sync globals
+  if(_orderNo)  orderNo  = _orderNo;
+  if(_simPhone) simPhone = _simPhone;
 }
 
 /* ═══ FIREBASE + LINE NOTIFY ═══ */
