@@ -628,12 +628,8 @@ function lockNextSteps(lock){
     el.style.opacity = lock ? "0.3" : "1";
     el.style.pointerEvents = lock ? "none" : "";
   }
-  // ปุ่มถัดไป
-  var btnNext = document.getElementById("btnform");
-  if(btnNext){
-    btnNext.disabled = lock;
-    btnNext.style.opacity = lock ? "0.4" : "1";
-  }
+  // เรียก chkForm เพื่อ update ปุ่ม
+  chkForm();
 }
 
 function onSimCodeInput(val){
@@ -658,11 +654,17 @@ function onSimCodeInput(val){
 }
 
 function chkForm(){
-  orderNo  = ($("orderNo") ||{}).value?.trim()||"";
-  simPhone = ($("simPhone")||{}).value?.trim()||"";
-  var simCodeVal = ($("simCode")||{}).value?.trim()||"";
-  var ok = orderNo.length>0 && simPhone.length>0 && branchCode!=="" && simCodeVal.length>=2;
-  var b=$("btnform"); if(b)b.disabled=!ok;
+  orderNo  = ($("orderNo")  ||{}).value ? $("orderNo").value.trim()  : "";
+  simPhone = ($("simPhone") ||{}).value ? $("simPhone").value.trim() : "";
+  var simCodeVal = $("simCode") ? $("simCode").value.trim() : "";
+  var shopeeOk = _shopeeVerified || simPhone.length > 0; // ถ้า API error ก็ผ่าน
+  var ok = orderNo.length > 0
+        && simPhone.length > 0
+        && branchCode !== ""
+        && simCodeVal.length >= 2
+        && shopeeOk;
+  var b = $("btnform");
+  if(b){ b.disabled = !ok; b.style.opacity = ok ? "1" : "0.4"; }
 }
 
 /* ═══ PHOTOS ═══ */
@@ -808,8 +810,8 @@ async function submitForm(){
 document.addEventListener("DOMContentLoaded",function(){
   applyLogos();
   initLiff();
-  // ล็อค fields ตอนเริ่ม
-  lockNextSteps(true);
+  // chkForm จัดการ disable ปุ่มเอง
+  chkForm();
 });
 </script>
 </body>
