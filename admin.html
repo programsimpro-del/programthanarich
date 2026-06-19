@@ -698,6 +698,7 @@ function loadAll(){
   if(ORDERS_API) syncFromAPI();
   startRealtimeSync();
   syncPkgsFromFirebase();
+  loadNetGuides();
 }
 
 function syncPkgsFromFirebase(){
@@ -2226,51 +2227,43 @@ function showNetGuide(){
 var netGuides = [];
 
 function loadNetGuides(){
-  // โหลดจาก localStorage ก่อนเสมอ
+  // โหลดจาก localStorage ก่อน (แสดงทันที)
   try{
-    var local = localStorage.getItem("pt_netguides");
-    if(local){
-      var parsed = JSON.parse(local);
-      if(Array.isArray(parsed) && parsed.length > 0){
-        netGuides = parsed;
+    var loc = localStorage.getItem("pt_netguides");
+    if(loc){ netGuides = JSON.parse(loc); renderNetGuideList(); }
+  }catch(_){}
+  // sync จาก Firebase เหมือน syncPkgsFromFirebase
+  if(!fbDB && !initFirebase()) return;
+  fbDB.ref("/settings/netGuides").once("value").then(function(snap){
+    var d = snap.val();
+    if(d !== null && d !== undefined){
+      var arr = Array.isArray(d) ? d : Object.values(d);
+      arr = arr.filter(function(g){ return g && (g.keyword||g.steps); });
+      if(arr.length > 0){
+        netGuides = arr;
+        localStorage.setItem("pt_netguides", JSON.stringify(netGuides));
         renderNetGuideList();
       }
-    }
-  }catch(e){}
-
-  // โหลดจาก Firebase แบบ REST (ง่ายกว่าและทำงานได้แน่นอน)
-  fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json")
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      if(d && d !== "null"){
-        var arr = Array.isArray(d) ? d : Object.values(d);
-        // กรองเอาแค่ที่มีข้อมูล
-        arr = arr.filter(function(g){ return g && (g.keyword || g.steps); });
-        if(arr.length > 0){
-          netGuides = arr;
-          localStorage.setItem("pt_netguides", JSON.stringify(netGuides));
-          renderNetGuideList();
-        }
+    } else {
+      // Firebase ว่าง — upload local ขึ้น
+      if(netGuides && netGuides.length > 0){
+        fbDB.ref("/settings/netGuides").set(netGuides).catch(function(){});
       }
-    }).catch(function(e){ console.warn("loadNetGuides Firebase:", e); });
+    }
+  }).catch(function(e){ console.warn("loadNetGuides:", e.message); });
 }
 
 
 function saveNetGuides(){
   syncNetGuideInputs();
-  // filter ข้อมูลเปล่าออก
-  netGuides = netGuides.filter(function(g){ return g && (g.keyword || g.steps); });
-  // save localStorage ทันที
+  netGuides = netGuides.filter(function(g){ return g && (g.keyword||g.steps); });
   localStorage.setItem("pt_netguides", JSON.stringify(netGuides));
-  // save Firebase REST
-  fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json",{
-    method:"PUT",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(netGuides)
-  }).then(function(r){
-    showToast(r.ok ? "✅ บันทึกแล้วค่ะ" : "❌ บันทึกไม่ได้", r.ok ? "#166534" : "#BE123C", r.ok ? "#DCFCE7" : "#FFF1F2");
-    if(r.ok) renderNetGuideList();
-  }).catch(function(e){ showToast("❌ "+e.message,"#BE123C","#FFF1F2"); });
+  if(!fbDB && !initFirebase()){
+    showToast("❌ Firebase ไม่พร้อม","#BE123C","#FFF1F2"); return;
+  }
+  fbDB.ref("/settings/netGuides").set(netGuides)
+    .then(function(){ showToast("✅ บันทึกแล้วค่ะ","#166534","#DCFCE7"); renderNetGuideList(); })
+    .catch(function(e){ showToast("❌ "+e.message,"#BE123C","#FFF1F2"); });
 }
 
 
@@ -2302,8 +2295,7 @@ function autoSaveNetGuides(){
   clearTimeout(_ngSaveTimer);
   _ngSaveTimer = setTimeout(function(){
     localStorage.setItem("pt_netguides", JSON.stringify(netGuides));
-    if(fbDB){ fbDB.ref("/settings/netGuides").set(netGuides).catch(function(){}); }
-    else { fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json",{ method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(netGuides) }).catch(function(){}); }
+    if(fbDB) fbDB.ref("/settings/netGuides").set(netGuides).catch(function(){});
   }, 800);
 }
 
