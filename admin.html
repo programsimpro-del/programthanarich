@@ -683,18 +683,20 @@ function startRealtimeSync(){
 }
 
 function loadAll(){
-  // โหลด pkgs — ถ้ามีใน localStorage ใช้ก่อน
-  try{pkgs=JSON.parse(localStorage.getItem("pt_packages")||"null")||DEFAULT_PKGS;}catch(_){pkgs=DEFAULT_PKGS;}
-  try{reqs=JSON.parse(localStorage.getItem("pt_requests")||"null")||[];}catch(_){reqs=[];}
-  // แสดง tabbar และ sc1
+  // โหลดจาก localStorage ก่อน (แสดงทันที)
+  try{ pkgs = JSON.parse(localStorage.getItem("pt_packages")||"null")||DEFAULT_PKGS; }catch(_){ pkgs=DEFAULT_PKGS; }
+  try{ reqs = JSON.parse(localStorage.getItem("pt_requests")||"null")||[]; }catch(_){ reqs=[]; }
+  try{ var ng=localStorage.getItem("pt_netguides"); if(ng) netGuides=JSON.parse(ng); }catch(_){}
+
   var tb = $("tabbar");
   if(tb) tb.style.display="flex";
   switchTab(1);
-  renderChatList();
   renderOrdList();
   updateBadges();
   $("rts").textContent="อัพเดท "+ts();
   setTopbar("",null,"");
+
+  // sync Firebase ทั้งหมดพร้อมกัน
   if(ORDERS_API) syncFromAPI();
   startRealtimeSync();
   syncPkgsFromFirebase();
@@ -2221,40 +2223,20 @@ function showNetGuide(){
     showSettings();
     document.getElementById("tabbar").style.display="flex";
   }, "");
-  // แสดงจาก localStorage ทันที
-  try{
-    var loc = localStorage.getItem("pt_netguides");
-    if(loc){
-      var arr = JSON.parse(loc);
-      if(arr && arr.length > 0){ netGuides = arr; renderNetGuideList(); }
-    }
-  }catch(_){}
-  // sync Firebase ในพื้นหลัง
-  if(fbDB){
-    fbDB.ref("/settings/netGuides").once("value").then(function(snap){
-      var d = snap.val();
-      if(d !== null && d !== undefined){
-        var arr = Array.isArray(d) ? d : Object.values(d);
-        arr = arr.filter(function(g){ return g && (g.keyword||g.steps); });
-        if(arr.length > 0){
-          netGuides = arr;
-          localStorage.setItem("pt_netguides", JSON.stringify(netGuides));
-          renderNetGuideList();
-        }
-      }
-    }).catch(function(){});
-  }
+  renderNetGuideList(); // netGuides อยู่ใน memory แล้ว แสดงทันที
 }
 
 var netGuides = [];
 
 function loadNetGuides(){
-  // โหลดจาก localStorage ก่อน (แสดงทันที)
+  // ถ้ามีใน memory แล้ว ไม่ต้อง fetch ซ้ำ
+  if(netGuides && netGuides.length > 0) return;
+  // โหลดจาก localStorage
   try{
     var loc = localStorage.getItem("pt_netguides");
-    if(loc){ netGuides = JSON.parse(loc); renderNetGuideList(); }
+    if(loc){ var arr=JSON.parse(loc); if(arr&&arr.length>0){ netGuides=arr; return; } }
   }catch(_){}
-  // sync จาก Firebase เหมือน syncPkgsFromFirebase
+  // fetch จาก Firebase ครั้งเดียวตอนเปิดแอพ
   if(!fbDB && !initFirebase()) return;
   fbDB.ref("/settings/netGuides").once("value").then(function(snap){
     var d = snap.val();
@@ -2264,12 +2246,6 @@ function loadNetGuides(){
       if(arr.length > 0){
         netGuides = arr;
         localStorage.setItem("pt_netguides", JSON.stringify(netGuides));
-        renderNetGuideList();
-      }
-    } else {
-      // Firebase ว่าง — upload local ขึ้น
-      if(netGuides && netGuides.length > 0){
-        fbDB.ref("/settings/netGuides").set(netGuides).catch(function(){});
       }
     }
   }).catch(function(e){ console.warn("loadNetGuides:", e.message); });
@@ -2357,23 +2333,7 @@ function showPkgMgr(){
     showSettings();
     document.getElementById("tabbar").style.display="flex";
   }, "");
-  // แสดงจาก localStorage ทันที
-  try{
-    var loc = localStorage.getItem("pt_packages");
-    if(loc){ pkgs = JSON.parse(loc); }
-  }catch(_){}
-  renderPkgMgrList();
-  // sync Firebase ในพื้นหลัง
-  if(fbDB){
-    fbDB.ref("/packages").once("value").then(function(snap){
-      var d = snap.val();
-      if(d && Array.isArray(d) && d.length>0){
-        pkgs = d;
-        localStorage.setItem("pt_packages", JSON.stringify(pkgs));
-        renderPkgMgrList();
-      }
-    }).catch(function(){});
-  }
+  renderPkgMgrList(); // pkgs อยู่ใน memory แล้ว แสดงทันที
 }
 
 function showFormSettings(){
