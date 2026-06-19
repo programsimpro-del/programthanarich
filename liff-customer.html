@@ -249,19 +249,17 @@ input:focus{border-color:#06C755!important;box-shadow:none!important}
 </div>
 
 <!-- Pop Up วิธีสมัครเน็ต -->
-<div id="netguide-popup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:flex-end;justify-content:center">
-  <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-height:80vh;overflow-y:auto;padding:20px 16px 32px;animation:slideUp .3s ease">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div style="font-weight:900;font-size:16px;color:#1565C0">📶 วิธีสมัครเน็ตฟรีเดือนแรก</div>
-      <button onclick="document.getElementById('netguide-popup').style.display='none'" style="background:#F3F4F6;border:none;border-radius:50%;width:32px;height:32px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
-    </div>
-    <div id="netguide-content" style="font-size:14px;color:#374151;line-height:1.9;white-space:pre-wrap"></div>
+<div id="netguide-popup" style="display:none;position:fixed;inset:0;background:#000;z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:24px">
+  <div style="width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center">
+    <div style="font-size:40px;margin-bottom:16px">📶</div>
+    <div style="font-weight:900;font-size:18px;color:#FFFF00;margin-bottom:20px;text-align:center;letter-spacing:.5px">วิธีสมัครเน็ตฟรีเดือนแรก</div>
+    <div id="netguide-content" style="font-size:20px;font-weight:700;color:#FFFF00;line-height:2;white-space:pre-wrap;text-align:center;width:100%;margin-bottom:32px"></div>
+    <button onclick="document.getElementById('netguide-popup').style.display='none'"
+      style="background:#FFFF00;border:none;border-radius:14px;padding:14px 40px;font-size:16px;font-weight:900;color:#000;cursor:pointer;font-family:inherit;width:100%;max-width:280px">
+      รับทราบแล้ว ✓
+    </button>
   </div>
 </div>
-
-<style>
-@keyframes slideUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
-</style>
 
 <script>
 /* ═══ CONFIG ═══ */
