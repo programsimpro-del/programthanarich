@@ -1433,14 +1433,44 @@ function renderOrdDetail(ref){
     </div>`).join("")}</div>`;
   const sC={pending:["#E65100","#FFF3E0","รอตรวจ"],confirmed:["#1565C0","#E3F2FD","รอเปิดเน็ต"],processing:["#6A1B9A","#F3E8FF","กำลังดำเนินการ"],activated:["#2E7D32","#E8F5E9","เสร็จแล้ว"],rejected:["#C62828","#FFE4E6","ปฏิเสธ"]};
   const[sc,sb,sl]=sC[req.status]||sC.pending;
-  $("od-info").innerHTML=`<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
-    <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#06C755,#05A847);display:flex;align-items:center;justify-content:center;font-size:${req.linePictureUrl?"0":"17"}px;overflow:hidden;flex-shrink:0">
-      ${req.linePictureUrl?`<img src="${req.linePictureUrl}" style="width:100%;height:100%;object-fit:cover" alt="">`:``}👤
+  $("od-info").innerHTML=`
+  <!-- โปรไฟล์ LINE -->
+  <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px">
+    <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#06C755,#05A847);display:flex;align-items:center;justify-content:center;font-size:${req.linePictureUrl?"0":"18"}px;overflow:hidden;flex-shrink:0">
+      ${req.linePictureUrl?`<img src="${req.linePictureUrl}" style="width:100%;height:100%;object-fit:cover">`:``}👤
     </div>
-    <div style="flex:1"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span style="font-weight:800;font-size:14px;color:#111">${req.lineDisplayName||req.simPhone}</span><span class="tag" style="background:${sb};color:${sc}">${sl}</span></div>
-    <div style="font-size:11px;color:#9E9E9E;margin-top:1px">${PLTS[req.platform]||""} · 📱 ${req.simPhone} · ${req.submittedAt}</div></div>
-    <button onclick="switchTab(1);setTimeout(()=>openChat('${ref}'),100)" style="background:#E8F5E9;border:none;color:#06C755;border-radius:20px;padding:5px 11px;font-size:11px;font-weight:800;cursor:pointer">💬 แชท</button>
-  </div>`;
+    <div style="flex:1">
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <span style="font-weight:800;font-size:15px;color:#111">${req.lineDisplayName||"-"}</span>
+        <span class="tag" style="background:${sb};color:${sc}">${sl}</span>
+      </div>
+      <div style="font-size:11px;color:#9E9E9E;margin-top:2px">สมัครเมื่อ ${req.submittedAt||"-"}</div>
+    </div>
+    <button onclick="switchTab(1);setTimeout(()=>openChat('${ref}'),100)" style="background:#E8F5E9;border:none;color:#06C755;border-radius:20px;padding:6px 12px;font-size:11px;font-weight:800;cursor:pointer">💬 แชท</button>
+  </div>
+
+  <!-- สรุปข้อมูลคำสั่งซื้อ -->
+  <div style="background:#F8FAFF;border-radius:12px;padding:12px 14px;margin-bottom:10px;border:1.5px solid #E3F2FD">
+    <div style="font-weight:800;font-size:12px;color:#1565C0;margin-bottom:8px">📋 ข้อมูลคำสั่งซื้อ</div>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:12px">
+      <span style="color:#9E9E9E;white-space:nowrap">🛍️ แพลตฟอร์ม</span><span style="font-weight:700">${PLTS[req.platform]||req.platform||"-"}</span>
+      <span style="color:#9E9E9E;white-space:nowrap">📦 เลขคำสั่งซื้อ</span><span style="font-weight:700;font-family:monospace;word-break:break-all">${req.orderNo||"-"}</span>
+      <span style="color:#9E9E9E;white-space:nowrap">📱 เบอร์ซิม</span><span style="font-weight:700;font-family:monospace">${req.simPhone||"-"}</span>
+      <span style="color:#9E9E9E;white-space:nowrap">🔖 ซิมหมายเลข</span><span style="font-weight:700;font-family:monospace">${req.simCode||req.branchCode||"-"}</span>
+      <span style="color:#9E9E9E;white-space:nowrap">🎁 แพ็คเกจ</span><span style="font-weight:700">${req.pkgName||"-"}</span>
+    </div>
+  </div>
+
+  <!-- Shopee API Result -->
+  ${(()=>{
+    var si = req.shopeeInfo;
+    if(!si) return '<div style="background:#FFF3E0;border-radius:10px;padding:10px 12px;margin-bottom:10px;border:1.5px solid #FFCC02;display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:#E65100;font-weight:700">⏳ ยังไม่ได้ตรวจสอบ Shopee</span><button onclick="checkShopeeNow(aref)" style="background:#FF5722;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit">ตรวจสอบ</button></div>';
+    if(!si.ready) return '<div style="background:#FFF3E0;border-radius:10px;padding:10px 12px;margin-bottom:10px;border:1.5px solid #FFCC02"><span style="font-size:12px;color:#E65100">⏳ '+si.message+'</span></div>';
+    if(!si.found) return '<div style="background:#FFF1F2;border-radius:10px;padding:10px 12px;margin-bottom:10px;border:1.5px solid #FECDD3;display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12px;font-weight:700;color:#BE123C">❌ ไม่พบใน Shopee</div><div style="font-size:11px;color:#9E9E9E">'+(si.error||"ตรวจสอบเลขคำสั่งซื้ออีกครั้ง")+'</div></div><button onclick="checkShopeeNow(aref)" style="background:#FF5722;color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit">ตรวจใหม่</button></div>';
+    var itemsHTML = (si.items||[]).map(function(i){ return '<div style="font-size:11px;padding:3px 0;border-bottom:1px solid #DCFCE7">📦 '+i.name+' | '+i.model+' | x'+i.qty+' | ฿'+i.price+'</div>'; }).join("");
+    return '<div style="background:#F0FDF4;border-radius:10px;padding:10px 12px;margin-bottom:10px;border:1.5px solid #BBF7D0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-weight:800;font-size:12px;color:#166534">✅ Shopee ยืนยันแล้ว</span><button onclick="checkShopeeNow(aref)" style="background:none;border:1px solid #BBF7D0;border-radius:6px;padding:3px 8px;font-size:11px;color:#166534;cursor:pointer;font-family:inherit">รีเฟรช</button></div><div style="font-size:12px;color:#374151;line-height:1.8;margin-bottom:4px">👤 ผู้ซื้อ: <b>'+si.buyer+'</b> | 🔢 '+si.totalSim+' ซิม | 💰 ฿'+si.totalAmount+'</div>'+itemsHTML+'</div>';
+  })()}
+`;
   $("od-order").innerHTML=renderOrderBox(req);
   const aib=$("od-ai");
   if(req.aiResult){const r=req.aiResult;const[bc,bb]=r.verdict==="pass"?["#166534","#F0FDF4"]:r.verdict==="fail"?["#C62828","#FFF1F2"]:["#92400E","#FFFBEB"];aib.innerHTML=`<div style="padding:9px 13px;background:${bb};border-top:3px solid ${bc};font-size:12px;line-height:1.6"><span style="font-weight:800;color:${bc}">🤖 AI: ${r.verdict==="pass"?"ผ่าน ✅":r.verdict==="fail"?"ไม่ผ่าน ❌":"ไม่ชัดเจน ⚠️"}</span> — ${r.summary}</div>`;}
