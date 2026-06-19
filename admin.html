@@ -1457,7 +1457,14 @@ function renderOrdDetail(ref){
       <span style="color:#9E9E9E;white-space:nowrap">📦 เลขคำสั่งซื้อ</span><span style="font-weight:700;font-family:monospace;word-break:break-all">${req.orderNo||"-"}</span>
       <span style="color:#9E9E9E;white-space:nowrap">📱 เบอร์ซิม</span><span style="font-weight:700;font-family:monospace">${req.simPhone||"-"}</span>
       <span style="color:#9E9E9E;white-space:nowrap">🔖 ซิมหมายเลข</span><span style="font-weight:700;font-family:monospace">${req.simCode||req.branchCode||"-"}</span>
-      <span style="color:#9E9E9E;white-space:nowrap">🎁 แพ็คเกจ</span><span style="font-weight:700">${req.pkgName||"-"}</span>
+      <span style="color:#9E9E9E;white-space:nowrap">🎁 แพ็คเกจ</span>
+      <span style="font-weight:700;${(()=>{
+        var pn = req.pkgName || (req.shopeeInfo&&req.shopeeInfo.items&&req.shopeeInfo.items[0]?req.shopeeInfo.items[0].model:"");
+        return pn ? "" : "background:#FFEBEE;color:#C62828;padding:2px 8px;border-radius:6px;";
+      })()}">${(()=>{
+        var pn = req.pkgName || (req.shopeeInfo&&req.shopeeInfo.items&&req.shopeeInfo.items[0]?req.shopeeInfo.items[0].model:"");
+        return pn || "ยังไม่ระบุ";
+      })()}</span>
     </div>
   </div>
 
