@@ -1302,17 +1302,7 @@ function renderOrdList(){
       </div>
 
       <!-- รูปตัวอย่างที่ 5: เบอร์โทรที่ได้รับ -->
-      <div style="margin-bottom:16px">
-        <div style="font-weight:700;font-size:13px;color:#374151;margin-bottom:6px">🖼️ รูปตัวอย่าง เบอร์โทรที่ได้รับ</div>
-        <div style="font-size:11px;color:#9E9E9E;margin-bottom:8px">แสดงเหนือช่องกรอกเบอร์โทรที่ได้รับ</div>
-        <label style="cursor:pointer;display:block">
-          <div style="border:1.5px solid #E5E7EB;border-radius:10px;overflow:hidden;margin-bottom:6px">
-            <img id="ex-img-5" style="width:100%;display:none" src="">
-            <div style="padding:10px;text-align:center;color:#9E9E9E;font-size:12px" id="ex-img-4b-ph">กดเพื่อเลือกรูป</div>
-          </div>
-          <input type="file" accept="image/*" style="display:none" onchange="setExampleImg(5,this)">
-        </label>
-      </div>
+      
       ${r.pkgName?`<span style="background:#F3E5F5;color:#6A1B9A;font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px">${pkgs.find(p=>p.id===r.pkgId)?.emoji||"📶"} ${r.pkgName}</span>`:""}
       ${getQuotaBadge(r.orderNo)}
     </div>`;
