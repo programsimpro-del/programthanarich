@@ -898,77 +898,40 @@ function setP5Step(n, done){
   if(next && !done) next.style.opacity="0.7";
 }
 
-function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
-
-function setP5Step(n, done){
-  var icon = document.getElementById("p5-icon-"+n);
-  var step = document.getElementById("p5-step-"+n);
-  if(icon) icon.textContent = done ? "✅" : "🔄";
-  if(step){ step.style.opacity="1"; }
-  var next = document.getElementById("p5-step-"+(n+1));
-  if(next && !done) next.style.opacity="0.7";
-  var status = document.getElementById("p5-status");
-  var msgs = {1:"ตรวจสอบ Shopee...",2:"บันทึกข้อมูล...",3:"แจ้ง Admin...",4:"ดึงวิธีสมัครเน็ต..."};
-  if(status && msgs[n] && !done) status.textContent = msgs[n];
-  if(status && done && n===4) status.textContent = "เสร็จสมบูรณ์! ✅";
-}
 
 async function confirmAndSubmit(){
-  // อ่านค่าจาก DOM
   orderNo  = (document.getElementById("orderNo")  || {value:orderNo}).value.trim();
   simPhone = (document.getElementById("simPhone") || {value:simPhone}).value.trim();
 
-  // ไปหน้าโหลดทันที
-  goP(5);
-  await sleep(100);
-
-  // reset icons
-  for(var i=1;i<=4;i++){
-    var ic=document.getElementById("p5-icon-"+i);
-    var st=document.getElementById("p5-step-"+i);
-    if(ic) ic.textContent="⏳";
-    if(st) st.style.opacity=(i===1?"1":"0.35");
-  }
-  var status=document.getElementById("p5-status");
-  if(status) status.textContent="กำลังดำเนินการ...";
-  await sleep(80);
-
-  // ── Step 1: ตรวจสอบ Shopee ──
-  setP5Step(1, false);
-  await sleep(700);
-  setP5Step(1, true);
-  await sleep(200);
-
-  // ── Step 2+3: ส่งข้อมูล (submitForm) ──
-  setP5Step(2, false);
-  await sleep(100);
-  var submitted = false;
+  // แสดง popup วิธีสมัครก่อนเลย
   try{
-    await submitForm();
-    submitted = true;
+    var r = await fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json");
+    var guides = await r.json();
+    if(guides){
+      if(!Array.isArray(guides)) guides = Object.values(guides);
+      // หา guide ที่ match
+      var itemStr = (window._lastShopeeItems||[]).map(function(i){
+        return ((i.name||"")+" "+(i.model||"")).toUpperCase();
+      }).join(" ");
+      var matched = null;
+      guides.forEach(function(g){
+        if(!g||!g.keyword) return;
+        g.keyword.toUpperCase().split(",").forEach(function(kw){
+          if(kw.trim() && itemStr.includes(kw.trim())) matched = g;
+        });
+      });
+      // ถ้าไม่ match keyword ใช้อันแรก
+      if(!matched && guides.length>0) matched = guides[0];
+      if(matched && matched.steps){
+        document.getElementById("netguide-content").textContent = matched.steps;
+        document.getElementById("netguide-popup").style.display = "flex";
+      }
+    }
   }catch(e){ console.warn(e); }
-  setP5Step(2, true);
-  await sleep(200);
-  setP5Step(3, false);
-  await sleep(400);
-  setP5Step(3, true);
-  await sleep(200);
 
-  // ── Step 4: ดึงวิธีสมัคร ──
-  setP5Step(4, false);
-  await sleep(200);
-  var gotGuide = false;
-  try{
-    var guideItems = window._lastShopeeItems || [];
-    gotGuide = await loadAndShowNetGuide(guideItems);
-  }catch(e){ console.warn(e); }
-  setP5Step(4, true);
-  await sleep(400);
-
-  // ถ้าไม่มี guide ให้ไปหน้าสำเร็จ
-  if(!gotGuide) goP(6);
+  // ส่งข้อมูลไประบบ
+  submitForm();
 }
-
 
 async function submitForm(){
   setP5Step(2, false);
