@@ -896,27 +896,71 @@ function setP5Step(n, done){
   if(next && !done) next.style.opacity="0.7";
 }
 
+function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+
 async function confirmAndSubmit(){
   orderNo  = document.getElementById("orderNo")  ? document.getElementById("orderNo").value.trim()  : orderNo;
   simPhone = document.getElementById("simPhone") ? document.getElementById("simPhone").value.trim() : simPhone;
-  // ไปหน้า loading ก่อนเลย
+
+  // ไปหน้า loading ทันที
   goP(5);
+  await sleep(50); // รอ browser repaint
+
   // รีเซ็ต steps
   for(var i=1;i<=4;i++){
     var ic=document.getElementById("p5-icon-"+i); if(ic) ic.textContent="⏳";
-    var st=document.getElementById("p5-step-"+i); if(st) st.style.opacity=(i===1?"1":"0.4");
+    var st=document.getElementById("p5-step-"+i); if(st){ st.style.opacity=(i===1?"1":"0.4"); }
   }
   var status=document.getElementById("p5-status");
   if(status) status.textContent="กำลังตรวจสอบ...";
-  // Step 1: Shopee check
+  await sleep(50);
+
+  // Step 1: ตรวจสอบ Shopee
   setP5Step(1, false);
-  await new Promise(function(r){ setTimeout(r, 500); });
+  await sleep(800);
   setP5Step(1, true);
-  // Step 2: บันทึก
-  setP5Step(2, false);
-  // Step 3: แจ้ง Admin (submitForm จะทำ)
+  await sleep(300);
+
+  // Step 2: บันทึกข้อมูล
+
+  await sleep(200);
+  await submitFormSteps();
+}
+
+async function submitFormSteps(){
+  // ส่งข้อมูลจริง
+  var result = await submitForm();
+
+  // Step 3: แจ้ง Admin
   setP5Step(3, false);
-  await submitForm();
+  await sleep(400);
+  setP5Step(3, true);
+  await sleep(300);
+
+  // Step 4: ดึงวิธีสมัคร
+  setP5Step(4, false);
+  await sleep(200);
+  if(window._lastShopeeItems){
+    await loadAndShowNetGuide(window._lastShopeeItems);
+  } else {
+    // ลอง fetch netguide แม้ไม่มี shopee items
+    var r2 = await fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json").catch(function(){return null;});
+    if(r2){
+      var guides = await r2.json().catch(function(){return null;});
+      if(guides){
+        if(!Array.isArray(guides)) guides = Object.values(guides);
+        if(guides.length>0 && guides[0].steps){
+          var box=document.getElementById("netguide-content");
+          var popup=document.getElementById("netguide-popup");
+          if(box) box.textContent=guides[0].steps;
+          if(popup) popup.style.display="flex";
+        }
+      }
+    }
+  }
+  setP5Step(4, true);
+  await sleep(500);
+  goP(6);
 }
 
 async function submitForm(){
