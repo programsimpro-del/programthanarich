@@ -631,6 +631,25 @@ function startRealtimeSync(){
   });
 
   // ── Orders real-time ────────────────────────────
+  // ── NetGuides real-time ──────────────────────
+  fbDB.ref("/settings/netGuides").on("value", function(snap){
+    var d = snap.val();
+    if(d !== null && d !== undefined){
+      netGuides = Array.isArray(d) ? d : Object.values(d);
+      localStorage.setItem("pt_netguides", JSON.stringify(netGuides));
+    } else {
+      // Firebase ว่าง — push local
+      var local = localStorage.getItem("pt_netguides");
+      if(local){ try{ netGuides = JSON.parse(local); }catch(_){} }
+      if(netGuides && netGuides.length > 0){
+        fbDB.ref("/settings/netGuides").set(netGuides);
+      }
+    }
+    if(document.getElementById("sc-netguide") && document.getElementById("sc-netguide").classList.contains("on")){
+      renderNetGuideList();
+    }
+  });
+
   fbDB.ref("/orders").on("value", function(snap){
     console.log("📡 Firebase orders received:", snap.val() ? Object.keys(snap.val()).length : 0);
     var data = snap.val();
@@ -2207,38 +2226,53 @@ function showNetGuide(){
 var netGuides = [];
 
 function loadNetGuides(){
+  // โหลดจาก localStorage ก่อน (แสดงทันที)
+  var local = localStorage.getItem("pt_netguides");
+  if(local){
+    try{ netGuides = JSON.parse(local); }catch(_){}
+    renderNetGuideList();
+  }
+  // sync จาก Firebase
   if(fbDB){
     fbDB.ref("/settings/netGuides").once("value", function(snap){
       var d = snap.val();
-      netGuides = d && Array.isArray(d) ? d : (d ? Object.values(d) : []);
-      renderNetGuideList();
-    }, function(){
-      renderNetGuideList();
+      if(d !== null && d !== undefined){
+        netGuides = Array.isArray(d) ? d : Object.values(d);
+        localStorage.setItem("pt_netguides", JSON.stringify(netGuides));
+        renderNetGuideList();
+      } else if(!local){
+        renderNetGuideList();
+      }
     });
   } else {
     fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json")
       .then(function(r){ return r.json(); })
       .then(function(d){
-        netGuides = d && Array.isArray(d) ? d : (d ? Object.values(d) : []);
-        renderNetGuideList();
-      }).catch(function(){ renderNetGuideList(); });
+        if(d !== null && d !== undefined){
+          netGuides = Array.isArray(d) ? d : Object.values(d);
+          localStorage.setItem("pt_netguides", JSON.stringify(netGuides));
+          renderNetGuideList();
+        }
+      }).catch(function(){});
   }
 }
 
 function saveNetGuides(){
   syncNetGuideInputs();
-  var data = netGuides;
+  // save localStorage ทันที
+  localStorage.setItem("pt_netguides", JSON.stringify(netGuides));
+  // save Firebase
   if(fbDB){
-    fbDB.ref("/settings/netGuides").set(data)
+    fbDB.ref("/settings/netGuides").set(netGuides)
       .then(function(){ showToast("✅ บันทึกแล้วค่ะ","#166534","#DCFCE7"); })
       .catch(function(e){ showToast("❌ "+e.message,"#BE123C","#FFF1F2"); });
   } else {
     fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json",{
       method:"PUT", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify(data)
+      body:JSON.stringify(netGuides)
     }).then(function(r){
       if(r.ok) showToast("✅ บันทึกแล้วค่ะ","#166534","#DCFCE7");
-      else showToast("❌ บันทึกไม่สำเร็จ","#BE123C","#FFF1F2");
+      else showToast("❌ บันทึกไม่ได้","#BE123C","#FFF1F2");
     }).catch(function(e){ showToast("❌ "+e.message,"#BE123C","#FFF1F2"); });
   }
 }
@@ -2270,14 +2304,9 @@ function autoSaveNetGuides(){
   syncNetGuideInputs();
   clearTimeout(_ngSaveTimer);
   _ngSaveTimer = setTimeout(function(){
-    if(fbDB){
-      fbDB.ref("/settings/netGuides").set(netGuides).catch(function(){});
-    } else {
-      fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json",{
-        method:"PUT", headers:{"Content-Type":"application/json"},
-        body:JSON.stringify(netGuides)
-      }).catch(function(){});
-    }
+    localStorage.setItem("pt_netguides", JSON.stringify(netGuides));
+    if(fbDB){ fbDB.ref("/settings/netGuides").set(netGuides).catch(function(){}); }
+    else { fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json",{ method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(netGuides) }).catch(function(){}); }
   }, 800);
 }
 
