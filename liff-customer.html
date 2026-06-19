@@ -248,6 +248,21 @@ input:focus{border-color:#06C755!important;box-shadow:none!important}
   </div>
 </div>
 
+<!-- Pop Up วิธีสมัครเน็ต -->
+<div id="netguide-popup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:flex-end;justify-content:center">
+  <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-height:80vh;overflow-y:auto;padding:20px 16px 32px;animation:slideUp .3s ease">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-weight:900;font-size:16px;color:#1565C0">📶 วิธีสมัครเน็ตฟรีเดือนแรก</div>
+      <button onclick="document.getElementById('netguide-popup').style.display='none'" style="background:#F3F4F6;border:none;border-radius:50%;width:32px;height:32px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <div id="netguide-content" style="font-size:14px;color:#374151;line-height:1.9;white-space:pre-wrap"></div>
+  </div>
+</div>
+
+<style>
+@keyframes slideUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
+</style>
+
 <script>
 /* ═══ CONFIG ═══ */
 // Firebase init
@@ -591,6 +606,7 @@ function previewShopeeOrder(val){
         // ✅ ผ่าน — อนุญาตกรอกข้อมูลต่อ
         _shopeeVerified = true;
         _shopeeChecked = true;
+        window._lastShopeeItems = si.items || [];
         lockNextSteps(false);
         chkForm();
 
@@ -818,6 +834,34 @@ async function notifyAdmin(refNo, req, pkg){
 }
 
 /* ═══ SUBMIT ═══ */
+async function loadAndShowNetGuide(shopeeItems){
+  try{
+    var r = await fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json");
+    var guides = await r.json();
+    if(!guides) return;
+    if(!Array.isArray(guides)) guides = Object.values(guides);
+
+    // หา guide ที่ keyword match กับตัวเลือกสินค้า
+    var matched = null;
+    var itemStr = (shopeeItems||[]).map(function(i){ return (i.name||"")+" "+(i.model||""); }).join(" ").toUpperCase();
+
+    guides.forEach(function(g){
+      if(!g || !g.keyword) return;
+      var kws = g.keyword.toUpperCase().split(",").map(function(k){ return k.trim(); });
+      kws.forEach(function(kw){
+        if(kw && itemStr.includes(kw)) matched = g;
+      });
+    });
+
+    if(matched && matched.steps){
+      var box = document.getElementById("netguide-content");
+      var popup = document.getElementById("netguide-popup");
+      if(box) box.textContent = matched.steps;
+      if(popup) popup.style.display = "flex";
+    }
+  }catch(e){ console.warn("loadNetGuide:", e.message); }
+}
+
 async function confirmAndSubmit(){
   // อัพเดท global vars ก่อนส่ง
   orderNo  = document.getElementById("orderNo")  ? document.getElementById("orderNo").value.trim()  : orderNo;
@@ -866,6 +910,8 @@ async function submitForm(){
   await delay(400);
   $("refno").textContent=refNo;
   goP(6);
+        // แสดงวิธีสมัครเน็ต
+        if(window._lastShopeeItems) loadAndShowNetGuide(window._lastShopeeItems);
 }
 
 /* ═══ INIT ═══ */
