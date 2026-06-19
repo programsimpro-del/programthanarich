@@ -2221,7 +2221,29 @@ function showNetGuide(){
     showSettings();
     document.getElementById("tabbar").style.display="flex";
   }, "");
-  loadNetGuides();
+  // แสดงจาก localStorage ทันที
+  try{
+    var loc = localStorage.getItem("pt_netguides");
+    if(loc){
+      var arr = JSON.parse(loc);
+      if(arr && arr.length > 0){ netGuides = arr; renderNetGuideList(); }
+    }
+  }catch(_){}
+  // sync Firebase ในพื้นหลัง
+  if(fbDB){
+    fbDB.ref("/settings/netGuides").once("value").then(function(snap){
+      var d = snap.val();
+      if(d !== null && d !== undefined){
+        var arr = Array.isArray(d) ? d : Object.values(d);
+        arr = arr.filter(function(g){ return g && (g.keyword||g.steps); });
+        if(arr.length > 0){
+          netGuides = arr;
+          localStorage.setItem("pt_netguides", JSON.stringify(netGuides));
+          renderNetGuideList();
+        }
+      }
+    }).catch(function(){});
+  }
 }
 
 var netGuides = [];
@@ -2335,16 +2357,23 @@ function showPkgMgr(){
     showSettings();
     document.getElementById("tabbar").style.display="flex";
   }, "");
+  // แสดงจาก localStorage ทันที
+  try{
+    var loc = localStorage.getItem("pt_packages");
+    if(loc){ pkgs = JSON.parse(loc); }
+  }catch(_){}
   renderPkgMgrList();
-  fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/packages.json")
-    .then(function(r){ return r.json(); })
-    .then(function(fbPkgs){
-      if(fbPkgs && Array.isArray(fbPkgs) && fbPkgs.length>0){
-        pkgs = fbPkgs;
+  // sync Firebase ในพื้นหลัง
+  if(fbDB){
+    fbDB.ref("/packages").once("value").then(function(snap){
+      var d = snap.val();
+      if(d && Array.isArray(d) && d.length>0){
+        pkgs = d;
         localStorage.setItem("pt_packages", JSON.stringify(pkgs));
         renderPkgMgrList();
       }
     }).catch(function(){});
+  }
 }
 
 function showFormSettings(){
