@@ -143,6 +143,17 @@ input:focus{border-color:#06C755!important;box-shadow:none!important}
       </div>
 
       <div class="field">
+        <div id="ex-hint-wrap-5" style="display:none;margin-bottom:8px;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB">
+          <div style="font-size:11px;color:#9E9E9E;padding:4px 8px;background:#F9FAFB">📌 ตัวอย่างเบอร์โทรที่ได้รับ</div>
+          <img id="ex-hint-5" style="width:100%;display:block" src="">
+        </div>
+        <div class="flbl">เบอร์โทรที่ได้รับ <span style="color:#E53935;font-size:11px">*</span></div>
+        <div class="fhint">เบอร์ที่ปรากฏบนซองซิม หลังลงทะเบียนเสร็จ</div>
+        <input class="inp" id="simPhone" type="tel" placeholder="0XX-XXX-XXXX" inputmode="numeric"
+          oninput="this.value=this.value.replace(/[^0-9]/g,'');chkForm()" autocomplete="off">
+      </div>
+
+      <div class="field">
         <div id="ex-hint-wrap-4" style="display:none;margin-bottom:8px;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB">
           <div style="font-size:11px;color:#9E9E9E;padding:4px 8px;background:#F9FAFB">📌 ตัวอย่างเลขคำสั่งซื้อ Shopee</div>
           <img id="ex-hint-4" style="width:100%;display:block" src="">
@@ -153,11 +164,7 @@ input:focus{border-color:#06C755!important;box-shadow:none!important}
         <div id="shopee-preview" style="display:none;margin-top:8px;border-radius:10px;padding:10px 12px;border:1.5px solid #E5E7EB;background:#F9FAFB;font-size:12px"></div>
       </div>
       <div id="p1-fields-lock" style="transition:opacity .3s">
-<div class="field">
-        <div class="flbl">เบอร์โทรที่ได้รับหลังลงทะเบียนซิม <span style="color:#E53935;font-size:11px">*</span></div>
-        <div class="fhint">เบอร์ที่ปรากฏบนซองซิม หลังลงทะเบียนเสร็จ</div>
-        <input class="inp" id="simPhone" type="tel" placeholder="09XXXXXXXX" oninput="chkForm()" autocomplete="off" inputmode="numeric">
-      </div>
+
     </div>
 
       <!-- สรุปข้อมูล -->
@@ -437,7 +444,7 @@ async function loadSettings(){
       var snapEx = await db.ref("/settings/exImages").once("value");
       var exData = snapEx.val();
       if(exData){
-        [3,4].forEach(function(j){
+        [3,4,5].forEach(function(j){
           var imgSrc = exData["img"+j];
           if(imgSrc && imgSrc.length > 10){
             var img  = document.getElementById("ex-hint-"+j);
