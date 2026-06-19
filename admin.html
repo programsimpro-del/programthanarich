@@ -1500,10 +1500,7 @@ function renderOdActions(req){
     "rejected":    {label:"❌ ปฏิเสธคำสั่งซื้อ",               bg:"#FFEBEE", color:"#C62828"},
   };
   var si = statusInfo[s] || {label:s, bg:"#F5F5F5", color:"#666"};
-  var badge = document.createElement("div");
-  badge.style.cssText = "width:100%;padding:10px 14px;border-radius:12px;background:"+si.bg+";color:"+si.color+";font-weight:800;font-size:13px;text-align:center;margin-bottom:8px";
-  badge.textContent = si.label;
-  el.appendChild(badge);
+
 
   // ── STEP 1: pending ───────────────────────────────────
   if(s === "pending"){
