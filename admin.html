@@ -2216,6 +2216,7 @@ function loadNetGuides(){
 }
 
 function saveNetGuides(){
+  syncNetGuideInputs();
   fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json",{
     method:"PUT", headers:{"Content-Type":"application/json"},
     body:JSON.stringify(netGuides)
@@ -2224,13 +2225,25 @@ function saveNetGuides(){
 }
 
 function addNetGuide(){
+  syncNetGuideInputs();
   netGuides.push({ keyword:"", steps:"", note:"" });
   renderNetGuideList();
 }
 
 function deleteNetGuide(i){
+  syncNetGuideInputs();
   netGuides.splice(i,1);
   renderNetGuideList();
+}
+
+function syncNetGuideInputs(){
+  // sync ค่าจาก input/textarea ก่อน render ใหม่
+  netGuides.forEach(function(g,i){
+    var kw = document.getElementById("ng-kw-"+i);
+    var st = document.getElementById("ng-steps-"+i);
+    if(kw) g.keyword = kw.value;
+    if(st) g.steps  = st.value;
+  });
 }
 
 function renderNetGuideList(){
