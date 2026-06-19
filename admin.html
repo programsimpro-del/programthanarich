@@ -2207,23 +2207,40 @@ function showNetGuide(){
 var netGuides = [];
 
 function loadNetGuides(){
-  fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json")
-    .then(function(r){ return r.json(); })
-    .then(function(d){
+  if(fbDB){
+    fbDB.ref("/settings/netGuides").once("value", function(snap){
+      var d = snap.val();
       netGuides = d && Array.isArray(d) ? d : (d ? Object.values(d) : []);
       renderNetGuideList();
-    }).catch(function(){ renderNetGuideList(); });
+    }, function(){
+      renderNetGuideList();
+    });
+  } else {
+    fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json")
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        netGuides = d && Array.isArray(d) ? d : (d ? Object.values(d) : []);
+        renderNetGuideList();
+      }).catch(function(){ renderNetGuideList(); });
+  }
 }
 
 function saveNetGuides(){
   syncNetGuideInputs();
-  fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json",{
-    method:"PUT", headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(netGuides)
-  }).then(function(r){
-    if(r.ok) showToast("✅ บันทึกแล้วค่ะ","#166534","#DCFCE7");
-    else showToast("❌ บันทึกไม่สำเร็จ","#BE123C","#FFF1F2");
-  }).catch(function(e){ showToast("❌ "+e.message,"#BE123C","#FFF1F2"); });
+  var data = netGuides;
+  if(fbDB){
+    fbDB.ref("/settings/netGuides").set(data)
+      .then(function(){ showToast("✅ บันทึกแล้วค่ะ","#166534","#DCFCE7"); })
+      .catch(function(e){ showToast("❌ "+e.message,"#BE123C","#FFF1F2"); });
+  } else {
+    fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json",{
+      method:"PUT", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(data)
+    }).then(function(r){
+      if(r.ok) showToast("✅ บันทึกแล้วค่ะ","#166534","#DCFCE7");
+      else showToast("❌ บันทึกไม่สำเร็จ","#BE123C","#FFF1F2");
+    }).catch(function(e){ showToast("❌ "+e.message,"#BE123C","#FFF1F2"); });
+  }
 }
 
 function addNetGuide(){
@@ -2253,10 +2270,14 @@ function autoSaveNetGuides(){
   syncNetGuideInputs();
   clearTimeout(_ngSaveTimer);
   _ngSaveTimer = setTimeout(function(){
-    fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json",{
-      method:"PUT", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify(netGuides)
-    }).catch(function(){});
+    if(fbDB){
+      fbDB.ref("/settings/netGuides").set(netGuides).catch(function(){});
+    } else {
+      fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json",{
+        method:"PUT", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(netGuides)
+      }).catch(function(){});
+    }
   }, 800);
 }
 
