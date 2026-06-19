@@ -1450,13 +1450,13 @@ function renderOrdDetail(ref){
   </div>
 
   <!-- สรุปข้อมูลคำสั่งซื้อ -->
-  <div style="background:#F8FAFF;border-radius:12px;padding:12px 14px;margin-bottom:10px;border:1.5px solid #E3F2FD">
-    <div style="font-weight:800;font-size:12px;color:#1565C0;margin-bottom:8px">📋 ข้อมูลคำสั่งซื้อ</div>
+  <div style="background:#C62828;border-radius:12px;padding:12px 14px;margin-bottom:10px">
+    <div style="font-weight:800;font-size:12px;color:#fff;margin-bottom:8px">📋 ข้อมูลคำสั่งซื้อ</div>
     <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:12px">
-      <span style="color:#9E9E9E;white-space:nowrap">🛍️ แพลตฟอร์ม</span><span style="font-weight:700">${PLTS[req.platform]||req.platform||"-"}</span>
-      <span style="color:#9E9E9E;white-space:nowrap">📦 เลขคำสั่งซื้อ</span><span style="font-weight:700;font-family:monospace;word-break:break-all">${req.orderNo||"-"}</span>
-      <span style="color:#9E9E9E;white-space:nowrap">📱 เบอร์ซิม</span><span style="font-weight:700;font-family:monospace">${req.simPhone||"-"}</span>
-      <span style="color:#9E9E9E;white-space:nowrap">🔖 ซิมหมายเลข</span><span style="font-weight:700;font-family:monospace">${req.simCode||req.branchCode||"-"}</span>
+      <span style="color:rgba(255,255,255,.75);white-space:nowrap">🛍️ แพลตฟอร์ม</span><span style="font-weight:700;color:#fff">${PLTS[req.platform]||req.platform||"-"}</span>
+      <span style="color:#9E9E9E;white-space:nowrap">📦 เลขคำสั่งซื้อ</span><span style="font-weight:700;color:#fff;font-family:monospace;word-break:break-all">${req.orderNo||"-"}</span>
+      <span style="color:#9E9E9E;white-space:nowrap">📱 เบอร์ซิม</span><span style="font-weight:700;color:#fff;font-family:monospace">${req.simPhone||"-"}</span>
+      <span style="color:#9E9E9E;white-space:nowrap">🔖 ซิมหมายเลข</span><span style="font-weight:700;color:#fff;font-family:monospace">${req.simCode||req.branchCode||"-"}</span>
       <span style="color:#9E9E9E;white-space:nowrap">🎁 แพ็คเกจ</span>
       <span style="font-weight:700;${(()=>{
         var pn = req.pkgName || (req.shopeeInfo&&req.shopeeInfo.items&&req.shopeeInfo.items[0]?req.shopeeInfo.items[0].model:"");
