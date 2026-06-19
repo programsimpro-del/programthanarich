@@ -148,7 +148,7 @@ input:focus{border-color:#06C755!important;box-shadow:none!important}
           <img id="ex-hint-5" style="width:100%;display:block" src="">
         </div>
         <div class="flbl">เบอร์โทรที่ได้รับ <span style="color:#E53935;font-size:11px">*</span></div>
-        <div class="fhint">เบอร์ที่ปรากฏบนซองซิม หรือ เบอร์ที่ได้รับหลังลงทะเบียนเสร็จ</div>
+        <div class="fhint">เบอร์ที่ปรากฏบนซองซิม หลังลงทะเบียนเสร็จ</div>
         <input class="inp" id="simPhone" type="tel" placeholder="0XX-XXX-XXXX" inputmode="numeric"
           oninput="this.value=this.value.replace(/[^0-9]/g,'');chkForm()" autocomplete="off">
       </div>
@@ -522,15 +522,17 @@ function goBack(){ if(curP>0&&curP<5)goP(curP-1); }
 function selPlt(id){ plt=id; goP(2); }
 
 var _previewTimer = null;
-var _shopeeVerified = false; // ตรวจสอบผ่านแล้วไหม
+var _shopeeVerified = false; // true = มี FREE
+var _shopeeChecked  = false; // true = Shopee API ตอบกลับแล้ว (ไม่ใช่ error)
 
 function previewShopeeOrder(val){
   var box = document.getElementById("shopee-preview");
   if(!box) return;
   val = (val||"").trim();
   _shopeeVerified = false;
-  // ซ่อนขั้นถัดไปก่อน
+  _shopeeChecked = false;
   lockNextSteps(true);
+  chkForm();
 
   if(val.length < 10){ box.style.display="none"; return; }
   clearTimeout(_previewTimer);
@@ -548,10 +550,13 @@ function previewShopeeOrder(val){
       var si = await r.json();
 
       if(!si.ready){
+        // API ยังไม่พร้อม — ไม่ set _shopeeChecked ให้ผ่านได้
         box.style.background="#FFF3E0"; box.style.borderColor="#FFCC02";
         box.innerHTML = "<div style='color:#E65100;font-weight:700'>⏳ "+si.message+"</div>";
         return;
       }
+      // API ตอบกลับแล้ว
+      _shopeeChecked = true;
 
       if(!si.found){
         box.style.background="#FFF1F2"; box.style.borderColor="#FECDD3";
@@ -585,7 +590,9 @@ function previewShopeeOrder(val){
       if(hasFree){
         // ✅ ผ่าน — อนุญาตกรอกข้อมูลต่อ
         _shopeeVerified = true;
+        _shopeeChecked = true;
         lockNextSteps(false);
+        chkForm();
 
         // Auto-select package
         var autoSelected = false;
@@ -614,7 +621,9 @@ function previewShopeeOrder(val){
       } else {
         // ❌ ไม่มี FREE — บล็อกและแจ้งเตือน
         _shopeeVerified = false;
-        lockNextSteps(true);
+        _shopeeChecked = true;
+        lockNextSteps(false);
+        chkForm(); // จะ disable ปุ่มเพราะ shopeeOk = false
         box.style.background="#FFF1F2"; box.style.borderColor="#FECDD3";
         box.innerHTML = "<div style='color:#BE123C;font-weight:800;font-size:13px;margin-bottom:6px'>⛔ คำสั่งซื้อนี้ไม่ใช่ซิมฟรีเดือนแรก</div>"
           +"<div style='font-size:12px;color:#374151;margin-bottom:8px'>กรุณาตรวจสอบว่าสั่งซื้อ <b>ซิมฟรีเดือนแรก</b> ถูกต้องหรือไม่</div>"
@@ -631,22 +640,21 @@ function previewShopeeOrder(val){
     }catch(e){
       box.style.background="#F9FAFB"; box.style.borderColor="#E5E7EB";
       box.innerHTML = "<div style='color:#9E9E9E;font-size:11px;text-align:center'>ไม่สามารถตรวจสอบได้ในขณะนี้ กรุณากรอกข้อมูลต่อได้เลยค่ะ</div>";
-      // ถ้า error ให้ผ่านไปได้
+      // error → _shopeeChecked=false → ผ่านได้
+      _shopeeVerified = false;
+      _shopeeChecked = false;
       lockNextSteps(false);
+      chkForm();
     }
   }, 800);
 }
 
 function lockNextSteps(lock){
-  // ซ่อน/แสดง fields หลังจากช่องเลขคำสั่งซื้อ
-  var fieldsToLock = ["p1-fields-lock"];
   var el = document.getElementById("p1-fields-lock");
   if(el){
     el.style.opacity = lock ? "0.3" : "1";
     el.style.pointerEvents = lock ? "none" : "";
   }
-  // เรียก chkForm เพื่อ update ปุ่ม
-  chkForm();
 }
 
 function onSimCodeInput(val){
@@ -674,7 +682,11 @@ function chkForm(){
   orderNo  = ($("orderNo")  ||{}).value ? $("orderNo").value.trim()  : "";
   simPhone = ($("simPhone") ||{}).value ? $("simPhone").value.trim() : "";
   var simCodeVal = $("simCode") ? $("simCode").value.trim() : "";
-  var shopeeOk = _shopeeVerified || simPhone.length > 0; // ถ้า API error ก็ผ่าน
+  // ตรวจสอบ Shopee:
+  // _shopeeVerified = true → ผ่าน (มี FREE)
+  // _shopeeVerified = false และ _shopeeChecked = true → ไม่ผ่าน (ไม่มี FREE)
+  // _shopeeVerified = false และ _shopeeChecked = false → ยังไม่ได้ตรวจ → ผ่านได้ (API error)
+  var shopeeOk = _shopeeVerified || !_shopeeChecked;
   var ok = orderNo.length > 0
         && simPhone.length > 0
         && branchCode !== ""
