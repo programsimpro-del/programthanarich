@@ -194,10 +194,33 @@ input:focus{border-color:#06C755!important;box-shadow:none!important}
 
     <!-- P3: PHOTOS -->
     <!-- P5: LOADING -->
-    <div class="pg" id="p5" style="align-items:center;justify-content:center">
-      <div style="width:52px;height:52px;border:5px solid #DCFCE7;border-top:5px solid #06C755;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:18px"></div>
-      <div style="font-weight:800;font-size:17px;color:#14532D;margin-bottom:22px">กำลังดำเนินการ...</div>
-      <div id="loglist" style="width:100%"></div>
+    <div class="pg" id="p5" style="align-items:center;justify-content:center;background:#fff">
+      <div style="text-align:center;padding:0 20px;width:100%">
+        <!-- Spinner -->
+        <div style="width:64px;height:64px;border:5px solid #DCFCE7;border-top:5px solid #06C755;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px"></div>
+        <div style="font-weight:900;font-size:18px;color:#14532D;margin-bottom:6px">กำลังดำเนินการ...</div>
+        <div id="p5-status" style="font-size:13px;color:#6B7280;margin-bottom:28px">กรุณารอสักครู่</div>
+
+        <!-- Step list -->
+        <div style="background:#F9FAFB;border-radius:14px;padding:16px;text-align:left;margin-bottom:24px">
+          <div id="p5-step-1" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #F0F0F0">
+            <div id="p5-icon-1" style="font-size:18px">⏳</div>
+            <div style="font-size:13px;color:#374151;font-weight:600">ตรวจสอบคำสั่งซื้อ Shopee</div>
+          </div>
+          <div id="p5-step-2" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #F0F0F0;opacity:.4">
+            <div id="p5-icon-2" style="font-size:18px">⏳</div>
+            <div style="font-size:13px;color:#374151;font-weight:600">บันทึกข้อมูลคำสั่งซื้อ</div>
+          </div>
+          <div id="p5-step-3" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #F0F0F0;opacity:.4">
+            <div id="p5-icon-3" style="font-size:18px">⏳</div>
+            <div style="font-size:13px;color:#374151;font-weight:600">แจ้งเตือน Admin</div>
+          </div>
+          <div id="p5-step-4" style="display:flex;align-items:center;gap:10px;padding:8px 0;opacity:.4">
+            <div id="p5-icon-4" style="font-size:18px">⏳</div>
+            <div style="font-size:13px;color:#374151;font-weight:600">ดึงวิธีสมัครเน็ต</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- P6: DONE -->
@@ -860,14 +883,44 @@ async function loadAndShowNetGuide(shopeeItems){
   }catch(e){ console.warn("loadNetGuide:", e.message); }
 }
 
+function setP5Step(n, done){
+  var icon = document.getElementById("p5-icon-"+n);
+  var step = document.getElementById("p5-step-"+n);
+  if(icon) icon.textContent = done ? "✅" : "⏳";
+  if(step) step.style.opacity = "1";
+  var status = document.getElementById("p5-status");
+  var msgs = ["","ตรวจสอบคำสั่งซื้อ Shopee...","บันทึกข้อมูล...","แจ้ง Admin...","ดึงวิธีสมัครเน็ต..."];
+  if(status && msgs[n]) status.textContent = msgs[n];
+  // เปิด step ถัดไป
+  var next = document.getElementById("p5-step-"+(n+1));
+  if(next && !done) next.style.opacity="0.7";
+}
+
 async function confirmAndSubmit(){
-  // อัพเดท global vars ก่อนส่ง
   orderNo  = document.getElementById("orderNo")  ? document.getElementById("orderNo").value.trim()  : orderNo;
   simPhone = document.getElementById("simPhone") ? document.getElementById("simPhone").value.trim() : simPhone;
-  submitForm();
+  // ไปหน้า loading ก่อนเลย
+  goP(5);
+  // รีเซ็ต steps
+  for(var i=1;i<=4;i++){
+    var ic=document.getElementById("p5-icon-"+i); if(ic) ic.textContent="⏳";
+    var st=document.getElementById("p5-step-"+i); if(st) st.style.opacity=(i===1?"1":"0.4");
+  }
+  var status=document.getElementById("p5-status");
+  if(status) status.textContent="กำลังตรวจสอบ...";
+  // Step 1: Shopee check
+  setP5Step(1, false);
+  await new Promise(function(r){ setTimeout(r, 500); });
+  setP5Step(1, true);
+  // Step 2: บันทึก
+  setP5Step(2, false);
+  // Step 3: แจ้ง Admin (submitForm จะทำ)
+  setP5Step(3, false);
+  await submitForm();
 }
 
 async function submitForm(){
+  setP5Step(2, false);
   goP(5);
   var logEl=$("loglist");
   function log(msg){var d=document.createElement("div");d.className="logline";d.textContent=msg;logEl.appendChild(d);}
