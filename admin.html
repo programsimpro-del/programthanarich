@@ -449,6 +449,15 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
           <input type="file" accept="image/*" style="display:none" onchange="setExampleImg(4,this)">
         </label>
       </div>
+
+      <div style="margin-bottom:4px">
+        <div style="font-size:12px;font-weight:800;color:#374151;margin-bottom:6px">📱 รูปตัวอย่างเบอร์โทรที่ได้รับ</div>
+        <div id="ex-img-5" style="display:none;margin-bottom:6px"><img id="ex-img-5-prev" style="width:100%;border-radius:10px;border:1.5px solid #A5D6A7;max-height:160px;object-fit:cover"></div>
+        <label style="display:flex;align-items:center;gap:8px;background:#F0FDF4;border:1.5px solid #A5D6A7;border-radius:10px;padding:10px 14px;cursor:pointer">
+          <span style="font-size:20px">📁</span><span style="font-size:13px;font-weight:700;color:#166534">เลือกรูปตัวอย่าง</span>
+          <input type="file" accept="image/*" style="display:none" onchange="setExampleImg(5,this)">
+        </label>
+      </div>
     </div>
 
     <button class="btn btn-blue" onclick="saveFormSettings()">💾 บันทึกการตั้งค่า</button>
@@ -2135,10 +2144,12 @@ function loadExImages(){
     .then(function(r){ return r.json(); })
     .then(function(data){
       for(var i=0;i<6;i++){
-        var el = document.getElementById("ex-img-"+i);
-        if(el && data && data["img"+i]){
-          el.src = data["img"+i];
-          el.style.display = "block";
+        var el   = document.getElementById("ex-img-"+i);
+        var prev = document.getElementById("ex-img-"+i+"-prev");
+        var wrap = document.getElementById("ex-img-"+i);
+        if(data && data["img"+i]){
+          if(prev){ prev.src=data["img"+i]; if(wrap) wrap.style.display="block"; }
+          else if(el && el.tagName==="IMG"){ el.src=data["img"+i]; el.style.display="block"; }
         }
       }
     }).catch(function(){});
@@ -2150,9 +2161,14 @@ function setExampleImg(idx, input){
   var reader = new FileReader();
   reader.onload = function(e){
     var b64 = e.target.result;
-    // แสดงรูปทันที
+    // แสดง preview
+    var wrap = document.getElementById("ex-img-"+idx);
+    var prev = document.getElementById("ex-img-"+idx+"-prev");
+    if(wrap){ wrap.style.display="block"; }
+    if(prev){ prev.src=b64; }
+    // fallback สำหรับ img เดี่ยว
     var el = document.getElementById("ex-img-"+idx);
-    if(el){ el.src=b64; el.style.display="block"; }
+    if(el && el.tagName==="IMG"){ el.src=b64; el.style.display="block"; }
     // บันทึกลง Firebase REST
     var data = {}; data["img"+idx] = b64;
     fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/exImages.json",{
