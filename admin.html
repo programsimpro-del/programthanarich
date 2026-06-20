@@ -599,9 +599,28 @@ function initFirebase(){
 // Real-time listener — Orders + Packages
 function startRealtimeSync(){
   if(!fbDB && !initFirebase()){
-    // initFirebase จะ retry อัตโนมัติ ไม่ต้อง return
     return;
   }
+
+  // ── Orders real-time (ขึ้นก่อนเพื่อให้ข้อมูลแสดงเร็วที่สุด) ──
+  fbDB.ref("/orders").on("value", function(snap){
+    var data = snap.val();
+    var newReqs = [];
+    if(data){ newReqs = Object.values(data); }
+    newReqs.sort(function(a,b){
+      var ta = b.createdAt||b.submittedAt||"";
+      var tb = a.createdAt||a.submittedAt||"";
+      return ta.localeCompare(tb);
+    });
+    reqs = newReqs;
+    localStorage.setItem("pt_requests", JSON.stringify(reqs));
+    console.log("📡 Orders:", reqs.length);
+    renderChatList();
+    renderOrdList();
+    renderDashboard();
+    updateBadges();
+    $("rts").textContent = "🔴 LIVE — อัพเดท " + ts();
+  });
 
   // ── Packages real-time ────────────────────────
   fbDB.ref("/packages").on("value", function(snap){
@@ -657,51 +676,6 @@ function startRealtimeSync(){
     }
   });
 
-  fbDB.ref("/orders").on("value", function(snap){
-    var data = snap.val();
-
-    // Firebase คือ source of truth เสมอ — รวมถึงกรณีว่างเปล่า (ลบหมด)
-    var firebaseRefs = {};
-    var newReqs = [];
-    if(data){
-      newReqs = Object.values(data);
-      newReqs.forEach(function(r){ firebaseRefs[r.ref] = true; });
-    }
-
-    newReqs.sort(function(a,b){
-      var ta = b.createdAt||b.submittedAt||"";
-      var tb = a.createdAt||a.submittedAt||"";
-      return ta.localeCompare(tb);
-    });
-
-    // merge เฉพาะ field ที่ admin แก้ใน local (ไม่ดึงข้อมูลที่ Firebase ลบแล้วกลับมา)
-    var localMap = {};
-    reqs.forEach(function(r){ localMap[r.ref] = r; });
-    newReqs = newReqs.map(function(r){
-      var lo = localMap[r.ref];
-      if(lo){
-        if(lo.status)           r.status           = lo.status;
-        if(lo.shopeeVerified)   r.shopeeVerified   = lo.shopeeVerified;
-        if(lo.lineMessages)     r.lineMessages     = lo.lineMessages;
-        if(lo.activatedPackage) r.activatedPackage = lo.activatedPackage;
-        if(lo.activatedAt)      r.activatedAt      = lo.activatedAt;
-        if(lo.aiResult)         r.aiResult         = lo.aiResult;
-        if(!r.lineUserId && lo.lineUserId) r.lineUserId = lo.lineUserId;
-      }
-      return r;
-    });
-
-    // อัพเดท reqs ตาม Firebase เท่านั้น (ไม่เอา local-only items ที่ไม่มีใน Firebase)
-    reqs = newReqs;
-    localStorage.setItem("pt_requests", JSON.stringify(reqs));
-    console.log("📡 Firebase sync:", reqs.length, "orders");
-
-    renderChatList();
-    renderOrdList();
-    renderDashboard();
-    updateBadges();
-    $("rts").textContent = "🔴 LIVE — อัพเดท " + ts();
-  });
 }
 
 function loadAll(){
@@ -2464,7 +2438,7 @@ function addPkgInline(){
   var color  = "#1565C0";
   var colors = ["#1565C0","#2E7D32","#6A1B9A","#E65100","#B71C1C","#00838F","#4527A0","#558B2F"];
   color = colors[pkgs.length % colors.length];
-  pkgs.push({ id:"pkg_"+Date.now(), name:"", code:"", price:"", emoji:"📶", color:color, msg:"" });
+  pkgs.push({ id:"pkg_"+Date.now(), name:"", code:"", price:"", emoji:"📶", color:color, confirmMsg:"", activateMsg:"" });
   _pkgCurrentFolder = pkgs.length - 1;
   renderPkgMgrList();
 }
@@ -2476,15 +2450,17 @@ function syncPkgInputs(){
   var nm = document.getElementById("pk-name-"+_pkgCurrentFolder);
   var cd = document.getElementById("pk-code-"+_pkgCurrentFolder);
   var pr = document.getElementById("pk-price-"+_pkgCurrentFolder);
-  var mg = document.getElementById("pk-msg-"+_pkgCurrentFolder);
+  var cm = document.getElementById("pk-confirmMsg-"+_pkgCurrentFolder);
+  var am = document.getElementById("pk-activateMsg-"+_pkgCurrentFolder);
   var em = document.querySelector("#pk-ep-"+_pkgCurrentFolder+" .sel");
   var cl = document.querySelector("#pk-cp-"+_pkgCurrentFolder+" .sel");
-  if(nm) p.name  = nm.value;
-  if(cd) p.code  = cd.value;
-  if(pr) p.price = pr.value;
-  if(mg) p.msg   = mg.value;
-  if(em) p.emoji = em.textContent.trim();
-  if(cl) p.color = cl.dataset.color;
+  if(nm) p.name        = nm.value;
+  if(cd) p.code        = cd.value;
+  if(pr) p.price       = pr.value;
+  if(cm) p.confirmMsg  = cm.value;
+  if(am) p.activateMsg = am.value;
+  if(em) p.emoji       = em.textContent.trim();
+  if(cl) p.color       = cl.dataset.color;
 }
 
 function savePkgsInline(){
@@ -2576,15 +2552,7 @@ function renderPkgMgrList(){
        +'<input id="pk-price-'+_pkgCurrentFolder+'" value="'+escH(p.price||"")+'" placeholder="149" type="number" '
          +'style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;margin-bottom:12px;box-sizing:border-box" '
          +'oninput="autoSavePkg()">'
-       +'<div style="font-size:12px;color:#6B7280;margin-bottom:4px">💬 ข้อความยืนยัน</div>'
-       +'<textarea id="pk-msg-'+_pkgCurrentFolder+'" placeholder="ส่งให้ลูกค้าตอนยืนยันแพ็คเกจ..." '
-         +'style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;min-height:100px;resize:vertical;margin-bottom:12px;box-sizing:border-box" '
-         +'oninput="autoSavePkg()">'+escH(p.msg||"")+'</textarea>'
-       +'<div style="display:flex;gap:8px">'
-         +'<button onclick="savePkgsInline()" style="flex:1;padding:11px;border-radius:10px;border:none;background:#1565C0;color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">💾 บันทึก</button>'
-         +'<button onclick="deletePkgInline('+_pkgCurrentFolder+')" style="padding:11px 16px;border-radius:10px;border:none;background:#FFEBEE;color:#C62828;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">🗑️</button>'
-       +'</div>'
-     +'</div>';
+       +'<div style="font-size:12px;color:#1565C0;font-weight:800;margin-bottom:4px">💬 ข้อความตอน ยืนยันแพ็คเกจ</div>'       +'<div style="font-size:11px;color:#9E9E9E;margin-bottom:6px">ใช้ {simPhone} {orderNo} {pkgName} {simCode}</div>'       +'<textarea id="pk-confirmMsg-'+_pkgCurrentFolder+'" '         +'style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:12px;font-family:inherit;min-height:120px;resize:vertical;margin-bottom:14px;box-sizing:border-box" '         +'oninput="autoSavePkg()">'+escH(p.confirmMsg||'')+'</textarea>'       +'<div style="font-size:12px;color:#2E7D32;font-weight:800;margin-bottom:4px">✅ ข้อความตอน สมัครเน็ตแล้ว</div>'       +'<div style="font-size:11px;color:#9E9E9E;margin-bottom:6px">ใช้ {simPhone} {orderNo} {pkgName} {remaining} {maxQuota}</div>'       +'<textarea id="pk-activateMsg-'+_pkgCurrentFolder+'" '         +'style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:12px;font-family:inherit;min-height:120px;resize:vertical;margin-bottom:14px;box-sizing:border-box" '         +'oninput="autoSavePkg()">'+escH(p.activateMsg||'')+'</textarea>'       +'<div style="display:flex;gap:8px">'         +'<button onclick="savePkgsInline()" style="flex:1;padding:11px;border-radius:10px;border:none;background:#1565C0;color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">💾 บันทึก</button>'         +'<button onclick="deletePkgInline('+_pkgCurrentFolder+')" style="padding:11px 16px;border-radius:10px;border:none;background:#FFEBEE;color:#C62828;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">🗑️</button>'       +'</div>'     +'</div>';
     return;
   }
 
