@@ -443,52 +443,75 @@ function showTermsPopup(){
 }
 
 async function doAcceptAndSubmit(){
-  // ปิด popup
+  // 1. ปิด popup เงื่อนไข
   var popup = document.getElementById("netguide-popup");
   if(popup) popup.style.display = "none";
 
-  // โหลดวิธีสมัครเน็ต ใส่ p6 ล่วงหน้า
-  try{
-    var r = await fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json");
-    var guides = await r.json();
-    if(guides){
-      if(!Array.isArray(guides)) guides = Object.values(guides);
-      guides = guides.filter(function(g){ return g && (g.keyword||g.steps); });
-      var itemStr = (window._lastShopeeItems||[]).map(function(i){
-        return ((i.name||"")+" "+(i.model||"")).toUpperCase();
-      }).join(" ");
-      var matched = null;
-      guides.forEach(function(g){
-        if(!matched && g.keyword){
-          g.keyword.toUpperCase().split(",").forEach(function(kw){
-            if(kw.trim() && itemStr.indexOf(kw.trim()) !== -1) matched = g;
-          });
-        }
-      });
-      if(!matched && guides.length>0) matched = guides[0];
-      if(matched && matched.steps){
-        var lines = matched.steps.split("\n").filter(function(l){ return l.trim(); });
-        var stepsEl = document.getElementById("p6-net-steps");
-        if(stepsEl) stepsEl.innerHTML = lines.map(function(line,i){
-          return '<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start">'
-            +'<div style="background:#06C755;color:#fff;border-radius:50%;width:22px;height:22px;min-width:22px;'
-            +'display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900">'+(i+1)+'</div>'
-            +'<div style="font-size:13px;color:#14532D;font-weight:700;line-height:1.6;text-align:left">'+line+'</div>'
-            +'</div>';
-        }).join("");
-        var titleEl = document.getElementById("p6-net-title");
-        if(titleEl && matched.keyword) titleEl.textContent = "วิธีสมัครเน็ต "+matched.keyword.split(",")[0].trim();
-      }
-    }
-  }catch(e){ console.warn("netguide load err:", e.message); }
-
-  // ส่งข้อมูล (try/catch ให้ goP(6) ทำงานเสมอ)
+  // 2. ส่งข้อมูลและตรวจสอบ Shopee (submitForm จะเปลี่ยนหน้าไป P5 loading เอง)
+  //    รอให้ submitForm เสร็จก่อน (มันจะ goP(6) เองเมื่อเสร็จ)
   try{ await submitForm(); }
   catch(e){
     console.warn("submitForm err:", e.message);
     goP(6);
   }
+
+  // 3. หลัง submitForm เสร็จ (อยู่ที่ P6 แล้ว) ดึงวิธีสมัครเน็ตจาก Admin
+  //    ใช้ _lastShopeeItems ที่ได้มาจาก Shopee API ใน submitForm
+  await loadNetGuideToP6();
 }
+
+async function loadNetGuideToP6(){
+  try{
+    setP5Step(4, false); // แสดง step 4 กำลังทำงาน
+    var r = await fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json");
+    var guides = await r.json();
+    if(!guides){ setP5Step(4, true); return; }
+    if(!Array.isArray(guides)) guides = Object.values(guides);
+    guides = guides.filter(function(g){ return g && (g.keyword || g.steps); });
+
+    // จับคู่กับสินค้าจาก Shopee API
+    var itemStr = (window._lastShopeeItems||[]).map(function(i){
+      return ((i.name||"")+" "+(i.model||"")).toUpperCase();
+    }).join(" ");
+
+    var matched = null;
+    guides.forEach(function(g){
+      if(!matched && g.keyword){
+        g.keyword.toUpperCase().split(",").forEach(function(kw){
+          if(kw.trim() && itemStr.indexOf(kw.trim()) !== -1) matched = g;
+        });
+      }
+    });
+    // ถ้าไม่ match ใช้ guide แรก (default)
+    if(!matched && guides.length > 0) matched = guides[0];
+
+    setP5Step(4, true);
+
+    if(matched && matched.steps){
+      var lines = matched.steps.split("\n").filter(function(l){ return l.trim(); });
+      var stepsEl = document.getElementById("p6-net-steps");
+      if(stepsEl) stepsEl.innerHTML = lines.map(function(line, i){
+        return '<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start">'
+          +'<div style="background:#06C755;color:#fff;border-radius:50%;width:22px;height:22px;min-width:22px;'
+          +'display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900">'+(i+1)+'</div>'
+          +'<div style="font-size:13px;color:#14532D;font-weight:700;line-height:1.6;text-align:left">'+escH(line)+'</div>'
+          +'</div>';
+      }).join("");
+      var titleEl = document.getElementById("p6-net-title");
+      if(titleEl && matched.keyword)
+        titleEl.textContent = "วิธีสมัครเน็ต "+matched.keyword.split(",")[0].trim();
+    } else {
+      var stepsEl = document.getElementById("p6-net-steps");
+      if(stepsEl) stepsEl.innerHTML = '<div style="font-size:13px;color:#9E9E9E;text-align:center;padding:12px">ไม่พบวิธีสมัครเน็ต กรุณาติดต่อ Admin</div>';
+    }
+  }catch(e){
+    console.warn("loadNetGuideToP6 err:", e.message);
+    var stepsEl = document.getElementById("p6-net-steps");
+    if(stepsEl) stepsEl.innerHTML = '<div style="font-size:13px;color:#9E9E9E;text-align:center;padding:12px">ไม่สามารถโหลดวิธีสมัครได้ กรุณาติดต่อ Admin</div>';
+  }
+}
+
+function escH(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 
 /* ═══ LIFF INIT ═══ */
 async function initLiff(){
@@ -955,32 +978,6 @@ async function notifyAdmin(refNo, req, pkg){
 }
 
 /* ═══ SUBMIT ═══ */
-async function loadAndShowNetGuide(shopeeItems){
-  try{
-    var r = await fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json");
-    var guides = await r.json();
-    if(!guides) return;
-    if(!Array.isArray(guides)) guides = Object.values(guides);
-
-    // หา guide ที่ keyword match กับตัวเลือกสินค้า
-    var matched = null;
-    var itemStr = (shopeeItems||[]).map(function(i){ return (i.name||"")+" "+(i.model||""); }).join(" ").toUpperCase();
-
-    guides.forEach(function(g){
-      if(!g || !g.keyword) return;
-      var kws = g.keyword.toUpperCase().split(",").map(function(k){ return k.trim(); });
-      kws.forEach(function(kw){
-        if(kw && itemStr.includes(kw)) matched = g;
-      });
-    });
-
-    if(matched && matched.steps){
-      var box = document.getElementById("netguide-content");
-      var popup = document.getElementById("netguide-popup");
-      if(box) box.textContent = matched.steps;
-      if(popup) popup.style.display = "flex";
-      return true;
-    }
     return false;
   }catch(e){ console.warn("loadNetGuide:", e.message); return false; }
 }
@@ -999,42 +996,14 @@ function setP5Step(n, done){
 }
 
 
-async function confirmAndSubmit(){
-  orderNo  = (document.getElementById("orderNo")  || {value:orderNo}).value.trim();
-  simPhone = (document.getElementById("simPhone") || {value:simPhone}).value.trim();
-
-  // ส่งข้อมูลก่อนเลย (สำคัญที่สุด)
-  submitForm();
-
-  // แสดง popup วิธีสมัครในพื้นหลัง (ไม่ await เพื่อไม่บล็อก)
-  fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json")
-    .then(function(r){ return r.json(); })
-    .then(function(guides){
-      if(!guides) return;
-      if(!Array.isArray(guides)) guides = Object.values(guides);
-      var itemStr = (window._lastShopeeItems||[]).map(function(i){
-        return ((i.name||"")+" "+(i.model||"")).toUpperCase();
-      }).join(" ");
-      var matched = null;
-      guides.forEach(function(g){
-        if(!g||!g.keyword) return;
-        g.keyword.toUpperCase().split(",").forEach(function(kw){
-          if(kw.trim() && itemStr.includes(kw.trim())) matched = g;
-        });
-      });
-      if(!matched && guides.length>0) matched = guides[0];
-      if(matched && matched.steps){
-        var box = document.getElementById("netguide-content");
-        var popup = document.getElementById("netguide-popup");
-        if(box) box.textContent = matched.steps;
-        if(popup) popup.style.display = "flex";
-      }
-    }).catch(function(e){ console.warn(e); });
-}
+// confirmAndSubmit removed — replaced by doAcceptAndSubmit
 
 
 async function submitForm(){
   goP(5);
+
+  // ── Step 1: ตรวจสอบ duplicate ──
+  setP5Step(1, false);
   var dup = await checkDup(orderNo);
   if(dup){
     var qd = $("quota-detail");
@@ -1050,7 +1019,10 @@ async function submitForm(){
       +'</div>';
     goP(7); return;
   }
+  setP5Step(1, true);
 
+  // ── Step 2: บันทึกข้อมูล ──
+  setP5Step(2, false);
   var refNo = "PT"+Date.now().toString().slice(-6);
   var now = ts();
   var pkg = pkgs.find(function(p){ return p.id===pkgId; });
@@ -1062,18 +1034,25 @@ async function submitForm(){
     branchName:simCodeVal[0]==="K" ? "กาฬสินธุ์" : simCodeVal[0]==="L" ? "เลย" : "ไม่ระบุ",
     pkgId:pkgId, pkgName:pkg?pkg.name:"", pkgCode:pkg?pkg.code:"",
     imgOrder:null, imgSim:null, imgReg:null,
-    status:"pending", shopeeVerified:"pending", submittedAt:now,
+    status:"pending", shopeeVerified: _shopeeVerified ? "verified" : "pending",
+    submittedAt:now,
     mobileDataStatus:"ปิดเน็ตมือถือแล้ว", mobileDataAgreedAt:new Date().toISOString(),
     lineUserId:lp?lp.userId:null,
     lineDisplayName:lp?lp.displayName:null,
     linePictureUrl:lp?lp.pictureUrl:null,
     lineMessages:[{id:1,from:"customer",text:"สวัสดีค่ะ ขอรับเน็ตฟรีเดือนแรกค่ะ\nเลขคำสั่งซื้อ "+orderNo+"\nเบอร์ซิม "+simPhone+"\nแพ็คเกจ "+(pkg?pkg.name:""),time:now}]
   };
-
   try{ var list=JSON.parse(localStorage.getItem("pt_requests")||"[]"); list.unshift(req); localStorage.setItem("pt_requests",JSON.stringify(list)); }catch(_){}
   recordReq(orderNo, simPhone, refNo);
+  setP5Step(2, true);
 
+  // ── Step 3: แจ้ง Admin ──
+  setP5Step(3, false);
   try{ await notifyAdmin(refNo, req, pkg); }catch(e){ console.warn("notifyAdmin err:",e.message); }
+  setP5Step(3, true);
+
+  // ── Step 4: เตรียมดึงวิธีสมัครเน็ต (ทำใน loadNetGuideToP6) ──
+  setP5Step(4, false);
 
   var el = $("refno");
   if(el) el.textContent = refNo;
