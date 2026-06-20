@@ -1560,49 +1560,41 @@ function renderOdActions(req){
   var el = $("od-actions");
   var nm = $("od-netmenu");
   if(!el) return;
+
+  // เปลี่ยน od-actions ให้เป็น block แทน flex เพื่อให้ width:100% ใช้ได้
+  el.style.display  = "block";
+  el.style.padding  = "10px";
   el.innerHTML = "";
-  nm.style.display = "none";
+  nm.style.display  = "none";
   var s = req.status;
 
-  // ── STATUS BADGE ──────────────────────────────────────
-  var statusInfo = {
-    "pending":     {label:"📋 รอตรวจสอบคำสั่งซื้อ",          bg:"#FFF3E0", color:"#E65100"},
-    "confirmed":   {label:"⏳ รอเปิดเน็ตฟรีเดือนแรก",         bg:"#E3F2FD", color:"#1565C0"},
-    "processing":  {label:"📤 กำลังดำเนินการ — รอแอดมินสมัคร", bg:"#F3E8FF", color:"#6A1B9A"},
-    "activated":   {label:"✅ เสร็จสมบูรณ์",                   bg:"#E8F5E9", color:"#2E7D32"},
-    "rejected":    {label:"❌ ปฏิเสธคำสั่งซื้อ",               bg:"#FFEBEE", color:"#C62828"},
-  };
-  var si = statusInfo[s] || {label:s, bg:"#F5F5F5", color:"#666"};
+  // ── ฟังก์ชันสร้างปุ่มลบ (ใช้ร่วมกันทุก status) ──
+  function addDeleteBtn(){
+    var d = document.createElement("button");
+    d.style.cssText = "display:block;width:100%;margin-top:10px;padding:11px;border-radius:10px;border:1.5px solid #FECDD3;background:#FFF1F2;color:#BE123C;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;text-align:center";
+    d.textContent = "🗑️ ลบประวัติคำขอนี้";
+    d.onclick = function(){ showDeleteConfirm(aref); };
+    el.appendChild(d);
+  }
 
-
-  // ── STEP 1: pending ───────────────────────────────────
+  // ── pending ──
   if(s === "pending"){
-    // ปุ่มตรวจสอบ Shopee
-
-    // ปุ่มยืนยัน
     var b1 = document.createElement("button");
-    b1.style.cssText = "width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#2E7D32,#388E3C);color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(46,125,50,.25);margin-bottom:8px";
+    b1.style.cssText = "display:block;width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#2E7D32,#388E3C);color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(46,125,50,.25);margin-bottom:8px";
     b1.textContent = "✅ ยืนยันคำสั่งซื้อ";
     b1.onclick = function(){ showQuotaDialog(aref, reqs.find(function(r){return r.ref===aref;})); };
     el.appendChild(b1);
     var b2 = document.createElement("button");
-    b2.style.cssText = "width:100%;padding:11px;border-radius:12px;border:none;background:#FFEBEE;color:#C62828;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit";
+    b2.style.cssText = "display:block;width:100%;padding:11px;border-radius:12px;border:none;background:#FFEBEE;color:#C62828;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit";
     b2.textContent = "❌ ปฏิเสธคำสั่งซื้อ";
     b2.onclick = function(){ confirmOrd(aref,"rejected"); };
     el.appendChild(b2);
-
-  // ── ปุ่มลบ ──
-  var _db = document.createElement("button");
-  _db.style.cssText = "width:100%;margin-top:8px;padding:10px;border-radius:10px;border:none;background:#FFF1F2;color:#BE123C;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit";
-  _db.textContent = "🗑️ ลบประวัติคำขอนี้";
-  _db.onclick = function(){ showDeleteConfirm(aref); };
-  el.appendChild(_db);
+    addDeleteBtn();
     return;
   }
 
-  // ── STEP 2: confirmed — เลือก package + ยืนยัน ───────
+  // ── confirmed ──
   if(s === "confirmed"){
-    // แสดง package list ให้เลือก
     nm.style.display = "block";
     nm.innerHTML = "";
     var hd = document.createElement("div");
@@ -1622,15 +1614,11 @@ function renderOdActions(req){
        +'<div style="font-size:10px;font-family:monospace;color:#9E9E9E">'+p.code+'</div></div>'
        +(req.pkgId===p.id ? '<span style="font-size:10px;color:'+p.color+';font-weight:700">ลูกค้าเลือก</span>' : '')
        +(isSelected ? '<span style="font-size:16px;color:'+p.color+'">✓</span>' : '');
-      card.onclick = function(){
-        window._selectedPkg = p.id;
-        renderOdActions(req);
-      };
+      card.onclick = function(){ window._selectedPkg = p.id; renderOdActions(req); };
       nm.appendChild(card);
     });
-    // ปุ่มยืนยัน package
     var confirmPkg = document.createElement("button");
-    confirmPkg.style.cssText = "width:100%;margin-top:10px;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#1565C0,#1976D2);color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(21,101,192,.25)";
+    confirmPkg.style.cssText = "display:block;width:100%;margin-top:10px;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#1565C0,#1976D2);color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(21,101,192,.25)";
     confirmPkg.textContent = "📤 ยืนยันแพ็คเกจ — ส่งวิธีสมัครให้ลูกค้า";
     confirmPkg.onclick = function(){
       var selPkg = window._selectedPkg || req.pkgId;
@@ -1638,68 +1626,48 @@ function renderOdActions(req){
       sendPackageAndProcess(aref, selPkg);
     };
     nm.appendChild(confirmPkg);
-  var _dbc = document.createElement("button");
-  _dbc.style.cssText = "width:100%;margin-top:8px;padding:10px;border-radius:10px;border:none;background:#FFF1F2;color:#BE123C;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit";
-  _dbc.textContent = "🗑️ ลบประวัติคำขอนี้";
-  _dbc.onclick = function(){ showDeleteConfirm(aref); };
-  el.appendChild(_dbc);
+    addDeleteBtn();
     return;
   }
 
-  // ── STEP 3: processing — รอสมัคร ─────────────────────
+  // ── processing ──
   if(s === "processing"){
     var bDone = document.createElement("button");
-    bDone.style.cssText = "width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#6A1B9A,#7B1FA2);color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(106,27,154,.25)";
+    bDone.style.cssText = "display:block;width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#6A1B9A,#7B1FA2);color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(106,27,154,.25)";
     bDone.textContent = "🌐 สมัครเน็ตแล้ว — กดยืนยัน";
     bDone.onclick = function(){
       var req2 = reqs.find(function(r){return r.ref===aref;});
       if(req2) doActivate(req2.activatedPackage || req2.pkgId);
     };
     el.appendChild(bDone);
-  var _dbp = document.createElement("button");
-  _dbp.style.cssText = "width:100%;margin-top:8px;padding:10px;border-radius:10px;border:none;background:#FFF1F2;color:#BE123C;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit";
-  _dbp.textContent = "🗑️ ลบประวัติคำขอนี้";
-  _dbp.onclick = function(){ showDeleteConfirm(aref); };
-  el.appendChild(_dbp);
+    addDeleteBtn();
     return;
   }
 
-  // ── STEP 4: activated ─────────────────────────────────
+  // ── activated ──
   if(s === "activated"){
     var done = document.createElement("div");
     done.style.cssText = "text-align:center;padding:8px;font-size:12px;color:#9E9E9E;margin-bottom:10px";
     done.textContent = "เสร็จสมบูรณ์แล้วค่ะ 🎉";
     el.appendChild(done);
     var homeBtn2 = document.createElement("button");
-    homeBtn2.style.cssText = "width:100%;padding:12px;border-radius:12px;border:none;background:#F0FDF4;color:#166534;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit";
+    homeBtn2.style.cssText = "display:block;width:100%;padding:12px;border-radius:12px;border:none;background:#F0FDF4;color:#166534;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit";
     homeBtn2.textContent = "🏠 กลับสู่หน้าหลัก";
     homeBtn2.onclick = function(){ goHome(); };
     el.appendChild(homeBtn2);
-    // ปุ่มลบ
-    var delBtnA = document.createElement("button");
-    delBtnA.style.cssText = "width:100%;margin-top:6px;padding:10px;border-radius:10px;border:none;background:#FFF1F2;color:#BE123C;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit";
-    delBtnA.textContent = "🗑️ ลบประวัติคำขอนี้";
-    delBtnA.onclick = function(){ showDeleteConfirm(aref); };
-    el.appendChild(delBtnA);
+    addDeleteBtn();
     return;
   }
 
-  // ── rejected ─────────────────────────────────────────
+  // ── rejected ──
   if(s === "rejected"){
     var rb = document.createElement("button");
-    rb.style.cssText = "flex:1;padding:9px;border-radius:10px;border:none;background:#F5F5F5;color:#757575;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit";
+    rb.style.cssText = "display:block;width:100%;padding:9px;border-radius:10px;border:none;background:#F5F5F5;color:#757575;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit";
     rb.textContent = "↩️ คืนสถานะรอตรวจ";
     rb.onclick = function(){ confirmOrd(aref,"pending"); };
     el.appendChild(rb);
-  }
-
-  // ── ปุ่มลบ (ทุก status ยกเว้น activated ที่มีแล้ว) ──
-  if(s !== "activated"){
-    var delBtn = document.createElement("button");
-    delBtn.style.cssText = "width:100%;margin-top:8px;padding:10px;border-radius:10px;border:none;background:#FFF1F2;color:#BE123C;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit";
-    delBtn.textContent = "🗑️ ลบประวัติคำขอนี้";
-    delBtn.onclick = function(){ showDeleteConfirm(aref); };
-    el.appendChild(delBtn);
+    addDeleteBtn();
+    return;
   }
 }
 
