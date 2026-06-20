@@ -903,13 +903,15 @@ async function confirmAndSubmit(){
   orderNo  = (document.getElementById("orderNo")  || {value:orderNo}).value.trim();
   simPhone = (document.getElementById("simPhone") || {value:simPhone}).value.trim();
 
-  // แสดง popup วิธีสมัครก่อนเลย
-  try{
-    var r = await fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json");
-    var guides = await r.json();
-    if(guides){
+  // ส่งข้อมูลก่อนเลย (สำคัญที่สุด)
+  submitForm();
+
+  // แสดง popup วิธีสมัครในพื้นหลัง (ไม่ await เพื่อไม่บล็อก)
+  fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json")
+    .then(function(r){ return r.json(); })
+    .then(function(guides){
+      if(!guides) return;
       if(!Array.isArray(guides)) guides = Object.values(guides);
-      // หา guide ที่ match
       var itemStr = (window._lastShopeeItems||[]).map(function(i){
         return ((i.name||"")+" "+(i.model||"")).toUpperCase();
       }).join(" ");
@@ -920,17 +922,14 @@ async function confirmAndSubmit(){
           if(kw.trim() && itemStr.includes(kw.trim())) matched = g;
         });
       });
-      // ถ้าไม่ match keyword ใช้อันแรก
       if(!matched && guides.length>0) matched = guides[0];
       if(matched && matched.steps){
-        document.getElementById("netguide-content").textContent = matched.steps;
-        document.getElementById("netguide-popup").style.display = "flex";
+        var box = document.getElementById("netguide-content");
+        var popup = document.getElementById("netguide-popup");
+        if(box) box.textContent = matched.steps;
+        if(popup) popup.style.display = "flex";
       }
-    }
-  }catch(e){ console.warn(e); }
-
-  // ส่งข้อมูลไประบบ
-  submitForm();
+    }).catch(function(e){ console.warn(e); });
 }
 
 
