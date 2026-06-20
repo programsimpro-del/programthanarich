@@ -257,14 +257,14 @@ input:focus{border-color:#06C755!important;box-shadow:none!important}
 
       <!-- คำเตือน -->
       <div style="width:100%;background:#FEF2F2;border:1.5px solid #FECACA;border-radius:12px;padding:12px 14px;margin-bottom:12px">
-        <div style="font-size:12px;font-weight:900;color:#BE123C;margin-bottom:4px">⚠️ คำเตือน! อย่าลืมปิดเน็ตมือถือด้วยนะคะ</div>
-        <div style="font-size:12px;color:#9F1239;line-height:1.8">ถ้าไม่ปิดเน็ตยอดเงินที่ระบบเติมเข้าเบอร์ให้<b>จะถูกตัดทันที</b><br>ทางร้านไม่รับผิดชอบทุกกรณีเพราะทางร้านได้แจ้งไว้แล้ว</div>
+        <div style="font-size:12px;font-weight:900;color:#BE123C;margin-bottom:4px">⚠️ อย่าลืม! ปิดเน็ตมือถือด้วยนะคะ</div>
+        <div style="font-size:12px;color:#9F1239;line-height:1.8">ถ้าไม่ปิดเน็ต ยอดเงินที่เติมให้<b>จะถูกตัดทันที</b><br>ทางร้านไม่รับผิดชอบทุกกรณี</div>
       </div>
 
       <!-- ติดต่อ -->
       <div style="width:100%;background:#EFF6FF;border-radius:12px;padding:12px 14px;margin-bottom:20px">
         <div style="font-size:12px;color:#1E40AF;line-height:2">
-          💬 มีข้อสงสัยสามารถติดต่อเจ้าหน้าที่ ได้ที่<br>
+          💬 มีข้อสงสัย ติดต่อเจ้าหน้าที่<br>
           <b>แชทไลน์ @programthanarich</b><br>
           <span style="background:#DBEAFE;border-radius:6px;padding:2px 8px;font-size:11px">🕐 เวลาทำการ 8:00–17:00 น.</span>
         </div>
@@ -297,9 +297,11 @@ input:focus{border-color:#06C755!important;box-shadow:none!important}
     <!-- เงื่อนไขสำคัญ -->
     <div style="background:#7F1D1D;border:2px solid #EF4444;border-radius:14px;padding:16px;margin-bottom:16px;width:100%">
       <div style="font-size:14px;font-weight:900;color:#FCA5A5;margin-bottom:10px;text-align:center">⚠️ เงื่อนไขสำคัญที่ต้องทำ</div>
-      <div style="font-size:13px;color:#fff;line-height:2.2;font-weight:700">
-        1️⃣ ส่งข้อมูลครบแล้ว <b style="color:#FFFF00">ปิดเน็ตมือถือทันที</b><br>
-        2️⃣ ถ้าไม่ปิดเน็ตยอดเงินจะ<b style="color:#fff">ถูกตัดทันทีถ้ายอดเงินถูกตัดจากการที่ลูกค้าไม่ปิดเน็ตมือถือลูกค้าต้องเติมเงินเอง </b><br>และทางร้าน<b style="color:#FFFF00">ไม่รับผิดชอบ</b>ทุกกรณี
+      <div style="font-size:13px;color:#FEE2E2;line-height:2.2;font-weight:700">
+        1️⃣ ส่งข้อมูลครบแล้ว <b style="color:#fff">ปิดเน็ตมือถือทันที</b><br>
+        2️⃣ ไม่ปิดเน็ต ยอดเงินจะ<b style="color:#FCA5A5">ถูกตัดทันที</b><br>
+        3️⃣ ต้อง<b style="color:#FCA5A5">เติมเงินเพิ่มเอง</b>หากไม่ปิดเน็ต<br>
+        4️⃣ ทางร้าน<b style="color:#FCA5A5">ไม่รับผิดชอบ</b>ทุกกรณี
       </div>
     </div>
     <!-- Checkbox -->
@@ -688,6 +690,34 @@ function goP(n){
 function goBack(){ if(curP>0&&curP<5)goP(curP-1); }
 function selPlt(id){ plt=id; goP(2); }
 
+/* ── 30-min cooldown per orderNo ── */
+var COOLDOWN_MS = 30 * 60 * 1000; // 30 นาที
+
+function getCooldownDB(){
+  try{ return JSON.parse(localStorage.getItem("pt_cooldown")||"{}"); }catch(_){ return {}; }
+}
+function saveCooldownDB(db){
+  try{ localStorage.setItem("pt_cooldown", JSON.stringify(db)); }catch(_){}
+}
+function setCooldown(orderNo){
+  var db = getCooldownDB();
+  db[orderNo] = Date.now();
+  saveCooldownDB(db);
+}
+function checkCooldown(orderNo){
+  if(!orderNo) return null;
+  var db = getCooldownDB();
+  var lastAt = db[orderNo];
+  if(!lastAt) return null;
+  var elapsed = Date.now() - lastAt;
+  if(elapsed < COOLDOWN_MS){
+    var remaining = COOLDOWN_MS - elapsed;
+    var mins = Math.ceil(remaining / 60000);
+    return mins; // คืนจำนวนนาทีที่เหลือ
+  }
+  return null; // หมด cooldown แล้ว
+}
+
 var _previewTimer = null;
 var _shopeeVerified = false; // true = มี FREE
 var _shopeeChecked  = false; // true = Shopee API ตอบกลับแล้ว (ไม่ใช่ error)
@@ -702,6 +732,24 @@ function previewShopeeOrder(val){
   chkForm();
 
   if(val.length < 10){ box.style.display="none"; return; }
+
+  // ── ตรวจ cooldown 30 นาที ──
+  var coolMins = checkCooldown(val);
+  if(coolMins !== null){
+    _shopeeVerified = false;
+    _shopeeChecked  = true;
+    lockNextSteps(false);
+    chkForm();
+    box.style.display="block";
+    box.style.background="#FFF1F2";
+    box.style.borderColor="#FECDD3";
+    box.innerHTML = "<div style='color:#BE123C;font-weight:800;margin-bottom:6px'>⏳ กรุณารอก่อนนะคะ</div>"
+      +"<div style='font-size:12px;color:#374151;line-height:1.8'>"
+      +"เลขคำสั่งซื้อนี้เพิ่งถูกใช้งานไปแล้วค่ะ<br>"
+      +"กรุณารอ <b style='color:#BE123C'>"+coolMins+" นาที</b> ก่อนลองใหม่อีกครั้ง</div>";
+    return;
+  }
+
   clearTimeout(_previewTimer);
   box.style.display="block";
   box.style.background="#F9FAFB";
@@ -1043,6 +1091,7 @@ async function submitForm(){
   };
   try{ var list=JSON.parse(localStorage.getItem("pt_requests")||"[]"); list.unshift(req); localStorage.setItem("pt_requests",JSON.stringify(list)); }catch(_){}
   recordReq(orderNo, simPhone, refNo);
+  setCooldown(orderNo); // ตั้ง cooldown 30 นาทีสำหรับ orderNo นี้
   setP5Step(2, true);
 
   // ── Step 3: แจ้ง Admin (fire-and-forget ไม่บล็อก UI) ──
