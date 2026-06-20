@@ -602,8 +602,8 @@ function startRealtimeSync(){
     return;
   }
 
-  // ── Orders real-time (ขึ้นก่อนเพื่อให้ข้อมูลแสดงเร็วที่สุด) ──
-  fbDB.ref("/orders").on("value", function(snap){
+  // ── Orders real-time ──
+  function _applyOrdersSnap(snap){
     var data = snap.val();
     var newReqs = [];
     if(data){ newReqs = Object.values(data); }
@@ -614,13 +614,14 @@ function startRealtimeSync(){
     });
     reqs = newReqs;
     localStorage.setItem("pt_requests", JSON.stringify(reqs));
-    console.log("📡 Orders:", reqs.length);
     renderChatList();
     renderOrdList();
     renderDashboard();
     updateBadges();
     $("rts").textContent = "🔴 LIVE — อัพเดท " + ts();
-  });
+  }
+  // .on() สำหรับ real-time updates
+  fbDB.ref("/orders").on("value", _applyOrdersSnap);
 
   // ── Packages real-time ────────────────────────
   fbDB.ref("/packages").on("value", function(snap){
@@ -679,24 +680,29 @@ function startRealtimeSync(){
 }
 
 function loadAll(){
+  // ── โหลด localStorage ทันที (แสดงข้อมูลก่อน Firebase มาถึง) ──
   try{ pkgs = JSON.parse(localStorage.getItem("pt_packages")||"null")||DEFAULT_PKGS; }catch(_){ pkgs=DEFAULT_PKGS; }
-  reqs = [];
+  try{
+    var cached = localStorage.getItem("pt_requests");
+    reqs = cached ? JSON.parse(cached) : [];
+  }catch(_){ reqs=[]; }
   try{ var ng=localStorage.getItem("pt_netguides"); if(ng) netGuides=JSON.parse(ng); }catch(_){}
 
   var tb = $("tabbar");
   if(tb) tb.style.display="flex";
   switchTab(1);
+
+  // แสดงข้อมูล local ทันที (ไม่รอ Firebase)
   renderOrdList();
   renderDashboard();
   updateBadges();
-  $("rts").textContent = "⏳ กำลังเชื่อมต่อ Firebase...";
+  $("rts").textContent = reqs.length > 0 ? "⏳ กำลังซิงค์... ("+reqs.length+" รายการ)" : "⏳ กำลังเชื่อมต่อ...";
   setTopbar("",null,"");
 
-  // init Firebase แล้ว start listener ทันที
+  // ── Firebase listener จะอัพเดทข้อมูลทับเมื่อมาถึง ──
   if(initFirebase()){
     startRealtimeSync();
   }
-  // initFirebase จะ retry+startRealtimeSync เองถ้า SDK ยังไม่พร้อม
 
   if(ORDERS_API) syncFromAPI();
   syncPkgsFromFirebase();
