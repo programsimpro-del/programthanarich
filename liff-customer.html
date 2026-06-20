@@ -191,7 +191,7 @@ input:focus{border-color:#06C755!important;box-shadow:none!important}
         </div>
       </div>
 
-      <button class="btn" id="btnform" disabled onclick="confirmAndSubmit()">ยืนยันข้อมูล →</button>
+      <button class="btn" id="btnform" disabled onclick="showTermsPopup()">ยืนยันข้อมูล →</button>
 
     <!-- P3: PHOTOS -->
     <!-- P5: LOADING -->
@@ -225,20 +225,19 @@ input:focus{border-color:#06C755!important;box-shadow:none!important}
     </div>
 
     <!-- P6: DONE -->
-    <div class="pg" id="p6" style="align-items:flex-start;justify-content:flex-start;text-align:center;background:#F0FDF4">
+    <div class="pg" id="p6" style="align-items:flex-start;justify-content:flex-start;background:#F0FDF4">
 
-      <!-- Header สีเขียว -->
-      <div style="width:100%;background:linear-gradient(135deg,#14532D,#166534);padding:20px 20px 24px;margin-bottom:-12px">
-        <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:8px">
+      <!-- Header -->
+      <div style="width:100%;background:linear-gradient(135deg,#14532D,#166534);padding:20px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;justify-content:center">
           <div style="position:relative;width:12px;height:12px;flex-shrink:0">
-            <div style="position:absolute;inset:0;background:#4ADE80;border-radius:50%;animation:ping 1.2s cubic-bezier(0,0,.2,1) infinite;opacity:.75"></div>
+            <div style="position:absolute;inset:0;background:#4ADE80;border-radius:50%;animation:ping 1.2s infinite;opacity:.75"></div>
             <div style="position:absolute;inset:0;background:#22C55E;border-radius:50%"></div>
           </div>
-          <div style="font-weight:900;font-size:16px;color:#fff">ส่งข้อมูลเรียบร้อย! รอ Admin ดำเนินการ</div>
+          <div style="font-weight:900;font-size:15px;color:#fff">รอ Admin ดำเนินการ</div>
         </div>
-        <div style="font-size:12px;color:#BBF7D0;text-align:center">⏳ กรุณารอสักครู่ อย่าทักซ้ำเพื่อความรวดเร็ว</div>
-        <!-- เลขอ้างอิง -->
-        <div style="background:rgba(255,255,255,.15);border-radius:10px;padding:10px 14px;margin-top:14px;display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:12px;color:#BBF7D0;text-align:center;margin-bottom:12px">⏳ กรุณารอสักครู่ อย่าทักซ้ำ</div>
+        <div style="background:rgba(255,255,255,.15);border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
           <div style="font-size:11px;color:#BBF7D0">เลขอ้างอิง</div>
           <div id="refno" style="font-family:monospace;font-weight:900;font-size:20px;color:#fff;letter-spacing:2px"></div>
           <div style="font-size:10px;color:#86EFAC">📸 แคป</div>
@@ -246,29 +245,24 @@ input:focus{border-color:#06C755!important;box-shadow:none!important}
       </div>
 
       <!-- วิธีสมัครเน็ต -->
-      <div style="width:100%;background:#fff;border-radius:16px;padding:16px 18px;margin-bottom:12px;box-shadow:0 2px 12px rgba(0,0,0,.06)">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-          <div style="background:#DCFCE7;border-radius:8px;padding:6px 10px;font-size:18px">📶</div>
-          <div>
-            <div id="p6-net-title" style="font-weight:900;font-size:14px;color:#14532D">วิธีสมัครเน็ตฟรีเดือนแรก</div>
-            <div style="font-size:11px;color:#6B7280">ทำตามขั้นตอนด้านล่างได้เลยค่ะ</div>
-          </div>
-        </div>
-        <div id="p6-net-steps" style="text-align:left">
-          <div style="font-size:13px;color:#9E9E9E;text-align:center;padding:16px">⏳ กำลังโหลดวิธีสมัคร...</div>
+      <div style="width:100%;background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.06)">
+        <div style="font-weight:900;font-size:14px;color:#14532D;margin-bottom:4px">📶 <span id="p6-net-title">วิธีสมัครเน็ตฟรีเดือนแรก</span></div>
+        <div style="font-size:11px;color:#6B7280;margin-bottom:12px">ทำตามขั้นตอนด้านล่างได้เลยค่ะ</div>
+        <div id="p6-net-steps">
+          <div style="font-size:13px;color:#9E9E9E;text-align:center;padding:12px">⏳ กำลังโหลด...</div>
         </div>
       </div>
 
-      <!-- คำเตือนสำคัญ -->
+      <!-- คำเตือน -->
       <div style="width:100%;background:#FEF2F2;border:1.5px solid #FECACA;border-radius:12px;padding:12px 14px;margin-bottom:12px">
-        <div style="font-size:12px;font-weight:900;color:#BE123C;margin-bottom:6px">⚠️ อย่าลืม! ปิดเน็ตมือถือด้วยนะคะ</div>
-        <div style="font-size:12px;color:#9F1239;line-height:1.8">ถ้าไม่ปิดเน็ตมือถือ ยอดเงินที่ระบบเติมให้<b>จะถูกตัดทันที</b><br>ทางร้านไม่รับผิดชอบทุกกรณีหากไม่ปิดเน็ต</div>
+        <div style="font-size:12px;font-weight:900;color:#BE123C;margin-bottom:4px">⚠️ อย่าลืม! ปิดเน็ตมือถือด้วยนะคะ</div>
+        <div style="font-size:12px;color:#9F1239;line-height:1.8">ถ้าไม่ปิดเน็ต ยอดเงินที่เติมให้<b>จะถูกตัดทันที</b><br>ทางร้านไม่รับผิดชอบทุกกรณี</div>
       </div>
 
-      <!-- ติดต่อเจ้าหน้าที่ -->
+      <!-- ติดต่อ -->
       <div style="width:100%;background:#EFF6FF;border-radius:12px;padding:12px 14px;margin-bottom:20px">
-        <div style="font-size:12px;color:#1E40AF;line-height:1.9">
-          💬 มีข้อสงสัย ติดต่อเจ้าหน้าที่ได้ที่<br>
+        <div style="font-size:12px;color:#1E40AF;line-height:2">
+          💬 มีข้อสงสัย ติดต่อเจ้าหน้าที่<br>
           <b>แชทไลน์ @programthanarich</b><br>
           <span style="background:#DBEAFE;border-radius:6px;padding:2px 8px;font-size:11px">🕐 เวลาทำการ 8:00–17:00 น.</span>
         </div>
@@ -295,38 +289,37 @@ input:focus{border-color:#06C755!important;box-shadow:none!important}
 </div>
 
 <!-- Pop Up วิธีสมัครเน็ต -->
-<div id="netguide-popup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:20px;overflow-y:auto">
+<div id="netguide-popup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:20px;overflow-y:auto">
   <div style="width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center">
-    <div style="font-size:40px;margin-bottom:12px">📶</div>
-    <div style="font-weight:900;font-size:18px;color:#FFFF00;margin-bottom:16px;text-align:center;letter-spacing:.5px">⚠️ กรุณาอ่านก่อนยืนยัน</div>
-
+    <div style="font-size:36px;margin-bottom:10px">⚠️</div>
+    <div style="font-weight:900;font-size:17px;color:#FFFF00;margin-bottom:16px;text-align:center">กรุณาอ่านก่อนยืนยัน</div>
     <!-- เงื่อนไขสำคัญ -->
     <div style="background:#7F1D1D;border:2px solid #EF4444;border-radius:14px;padding:16px;margin-bottom:16px;width:100%">
-      <div style="font-size:15px;font-weight:900;color:#FCA5A5;margin-bottom:10px;text-align:center">⚠️ เงื่อนไขสำคัญที่ต้องทำ</div>
-      <div style="font-size:13px;color:#FEE2E2;line-height:2;font-weight:700">
+      <div style="font-size:14px;font-weight:900;color:#FCA5A5;margin-bottom:10px;text-align:center">⚠️ เงื่อนไขสำคัญที่ต้องทำ</div>
+      <div style="font-size:13px;color:#FEE2E2;line-height:2.2;font-weight:700">
         1️⃣ ส่งข้อมูลครบแล้ว <b style="color:#fff">ปิดเน็ตมือถือทันที</b><br>
-        2️⃣ ถ้าไม่ปิดเน็ตมือถือ ระบบอนุมัติยอดเงินเข้าเบอร์ให้แล้ว<br>
-        &nbsp;&nbsp;&nbsp;&nbsp;ยอดเงินจะ<b style="color:#FCA5A5">ถูกตัดไปทันที</b><br>
-        3️⃣ ลูกค้าต้อง<b style="color:#FCA5A5">เติมเงินเข้าเพิ่มเอง</b>หากไม่ปิดเน็ต<br>
-        4️⃣ ทางร้าน<b style="color:#FCA5A5">ไม่รับผิดชอบ</b>ทุกกรณีถ้าไม่ปิดเน็ต
+        2️⃣ ไม่ปิดเน็ต ยอดเงินจะ<b style="color:#FCA5A5">ถูกตัดทันที</b><br>
+        3️⃣ ต้อง<b style="color:#FCA5A5">เติมเงินเพิ่มเอง</b>หากไม่ปิดเน็ต<br>
+        4️⃣ ทางร้าน<b style="color:#FCA5A5">ไม่รับผิดชอบ</b>ทุกกรณี
       </div>
     </div>
-
-    <!-- Checkbox ยอมรับ -->
-    <label style="display:flex;align-items:flex-start;gap:12px;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.3);border-radius:12px;padding:14px;margin-bottom:20px;width:100%;cursor:pointer">
-      <input type="checkbox" id="agree-cb" onchange="chkAgree()"
-        style="width:22px;height:22px;flex-shrink:0;margin-top:2px;accent-color:#FFFF00;cursor:pointer">
+    <!-- Checkbox -->
+    <label style="display:flex;align-items:flex-start;gap:12px;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.3);border-radius:12px;padding:14px;margin-bottom:16px;width:100%;cursor:pointer;box-sizing:border-box">
+      <input type="checkbox" id="agree-cb" onchange="
+        var btn=document.getElementById('agree-btn');
+        if(this.checked){btn.disabled=false;btn.style.background='#FFFF00';btn.style.color='#000';btn.style.cursor='pointer';}
+        else{btn.disabled=true;btn.style.background='#555';btn.style.color='#999';btn.style.cursor='not-allowed';}
+      " style="width:22px;height:22px;flex-shrink:0;margin-top:2px;accent-color:#FFFF00;cursor:pointer">
       <span style="font-size:13px;color:#fff;font-weight:700;line-height:1.7">
-        ข้าพเจ้าได้อ่านและ<b style="color:#FFFF00">ยอมรับเงื่อนไข</b>ข้างต้นแล้ว<br>
+        ข้าพเจ้าอ่านและ<b style="color:#FFFF00">ยอมรับเงื่อนไข</b>แล้ว<br>
         และจะ<b style="color:#FFFF00">ปิดเน็ตมือถือทันที</b>หลังส่งข้อมูล
       </span>
     </label>
-
-    <button id="agree-btn" onclick="acceptAndSubmit()" disabled
-      style="background:#555;border:none;border-radius:14px;padding:16px 24px;font-size:15px;font-weight:900;color:#999;cursor:not-allowed;font-family:inherit;width:100%;transition:all .3s">
+    <button id="agree-btn" onclick="doAcceptAndSubmit()" disabled
+      style="background:#555;border:none;border-radius:14px;padding:16px;font-size:15px;font-weight:900;color:#999;cursor:not-allowed;font-family:inherit;width:100%;transition:all .3s">
       ✅ ยอมรับเงื่อนไขการสมัครเน็ต
     </button>
-    <div style="font-size:11px;color:#9E9E9E;margin-top:10px;text-align:center">กดปุ่มเพื่อยืนยันและส่งข้อมูลเข้าระบบ</div>
+    <div style="font-size:11px;color:#9E9E9E;margin-top:8px;text-align:center">กดเพื่อยืนยันและส่งข้อมูลเข้าระบบ</div>
   </div>
 </div>
 
@@ -436,65 +429,84 @@ function applyLogos(){
   });
 }
 
+
+/* ── TERMS + SUBMIT FLOW ── */
+function showTermsPopup(){
+  orderNo  = (document.getElementById("orderNo")  || {value:orderNo}).value.trim();
+  simPhone = (document.getElementById("simPhone") || {value:simPhone}).value.trim();
+  var cb = document.getElementById("agree-cb");
+  var btn = document.getElementById("agree-btn");
+  if(cb) cb.checked = false;
+  if(btn){ btn.disabled=true; btn.style.background="#555"; btn.style.color="#999"; btn.style.cursor="not-allowed"; }
+  var popup = document.getElementById("netguide-popup");
+  if(popup) popup.style.display = "flex";
+}
+
+async function doAcceptAndSubmit(){
+  // ปิด popup
+  var popup = document.getElementById("netguide-popup");
+  if(popup) popup.style.display = "none";
+
+  // โหลดวิธีสมัครเน็ต ใส่ p6 ล่วงหน้า
+  try{
+    var r = await fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json");
+    var guides = await r.json();
+    if(guides){
+      if(!Array.isArray(guides)) guides = Object.values(guides);
+      guides = guides.filter(function(g){ return g && (g.keyword||g.steps); });
+      var itemStr = (window._lastShopeeItems||[]).map(function(i){
+        return ((i.name||"")+" "+(i.model||"")).toUpperCase();
+      }).join(" ");
+      var matched = null;
+      guides.forEach(function(g){
+        if(!matched && g.keyword){
+          g.keyword.toUpperCase().split(",").forEach(function(kw){
+            if(kw.trim() && itemStr.indexOf(kw.trim()) !== -1) matched = g;
+          });
+        }
+      });
+      if(!matched && guides.length>0) matched = guides[0];
+      if(matched && matched.steps){
+        var lines = matched.steps.split("\n").filter(function(l){ return l.trim(); });
+        var stepsEl = document.getElementById("p6-net-steps");
+        if(stepsEl) stepsEl.innerHTML = lines.map(function(line,i){
+          return '<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start">'
+            +'<div style="background:#06C755;color:#fff;border-radius:50%;width:22px;height:22px;min-width:22px;'
+            +'display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900">'+(i+1)+'</div>'
+            +'<div style="font-size:13px;color:#14532D;font-weight:700;line-height:1.6;text-align:left">'+line+'</div>'
+            +'</div>';
+        }).join("");
+        var titleEl = document.getElementById("p6-net-title");
+        if(titleEl && matched.keyword) titleEl.textContent = "วิธีสมัครเน็ต "+matched.keyword.split(",")[0].trim();
+      }
+    }
+  }catch(e){ console.warn("netguide load err:", e.message); }
+
+  // ส่งข้อมูล (try/catch ให้ goP(6) ทำงานเสมอ)
+  try{ await submitForm(); }
+  catch(e){
+    console.warn("submitForm err:", e.message);
+    goP(6);
+  }
+}
+
 /* ═══ LIFF INIT ═══ */
 async function initLiff(){
   applyLogos();
-  var done = false;
-
+  var done=false;
   function showApp(){
-    if(done) return;
-    done = true;
-    $("ls").style.display = "none";
-    $("app").style.display = "flex";
-    loadPkgs();
-    loadSettings();
-    goP(0);
+    if(done)return; done=true;
+    loadPkgs(); loadSettings(); goP(0);
+    $("ls").style.display="none";
+    $("app").style.display="flex";
   }
-
-  // Fallback: เปิดแอพเลยถ้า LIFF ไม่ตอบใน 6 วิ
-  var timer = setTimeout(function(){
-    if(!done){ console.warn("LIFF timeout — force open"); showApp(); }
-  }, 6000);
-
+  var timer=setTimeout(function(){ if(!done)showApp(); },8000);
   try{
-    // รอ LIFF SDK โหลดถ้ายังไม่พร้อม
-    var waited = 0;
-    while(typeof liff === "undefined" && waited < 3000){
-      await new Promise(function(r){ setTimeout(r, 300); });
-      waited += 300;
-    }
-    if(typeof liff === "undefined"){
-      throw new Error("LIFF SDK not available");
-    }
-
-    await liff.init({ liffId: LIFF_ID });
-
-    if(!liff.isLoggedIn()){
-      clearTimeout(timer);
-      // ป้องกัน redirect loop
-      var attempts = parseInt(sessionStorage.getItem("liff_login_att")||"0");
-      if(attempts >= 2){
-        console.warn("Login loop — show app anyway");
-        sessionStorage.removeItem("liff_login_att");
-        showApp();
-        return;
-      }
-      sessionStorage.setItem("liff_login_att", String(attempts + 1));
-      liff.login({ redirectUri: location.href });
-      return;
-    }
-
-    sessionStorage.removeItem("liff_login_att");
-    try{ lp = await liff.getProfile(); renderUser(); }
-    catch(e){ console.warn("getProfile:", e.message); lp = null; }
-
-  } catch(e){
-    console.warn("LIFF init error:", e.message);
-    lp = null;
-  }
-
-  clearTimeout(timer);
-  showApp();
+    await liff.init({liffId:LIFF_ID});
+    if(!liff.isLoggedIn()){ clearTimeout(timer); liff.login({redirectUri:location.href}); return; }
+    try{ lp=await liff.getProfile(); renderUser(); }catch(e){ lp=null; }
+  }catch(e){ lp=null; }
+  clearTimeout(timer); showApp();
 }
 function renderUser(){
   if(!lp)return;
@@ -898,43 +910,27 @@ async function notifyAdmin(refNo, req, pkg){
     pkgCode: req.pkgCode,
     status: "pending",
     submittedAt: req.submittedAt,
-    mobileDataStatus: req.mobileDataStatus || "ยังไม่ยืนยัน",
-    mobileDataAgreedAt: req.mobileDataAgreedAt || null,
     lineUserId: req.lineUserId || null,
     lineDisplayName: req.lineDisplayName || null,
     linePictureUrl: req.linePictureUrl || null,
     createdAt: new Date().toISOString()
   };
 
-  // บันทึก Firebase — ลอง SDK ก่อน ถ้าไม่ได้ใช้ REST
-  var savedOk = false;
+  // บันทึก Firebase ด้วย REST API โดยตรง
   try{
-    var db = getLFB();
-    if(db){
-      await db.ref("/orders/" + refNo).set(orderData);
-      console.log("✅ Firebase SDK saved:", refNo);
-      savedOk = true;
+    var r1 = await fetch(FB_URL + "/orders/" + refNo + ".json", {
+      method: "PUT",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(orderData)
+    });
+    if(r1.ok){
+      console.log("✅ Firebase saved:", refNo, "userId:", req.lineUserId);
+    } else {
+      var err = await r1.text();
+      console.warn("❌ Firebase REST error:", r1.status, err);
     }
   } catch(e){
-    console.warn("⚠️ Firebase SDK error:", e.message, "— trying REST...");
-  }
-  if(!savedOk){
-    // Fallback: REST API
-    try{
-      var r1 = await fetch(FB_URL + "/orders/" + refNo + ".json", {
-        method: "PUT",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(orderData)
-      });
-      if(r1.ok){
-        console.log("✅ Firebase REST saved:", refNo);
-      } else {
-        var err = await r1.text();
-        console.warn("❌ Firebase REST error:", r1.status, err);
-      }
-    } catch(e2){
-      console.warn("❌ Firebase REST error:", e2.message);
-    }
+    console.warn("❌ Firebase fetch error:", e.message);
   }
 
   // แจ้ง Admin + บันทึก Firebase ผ่าน Cloudflare Worker
@@ -949,34 +945,13 @@ async function notifyAdmin(refNo, req, pkg){
         pkgName: pkg ? pkg.name : "",
         platform: req.platform,
         lineDisplayName: req.lineDisplayName || "",
-        mobileDataStatus: req.mobileDataStatus || "ยังไม่ยืนยัน",
         orderData: orderData
       })
     });
-    if(r2.ok){
-      console.log("✅ Worker notify สำเร็จ");
-    } else {
-      var wErr = await r2.text();
-      console.warn("❌ Worker error:", r2.status, wErr);
-    }
+    console.log(r2.ok ? "✅ แจ้ง Admin + Firebase สำเร็จ" : "❌ Worker error: " + r2.status);
   } catch(e){
     console.warn("❌ Worker error:", e.message);
   }
-  
-  // ตรวจสอบว่า order บันทึกใน Firebase แล้วจริงๆ
-  try{
-    var checkDB = getLFB();
-    if(checkDB){
-      var checkSnap = await checkDB.ref("/orders/" + refNo).once("value");
-      if(checkSnap.val()){
-        console.log("✅ ยืนยัน: order", refNo, "อยู่ใน Firebase แล้ว");
-      } else {
-        console.warn("⚠️ order ยังไม่อยู่ใน Firebase — บันทึกซ้ำ...");
-        await checkDB.ref("/orders/" + refNo).set(orderData);
-        console.log("✅ บันทึกซ้ำสำเร็จ");
-      }
-    }
-  } catch(e){ console.warn("verify check error:", e.message); }
 }
 
 /* ═══ SUBMIT ═══ */
@@ -1001,11 +976,8 @@ async function loadAndShowNetGuide(shopeeItems){
 
     if(matched && matched.steps){
       var box = document.getElementById("netguide-content");
-      if(box) box.textContent = matched.steps;
-      // ไม่เปิด popup ถ้าลูกค้าอยู่หน้า p6 แล้ว (ยอมรับเงื่อนไขไปแล้ว)
-      var p6 = document.getElementById("p6");
-      if(p6 && p6.classList.contains("on")) return true;
       var popup = document.getElementById("netguide-popup");
+      if(box) box.textContent = matched.steps;
       if(popup) popup.style.display = "flex";
       return true;
     }
@@ -1028,52 +1000,17 @@ function setP5Step(n, done){
 
 
 async function confirmAndSubmit(){
-  // อ่านค่าจาก DOM
   orderNo  = (document.getElementById("orderNo")  || {value:orderNo}).value.trim();
   simPhone = (document.getElementById("simPhone") || {value:simPhone}).value.trim();
 
-  // reset checkbox
-  var cb = document.getElementById("agree-cb");
-  var btn = document.getElementById("agree-btn");
-  if(cb) cb.checked = false;
-  if(btn){ btn.disabled=true; btn.style.background="#555"; btn.style.color="#999"; btn.style.cursor="not-allowed"; }
+  // ส่งข้อมูลก่อนเลย (สำคัญที่สุด)
+  submitForm();
 
-  // แสดง popup เงื่อนไข
-  var popup = document.getElementById("netguide-popup");
-  if(popup) popup.style.display = "flex";
-}
-
-// เรียกเมื่อลูกค้ากด checkbox
-function chkAgree(){
-  var cb = document.getElementById("agree-cb");
-  var btn = document.getElementById("agree-btn");
-  if(!btn) return;
-  if(cb && cb.checked){
-    btn.disabled = false;
-    btn.style.background = "linear-gradient(135deg,#FFFF00,#FFD600)";
-    btn.style.color = "#000";
-    btn.style.cursor = "pointer";
-    btn.style.boxShadow = "0 4px 20px rgba(255,255,0,.4)";
-  } else {
-    btn.disabled = true;
-    btn.style.background = "#555";
-    btn.style.color = "#999";
-    btn.style.cursor = "not-allowed";
-    btn.style.boxShadow = "none";
-  }
-}
-
-// เรียกเมื่อกดปุ่มยอมรับเงื่อนไข
-async function acceptAndSubmit(){
-  // ปิด popup เงื่อนไข
-  var popup = document.getElementById("netguide-popup");
-  if(popup) popup.style.display = "none";
-
-  // โหลดวิธีสมัครเน็ตใส่ p6 ก่อน (ตาม Shopee items)
-  try{
-    var r = await fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json");
-    var guides = await r.json();
-    if(guides){
+  // แสดง popup วิธีสมัครในพื้นหลัง (ไม่ await เพื่อไม่บล็อก)
+  fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json")
+    .then(function(r){ return r.json(); })
+    .then(function(guides){
+      if(!guides) return;
       if(!Array.isArray(guides)) guides = Object.values(guides);
       var itemStr = (window._lastShopeeItems||[]).map(function(i){
         return ((i.name||"")+" "+(i.model||"")).toUpperCase();
@@ -1085,45 +1022,20 @@ async function acceptAndSubmit(){
           if(kw.trim() && itemStr.includes(kw.trim())) matched = g;
         });
       });
-      if(!matched && guides.length > 0) matched = guides[0];
+      if(!matched && guides.length>0) matched = guides[0];
       if(matched && matched.steps){
-        var stepsEl = document.getElementById("p6-net-steps");
-        if(stepsEl){
-          // แสดงเป็นขั้นตอนแต่ละบรรทัด
-          var lines = matched.steps.split("\n").filter(function(l){ return l.trim(); });
-          stepsEl.innerHTML = lines.map(function(line, i){
-            return '<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start">'
-              + '<div style="background:#06C755;color:#fff;border-radius:50%;width:22px;height:22px;'
-              + 'display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0;margin-top:1px">'+(i+1)+'</div>'
-              + '<div style="font-size:13px;color:#14532D;font-weight:700;line-height:1.6;text-align:left">'+line+'</div>'
-              + '</div>';
-          }).join("");
-        }
-        var titleEl = document.getElementById("p6-net-title");
-        if(titleEl && matched.keyword){
-          var kw = matched.keyword.split(",")[0].trim();
-          titleEl.textContent = "วิธีสมัครเน็ต " + kw;
-        }
+        var box = document.getElementById("netguide-content");
+        var popup = document.getElementById("netguide-popup");
+        if(box) box.textContent = matched.steps;
+        if(popup) popup.style.display = "flex";
       }
-    }
-  }catch(e){ console.warn("load netguide:", e.message); }
-
-  // ส่งข้อมูลเข้า Firebase
-  window._customerAgreedMobileData = true;
-  try{
-    await submitForm();
-  } catch(e){
-    console.warn("submitForm error:", e.message);
-    // บังคับไปหน้า p6 ถึงแม้จะ error
-    goP(6);
-  }
+    }).catch(function(e){ console.warn(e); });
 }
 
 
 async function submitForm(){
   goP(5);
-  var dup = null;
-  try{ dup = await checkDup(orderNo); } catch(e){ console.warn("checkDup error:", e.message); }
+  var dup = await checkDup(orderNo);
   if(dup){
     var qd = $("quota-detail");
     if(qd) qd.innerHTML =
@@ -1141,9 +1053,7 @@ async function submitForm(){
 
   var refNo = "PT"+Date.now().toString().slice(-6);
   var now = ts();
-  // ถ้า pkgId ว่าง ให้เลือก package แรกที่มี
-  if(!pkgId && pkgs && pkgs.length > 0) pkgId = pkgs[0].id;
-  var pkg = pkgs.find(function(p){ return p.id===pkgId; }) || (pkgs.length > 0 ? pkgs[0] : null);
+  var pkg = pkgs.find(function(p){ return p.id===pkgId; });
   var simCodeVal = ($("simCode")||{}).value ? $("simCode").value.trim().toUpperCase() : "";
   var req = {
     ref:refNo, platform:plt, orderNo:orderNo, simPhone:simPhone,
@@ -1153,8 +1063,7 @@ async function submitForm(){
     pkgId:pkgId, pkgName:pkg?pkg.name:"", pkgCode:pkg?pkg.code:"",
     imgOrder:null, imgSim:null, imgReg:null,
     status:"pending", shopeeVerified:"pending", submittedAt:now,
-    mobileDataStatus: window._customerAgreedMobileData ? "ปิดเน็ตมือถือแล้ว" : "ยังไม่ปิด",
-    mobileDataAgreedAt: window._customerAgreedMobileData ? new Date().toISOString() : null,
+    mobileDataStatus:"ปิดเน็ตมือถือแล้ว", mobileDataAgreedAt:new Date().toISOString(),
     lineUserId:lp?lp.userId:null,
     lineDisplayName:lp?lp.displayName:null,
     linePictureUrl:lp?lp.pictureUrl:null,
@@ -1164,26 +1073,17 @@ async function submitForm(){
   try{ var list=JSON.parse(localStorage.getItem("pt_requests")||"[]"); list.unshift(req); localStorage.setItem("pt_requests",JSON.stringify(list)); }catch(_){}
   recordReq(orderNo, simPhone, refNo);
 
-  console.log("📤 Submitting order:", {refNo, orderNo, simPhone, pkgId, platform: plt, hasLineUser: !!(lp&&lp.userId)});
+  try{ await notifyAdmin(refNo, req, pkg); }catch(e){ console.warn("notifyAdmin err:",e.message); }
 
-  // ห่อ try/catch — goP(6) ต้องทำงานเสมอไม่ว่า Firebase จะ error ไหม
-  try{
-    await notifyAdmin(refNo, req, pkg);
-    console.log("✅ notifyAdmin complete for:", refNo);
-  } catch(e) {
-    console.warn("⚠️ notifyAdmin error (non-fatal):", e.message);
-  }
-
-  // แสดง refNo และไปหน้า p6 เสมอ
   var el = $("refno");
   if(el) el.textContent = refNo;
   goP(6);
 }
 
-// ── เริ่มต้นแอพ ──
-if(document.readyState === 'loading'){
-  document.addEventListener('DOMContentLoaded', function(){ initLiff(); });
-} else {
+// ── START ──
+if(document.readyState==="loading"){
+  document.addEventListener("DOMContentLoaded",function(){initLiff();});
+}else{
   initLiff();
 }
 </script>
