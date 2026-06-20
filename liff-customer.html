@@ -393,20 +393,62 @@ function applyLogos(){
 /* ═══ LIFF INIT ═══ */
 async function initLiff(){
   applyLogos();
-  var done=false;
+  var done = false;
+
   function showApp(){
-    if(done)return; done=true;
-    loadPkgs(); loadSettings(); goP(0);
-    $("ls").style.display="none";
-    $("app").style.display="flex";
+    if(done) return;
+    done = true;
+    $("ls").style.display = "none";
+    $("app").style.display = "flex";
+    loadPkgs();
+    loadSettings();
+    goP(0);
   }
-  var timer=setTimeout(function(){ if(!done)showApp(); },8000);
+
+  // Fallback: เปิดแอพเลยถ้า LIFF ไม่ตอบใน 6 วิ
+  var timer = setTimeout(function(){
+    if(!done){ console.warn("LIFF timeout — force open"); showApp(); }
+  }, 6000);
+
   try{
-    await liff.init({liffId:LIFF_ID});
-    if(!liff.isLoggedIn()){ clearTimeout(timer); liff.login({redirectUri:location.href}); return; }
-    try{ lp=await liff.getProfile(); renderUser(); }catch(e){ lp=null; }
-  }catch(e){ lp=null; }
-  clearTimeout(timer); showApp();
+    // รอ LIFF SDK โหลดถ้ายังไม่พร้อม
+    var waited = 0;
+    while(typeof liff === "undefined" && waited < 3000){
+      await new Promise(function(r){ setTimeout(r, 300); });
+      waited += 300;
+    }
+    if(typeof liff === "undefined"){
+      throw new Error("LIFF SDK not available");
+    }
+
+    await liff.init({ liffId: LIFF_ID });
+
+    if(!liff.isLoggedIn()){
+      clearTimeout(timer);
+      // ป้องกัน redirect loop
+      var attempts = parseInt(sessionStorage.getItem("liff_login_att")||"0");
+      if(attempts >= 2){
+        console.warn("Login loop — show app anyway");
+        sessionStorage.removeItem("liff_login_att");
+        showApp();
+        return;
+      }
+      sessionStorage.setItem("liff_login_att", String(attempts + 1));
+      liff.login({ redirectUri: location.href });
+      return;
+    }
+
+    sessionStorage.removeItem("liff_login_att");
+    try{ lp = await liff.getProfile(); renderUser(); }
+    catch(e){ console.warn("getProfile:", e.message); lp = null; }
+
+  } catch(e){
+    console.warn("LIFF init error:", e.message);
+    lp = null;
+  }
+
+  clearTimeout(timer);
+  showApp();
 }
 function renderUser(){
   if(!lp)return;
