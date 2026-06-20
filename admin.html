@@ -1672,26 +1672,7 @@ async function sendPackageAndProcess(ref, pkgId){
   var pkg = pkgs.find(function(p){return p.id===pkgId;});
   if(!req||!pkg) return;
 
-  // ส่งวิธีสมัครเน็ตให้ลูกค้า
-  // ดึง confirmMsg จาก package
-  var rawConfirm = (pkg.confirmMsg && pkg.confirmMsg.trim())
-    ? pkg.confirmMsg
-    : ("✅ ทางร้านยืนยันคำสั่งซื้อของคุณแล้วค่ะ 🎉\n\n"
-      +"📦 แพ็คเกจ: {pkgName}\n"
-      +"📶 วิธีสมัครเน็ต: "+(pkg.method||"-")+"\n\n"
-      +"📵 กรุณาปิดเน็ตมือถือก่อนนะคะ\n"
-      +"จากนั้นทำตามวิธีด้านบน รอสักครู่เน็ตจะเข้าอัตโนมัติค่ะ 😊");
-  var msg = rawConfirm
-    .replace(/\{simPhone\}/g,  req.simPhone||"")
-    .replace(/\{orderNo\}/g,   req.orderNo||"")
-    .replace(/\{pkgName\}/g,   pkg.name||"")
-    .replace(/\{simCode\}/g,   req.simCode||"")
-    .replace(/\{branch\}/g,    req.branchName||"");
-
-  if(req.lineUserId) sendLineMsg(req.lineUserId, msg);
-  addMsgToReq(ref, "admin", msg);
-
-  // อัพเดทสถานะ → processing
+  // อัพเดทสถานะ → processing (ไม่ส่งข้อความให้ลูกค้าในขั้นตอนนี้)
   req.status = "processing";
   req.activatedPackage = pkgId;
   if(fbDB||initFirebase()){
@@ -2552,7 +2533,7 @@ function renderPkgMgrList(){
        +'<input id="pk-price-'+_pkgCurrentFolder+'" value="'+escH(p.price||"")+'" placeholder="149" type="number" '
          +'style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;margin-bottom:12px;box-sizing:border-box" '
          +'oninput="autoSavePkg()">'
-       +'<div style="font-size:12px;color:#1565C0;font-weight:800;margin-bottom:4px">💬 ข้อความตอน ยืนยันแพ็คเกจ</div>'       +'<div style="font-size:11px;color:#9E9E9E;margin-bottom:6px">ใช้ {simPhone} {orderNo} {pkgName} {simCode}</div>'       +'<textarea id="pk-confirmMsg-'+_pkgCurrentFolder+'" '         +'style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:12px;font-family:inherit;min-height:120px;resize:vertical;margin-bottom:14px;box-sizing:border-box" '         +'oninput="autoSavePkg()">'+escH(p.confirmMsg||'')+'</textarea>'       +'<div style="font-size:12px;color:#2E7D32;font-weight:800;margin-bottom:4px">✅ ข้อความตอน สมัครเน็ตแล้ว</div>'       +'<div style="font-size:11px;color:#9E9E9E;margin-bottom:6px">ใช้ {simPhone} {orderNo} {pkgName} {remaining} {maxQuota}</div>'       +'<textarea id="pk-activateMsg-'+_pkgCurrentFolder+'" '         +'style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:12px;font-family:inherit;min-height:120px;resize:vertical;margin-bottom:14px;box-sizing:border-box" '         +'oninput="autoSavePkg()">'+escH(p.activateMsg||'')+'</textarea>'       +'<div style="display:flex;gap:8px">'         +'<button onclick="savePkgsInline()" style="flex:1;padding:11px;border-radius:10px;border:none;background:#1565C0;color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">💾 บันทึก</button>'         +'<button onclick="deletePkgInline('+_pkgCurrentFolder+')" style="padding:11px 16px;border-radius:10px;border:none;background:#FFEBEE;color:#C62828;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">🗑️</button>'       +'</div>'     +'</div>';
+              +'<div style="font-size:12px;color:#2E7D32;font-weight:800;margin-bottom:4px">✅ ข้อความตอน สมัครเน็ตแล้ว</div>'       +'<div style="font-size:11px;color:#9E9E9E;margin-bottom:6px">ใช้ {simPhone} {orderNo} {pkgName} {remaining} {maxQuota}</div>'       +'<textarea id="pk-activateMsg-'+_pkgCurrentFolder+'" '         +'style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:12px;font-family:inherit;min-height:120px;resize:vertical;margin-bottom:14px;box-sizing:border-box" '         +'oninput="autoSavePkg()">'+escH(p.activateMsg||'')+'</textarea>'       +'<div style="display:flex;gap:8px">'         +'<button onclick="savePkgsInline()" style="flex:1;padding:11px;border-radius:10px;border:none;background:#1565C0;color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">💾 บันทึก</button>'         +'<button onclick="deletePkgInline('+_pkgCurrentFolder+')" style="padding:11px 16px;border-radius:10px;border:none;background:#FFEBEE;color:#C62828;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">🗑️</button>'       +'</div>'     +'</div>';
     return;
   }
 
