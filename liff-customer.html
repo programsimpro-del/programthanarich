@@ -1110,13 +1110,20 @@ async function acceptAndSubmit(){
 
   // ส่งข้อมูลเข้า Firebase
   window._customerAgreedMobileData = true;
-  await submitForm();
+  try{
+    await submitForm();
+  } catch(e){
+    console.warn("submitForm error:", e.message);
+    // บังคับไปหน้า p6 ถึงแม้จะ error
+    goP(6);
+  }
 }
 
 
 async function submitForm(){
   goP(5);
-  var dup = await checkDup(orderNo);
+  var dup = null;
+  try{ dup = await checkDup(orderNo); } catch(e){ console.warn("checkDup error:", e.message); }
   if(dup){
     var qd = $("quota-detail");
     if(qd) qd.innerHTML =
@@ -1158,15 +1165,19 @@ async function submitForm(){
   recordReq(orderNo, simPhone, refNo);
 
   console.log("📤 Submitting order:", {refNo, orderNo, simPhone, pkgId, platform: plt, hasLineUser: !!(lp&&lp.userId)});
-  await notifyAdmin(refNo, req, pkg);
-  console.log("✅ notifyAdmin complete for:", refNo);
 
+  // ห่อ try/catch — goP(6) ต้องทำงานเสมอไม่ว่า Firebase จะ error ไหม
+  try{
+    await notifyAdmin(refNo, req, pkg);
+    console.log("✅ notifyAdmin complete for:", refNo);
+  } catch(e) {
+    console.warn("⚠️ notifyAdmin error (non-fatal):", e.message);
+  }
+
+  // แสดง refNo และไปหน้า p6 เสมอ
   var el = $("refno");
   if(el) el.textContent = refNo;
   goP(6);
-  // หมายเหตุ: ไม่เรียก loadAndShowNetGuide ที่นี่
-  // เพราะ netguide ถูกแสดงใน confirmAndSubmit popup แล้ว
-  // และการเรียกซ้ำจะทำให้ popup ทับหน้า p6
 }
 
 // ── เริ่มต้นแอพ ──
