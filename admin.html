@@ -1530,7 +1530,7 @@ function renderOrdDetail(ref){
         return pn || "ยังไม่ระบุ";
       })()}</span>
       <span style="color:#FFE082;white-space:nowrap">📵 สถานะเน็ต</span>
-      <span style="font-weight:800;color:#FACC15;">${req.mobileDataStatus==='ปิดเน็ตมือถือแล้ว'?'ยอมรับเงื่อนไขแล้ว':'ยังไม่ยืนยัน'}</span>
+      <span style="font-weight:800;color:#FFE082;">${req.mobileDataStatus?'ยอมรับเงื่อนไขแล้ว':'ยังไม่ยืนยัน'}</span>
     </div>
   </div>
 
