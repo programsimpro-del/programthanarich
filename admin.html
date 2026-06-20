@@ -658,7 +658,7 @@ function startRealtimeSync(){
     var data = snap.val();
     if(!data) return;
     var newReqs = Object.values(data);
-    newReqs.sort(function(a,b){return (b.createdAt||"").localeCompare(a.createdAt||"");});
+    newReqs.sort(function(a,b){ var ta=b.createdAt||b.submittedAt||""; var tb=a.createdAt||a.submittedAt||""; return ta.localeCompare(tb); });
     var localMap = {};
     reqs.forEach(function(r){ localMap[r.ref]=r; });
     newReqs = newReqs.map(function(r){
@@ -2381,6 +2381,49 @@ function showFormSettings(){
     document.getElementById("tabbar").style.display="flex";
   }, "");
   loadExImages();
+}
+
+function openPkgForm(pkg, editIdx){
+  showScreen("sc-pkgform");
+  document.getElementById("tabbar").style.display="none";
+  setTopbar(pkg ? "✏️ แก้ไขแพ็คเกจ" : "➕ เพิ่มแพ็คเกจ", function(){
+    showPkgMgr();
+  }, "");
+  var sc = document.getElementById("sc-pkgform");
+  if(sc) sc.dataset.editIdx = (editIdx !== null && editIdx !== undefined) ? String(editIdx) : "";
+  // โหลด emoji/color picker
+  if(typeof renderEmojiPicker==="function") renderEmojiPicker(pkg ? pkg.emoji : "");
+  if(typeof renderColorPicker==="function") renderColorPicker(pkg ? pkg.color : "");
+  // fill ข้อมูลเดิม
+  var fields = {"pf-name":pkg?pkg.name:"","pf-code":pkg?pkg.code:"","pf-price":pkg?pkg.price:"","pf-msg":pkg?pkg.msg:""};
+  Object.keys(fields).forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value=fields[id]||"";
+  });
+}
+
+function savePkgForm(){
+  var name  = (document.getElementById("pf-name")  ||{value:""}).value.trim();
+  var code  = (document.getElementById("pf-code")  ||{value:""}).value.trim();
+  var price = (document.getElementById("pf-price") ||{value:""}).value.trim();
+  var msg   = (document.getElementById("pf-msg")   ||{value:""}).value.trim();
+  var emojiEl = document.querySelector("#ep .sel");
+  var colorEl = document.querySelector("#cp .sel");
+  var emoji = emojiEl ? emojiEl.textContent.trim() : "📶";
+  var color = colorEl ? colorEl.dataset.color : "#1565C0";
+  if(!name){ showToast("กรุณาใส่ชื่อแพ็คเกจ","#C62828","#FFEBEE"); return; }
+  var sc = document.getElementById("sc-pkgform");
+  var eidx = sc && sc.dataset.editIdx !== "" ? parseInt(sc.dataset.editIdx) : null;
+  var newPkg = {
+    id: (eidx !== null && pkgs[eidx]) ? pkgs[eidx].id : "pkg_"+Date.now(),
+    name:name, code:code, price:price, msg:msg,
+    emoji:emoji||"📶", color:color||"#1565C0"
+  };
+  if(eidx !== null && eidx >= 0){ pkgs[eidx] = newPkg; }
+  else { pkgs.push(newPkg); }
+  localStorage.setItem("pt_packages", JSON.stringify(pkgs));
+  if(fbDB) fbDB.ref("/packages").set(pkgs).catch(function(){});
+  showToast("✅ บันทึกแล้วค่ะ","#166534","#DCFCE7");
+  showPkgMgr();
 }
 
 function renderPkgMgrList(){
