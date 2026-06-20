@@ -397,7 +397,7 @@ function fetchWT(url, opts, ms){
 async function checkDup(orderNo){
   var FB_URL = "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app";
   try{
-    var r = await fetchWT(FB_URL + "/quota/" + orderNo + ".json", {}, 6000);
+    var r = await fetchWT(FB_URL + "/quota/" + orderNo + ".json", {}, 3000);
     if(r.ok){
       var entry = await r.json();
       if(entry && entry.usedCount !== undefined && entry.maxQuota !== undefined){
@@ -473,7 +473,7 @@ async function doAcceptAndSubmit(){
 async function loadNetGuideToP6(){
   try{
     setP5Step(4, false); // แสดง step 4 กำลังทำงาน
-    var r = await fetchWT("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json", {}, 6000);
+    var r = await fetchWT("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json", {}, 4000);
     var guides = await r.json();
     if(!guides){ setP5Step(4, true); return; }
     if(!Array.isArray(guides)) guides = Object.values(guides);
@@ -927,10 +927,8 @@ function renderConfirm(){
 var FB_DB  = "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app";
 var API_URL = "https://programthanarich.programsimpro.workers.dev/notify";
 
-async function notifyAdmin(refNo, req, pkg){
-  var FB_URL = "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app";
-
-  var orderData = {
+function buildOrderData(refNo, req){
+  return {
     ref: req.ref,
     platform: req.platform,
     orderNo: req.orderNo,
@@ -950,43 +948,37 @@ async function notifyAdmin(refNo, req, pkg){
     linePictureUrl: req.linePictureUrl || null,
     createdAt: new Date().toISOString()
   };
+}
 
-  // บันทึก Firebase ด้วย REST API โดยตรง
-  try{
-    var r1 = await fetchWT(FB_URL + "/orders/" + refNo + ".json", {
-      method: "PUT",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify(orderData)
-    }, 8000);
-    if(r1.ok){
-      console.log("✅ Firebase saved:", refNo, "userId:", req.lineUserId);
-    } else {
-      var err = await r1.text();
-      console.warn("❌ Firebase REST error:", r1.status, err);
-    }
-  } catch(e){
-    console.warn("❌ Firebase fetch error:", e.message);
-  }
+async function notifyAdmin(refNo, req, pkg){
+  var FB_URL = "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app";
+  var orderData = buildOrderData(refNo, req);
 
-  // แจ้ง Admin + บันทึก Firebase ผ่าน Cloudflare Worker
-  try{
-    var r2 = await fetchWT("https://programthanarich.programsimpro.workers.dev/notify", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
-        refNo: refNo,
-        orderNo: req.orderNo,
-        simPhone: req.simPhone,
-        pkgName: pkg ? pkg.name : "",
-        platform: req.platform,
-        lineDisplayName: req.lineDisplayName || "",
-        orderData: orderData
-      })
-    });
-    console.log(r2.ok ? "✅ แจ้ง Admin + Firebase สำเร็จ" : "❌ Worker error: " + r2.status);
-  } catch(e){
-    console.warn("❌ Worker error:", e.message);
-  }
+  // ── ส่ง Firebase โดยตรง (สำคัญที่สุด) ──
+  fetchWT(FB_URL + "/orders/" + refNo + ".json", {
+    method: "PUT",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(orderData)
+  }, 5000).then(function(r){
+    console.log(r.ok ? "✅ Firebase saved: "+refNo : "❌ Firebase error: "+r.status);
+  }).catch(function(e){ console.warn("❌ Firebase err:", e.message); });
+
+  // ── แจ้ง LINE Admin ผ่าน Worker (ไม่ await) ──
+  fetchWT("https://programthanarich.programsimpro.workers.dev/notify", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      refNo: refNo,
+      orderNo: req.orderNo,
+      simPhone: req.simPhone,
+      pkgName: pkg ? pkg.name : "",
+      platform: req.platform,
+      lineDisplayName: req.lineDisplayName || "",
+      orderData: orderData
+    })
+  }, 5000).then(function(r){
+    console.log(r.ok ? "✅ Worker notify OK" : "❌ Worker error: "+r.status);
+  }).catch(function(e){ console.warn("❌ Worker err:", e.message); });
 }
 
 /* ═══ SUBMIT ═══ */
