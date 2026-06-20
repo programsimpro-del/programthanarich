@@ -1018,4 +1018,12 @@ async function submitForm(){
   if(window._lastShopeeItems) loadAndShowNetGuide(window._lastShopeeItems);
 }
 
->
+// ── เริ่มต้นแอพ ──
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', function(){ initLiff(); });
+} else {
+  initLiff();
+}
+</script>
+</body>
+</html>
