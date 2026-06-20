@@ -1157,13 +1157,13 @@ function renderDashboard(){
   // นับวันนี้
   var todayCount = reqs.filter(function(r){
     if(!r.submittedAt && !r.createdAt) return false;
-    var d = new Date(r.createdAt || 0);
+    var d = new Date(r.createdAt||r.submittedAt||0);
     return d.toLocaleDateString("th-TH") === today;
   }).length;
 
   // นับเดือนนี้
   var monthCount = reqs.filter(function(r){
-    var d = new Date(r.createdAt || 0);
+    var d = new Date(r.createdAt||r.submittedAt||0);
     var m = d.getFullYear()+"-"+(d.getMonth()+1).toString().padStart(2,"0");
     return m === thisMonth;
   }).length;
@@ -1190,7 +1190,7 @@ function renderDashboard(){
     });
   }
   reqs.forEach(function(r){
-    var d = new Date(r.createdAt||0);
+    var d = new Date(r.createdAt||r.submittedAt||0);
     var ds = d.toLocaleDateString("th-TH");
     var day = days.find(function(x){return x.dateStr===ds;});
     if(day) day.count++;
@@ -1225,7 +1225,7 @@ function renderDashboard(){
     months3.push({key:mk, label:ml, count:0});
   }
   reqs.forEach(function(r){
-    var d = new Date(r.createdAt||0);
+    var d = new Date(r.createdAt||r.submittedAt||0);
     var mk = d.getFullYear()+"-"+(d.getMonth()+1).toString().padStart(2,"0");
     var m = months3.find(function(x){return x.key===mk;});
     if(m) m.count++;
@@ -1246,7 +1246,7 @@ function renderDashboard(){
   // ── สถิติแยกสาขา ──────────────────────────────────
   var branchData={K:{today:0,month:0,revenue:0,pkgs:{}},L:{today:0,month:0,revenue:0,pkgs:{}}};
   reqs.forEach(function(r){
-    var d=new Date(r.createdAt||0);
+    var d=new Date(r.createdAt||r.submittedAt||0);
     var mk=d.getFullYear()+"-"+(d.getMonth()+1).toString().padStart(2,"0");
     var ds=d.toLocaleDateString("th-TH");
     var br=(r.branchCode||"").toUpperCase();
@@ -1255,7 +1255,7 @@ function renderDashboard(){
     if(mk===thisMonth){
       bd.month++;
       var p2=pkgs.find(function(p){return p.id===(r.activatedPackage||r.pkgId);});
-      if(p2&&r.status==="activated") bd.revenue+=(p2.price||0);
+      if(p2&&r.status==="activated") bd.revenue+=parseFloat(p2.price||0)||0;
       var pn=p2?p2.name:(r.pkgName||"ไม่ระบุ");
       bd.pkgs[pn]=(bd.pkgs[pn]||0)+1;
     }
