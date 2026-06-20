@@ -654,30 +654,44 @@ function startRealtimeSync(){
   });
 
   fbDB.ref("/orders").on("value", function(snap){
-    console.log("📡 Firebase orders received:", snap.val() ? Object.keys(snap.val()).length : 0);
     var data = snap.val();
-    if(!data) return;
-    var newReqs = Object.values(data);
-    newReqs.sort(function(a,b){ var ta=b.createdAt||b.submittedAt||""; var tb=a.createdAt||a.submittedAt||""; return ta.localeCompare(tb); });
+
+    // Firebase คือ source of truth เสมอ — รวมถึงกรณีว่างเปล่า (ลบหมด)
+    var firebaseRefs = {};
+    var newReqs = [];
+    if(data){
+      newReqs = Object.values(data);
+      newReqs.forEach(function(r){ firebaseRefs[r.ref] = true; });
+    }
+
+    newReqs.sort(function(a,b){
+      var ta = b.createdAt||b.submittedAt||"";
+      var tb = a.createdAt||a.submittedAt||"";
+      return ta.localeCompare(tb);
+    });
+
+    // merge เฉพาะ field ที่ admin แก้ใน local (ไม่ดึงข้อมูลที่ Firebase ลบแล้วกลับมา)
     var localMap = {};
-    reqs.forEach(function(r){ localMap[r.ref]=r; });
+    reqs.forEach(function(r){ localMap[r.ref] = r; });
     newReqs = newReqs.map(function(r){
       var lo = localMap[r.ref];
       if(lo){
-        // merge status จาก local (Admin อัพเดท)
         if(lo.status)           r.status           = lo.status;
         if(lo.shopeeVerified)   r.shopeeVerified   = lo.shopeeVerified;
         if(lo.lineMessages)     r.lineMessages     = lo.lineMessages;
         if(lo.activatedPackage) r.activatedPackage = lo.activatedPackage;
         if(lo.activatedAt)      r.activatedAt      = lo.activatedAt;
         if(lo.aiResult)         r.aiResult         = lo.aiResult;
-        // *** ห้ามทับ lineUserId จาก Firebase — ข้อมูลสำคัญสำหรับส่ง LINE ***
         if(!r.lineUserId && lo.lineUserId) r.lineUserId = lo.lineUserId;
       }
       return r;
     });
+
+    // อัพเดท reqs ตาม Firebase เท่านั้น (ไม่เอา local-only items ที่ไม่มีใน Firebase)
     reqs = newReqs;
     localStorage.setItem("pt_requests", JSON.stringify(reqs));
+    console.log("📡 Firebase sync:", reqs.length, "orders");
+
     renderChatList();
     renderOrdList();
     renderDashboard();
@@ -687,9 +701,10 @@ function startRealtimeSync(){
 }
 
 function loadAll(){
-  // โหลดจาก localStorage ก่อน (แสดงทันที)
+  // โหลด pkgs จาก localStorage ก่อน (แสดงทันที)
   try{ pkgs = JSON.parse(localStorage.getItem("pt_packages")||"null")||DEFAULT_PKGS; }catch(_){ pkgs=DEFAULT_PKGS; }
-  try{ reqs = JSON.parse(localStorage.getItem("pt_requests")||"null")||[]; }catch(_){ reqs=[]; }
+  // reqs ไม่โหลดจาก local — รอ Firebase เท่านั้น เพื่อป้องกันข้อมูลที่ถูกลบกลับมา
+  reqs = [];
   try{ var ng=localStorage.getItem("pt_netguides"); if(ng) netGuides=JSON.parse(ng); }catch(_){}
 
   var tb = $("tabbar");
@@ -2434,6 +2449,22 @@ function savePkgForm(){
   showPkgMgr();
 }
 
+function deletePkg(idx){
+  var p = pkgs[idx];
+  if(!p) return;
+  // ใช้ modal รหัสผ่านเดิม แต่ type=pkg
+  _deletePkgIdx = idx;
+  _deleteType   = "pkg";
+  var inp = document.getElementById("delete-pin");
+  var err = document.getElementById("delete-pin-err");
+  if(inp){ inp.value=""; setTimeout(function(){ inp.focus(); }, 100); }
+  if(err) err.style.display="none";
+  var lbl = document.getElementById("delete-modal-label");
+  if(lbl) lbl.textContent = "ลบแพ็คเกจ \""+p.name+"\"";
+  var modal = document.getElementById("delete-modal");
+  if(modal) modal.style.display="flex";
+}
+
 function renderPkgMgrList(){
   var el = $("pkg-mgr-list");
   if(!el) return;
@@ -2444,33 +2475,30 @@ function renderPkgMgrList(){
   el.innerHTML = pkgs.map(function(p,i){
     var color = p.color || "#1565C0";
     var preview = p.code ? "รหัส: "+p.code : (p.name||"");
-    return '<div onclick="openPkgForm(pkgs['+i+'],'+i+')" style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:1.5px solid #E5E7EB;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 1px 4px rgba(0,0,0,.06)">'
-      +'<div style="width:44px;height:44px;background:'+color+'18;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">'+(p.emoji||"📶")+'</div>'
-      +'<div style="flex:1;min-width:0">'
-        +'<div style="font-weight:800;font-size:14px;color:'+color+';margin-bottom:3px">'+escH(p.name||"-")+'</div>'
-        +'<div style="font-size:12px;color:#9E9E9E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escH(preview)+'</div>'
-      +'</div>'
-      +'<span style="color:#BDBDBD;font-size:18px">›</span>'
-      +'</div>';
-  }).join("");
+    return '<div style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:1.5px solid #E5E7EB;display:flex;align-items:center;gap:12px;box-shadow:0 1px 4px rgba(0,0,0,.06)">'      +'<div onclick="openPkgForm(pkgs['+i+'],'+i+')" style="width:44px;height:44px;background:'+color+'18;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;cursor:pointer">'+(p.emoji||"📶")+'</div>'      +'<div onclick="openPkgForm(pkgs['+i+'],'+i+')" style="flex:1;min-width:0;cursor:pointer">'        +'<div style="font-weight:800;font-size:14px;color:'+color+';margin-bottom:3px">'+escH(p.name||"-")+'</div>'        +'<div style="font-size:12px;color:#9E9E9E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escH(preview)+'</div>'      +'</div>'      +'<button onclick="event.stopPropagation();deletePkg('+i+')" style="flex-shrink:0;padding:7px 12px;border-radius:9px;border:1.5px solid #FECDD3;background:#FFF1F2;color:#BE123C;font-weight:800;font-size:12px;cursor:pointer">🗑️</button>'      +'</div>';}).join("");
 }
 
 
 
 
 /* ══ DELETE ORDER ══ */
-var _deleteRef = null;
+var _deleteRef    = null;
+var _deletePkgIdx = null;
+var _deleteType   = "order"; // "order" | "pkg"
 // รหัสเก็บแบบ obfuscated เพื่อไม่ให้อ่านตรงๆ
 var _dpin = atob("MTIzNDU2"); // 123456
 
 function showDeleteConfirm(ref){
-  _deleteRef = ref;
+  _deleteRef  = ref;
+  _deleteType = "order";
   var inp = document.getElementById("delete-pin");
   var err = document.getElementById("delete-pin-err");
-  if(inp){ inp.value = ""; inp.focus(); }
-  if(err) err.style.display = "none";
+  var lbl = document.getElementById("delete-modal-label");
+  if(inp){ inp.value=""; setTimeout(function(){ inp.focus(); }, 100); }
+  if(err) err.style.display="none";
+  if(lbl) lbl.textContent = "ลบประวัติคำขอนี้";
   var modal = document.getElementById("delete-modal");
-  if(modal) modal.style.display = "flex";
+  if(modal) modal.style.display="flex";
 }
 
 function closeDeleteModal(){
@@ -2489,25 +2517,36 @@ function doDeleteOrder(){
     inp.focus();
     return;
   }
-  var ref = _deleteRef;   // เก็บ ref ก่อน closeModal จะ null มัน
+  var ref  = _deleteRef;
+  var pidx = _deletePkgIdx;
+  var type = _deleteType;
   closeDeleteModal();
-  if(!ref) return;
 
-  // ลบจาก Firebase
+  if(type === "pkg"){
+    // ── ลบแพ็คเกจ ──
+    if(pidx === null || !pkgs[pidx]) return;
+    pkgs.splice(pidx, 1);
+    localStorage.setItem("pt_packages", JSON.stringify(pkgs));
+    if(fbDB || initFirebase()) fbDB.ref("/packages").set(pkgs).catch(function(){});
+    renderPkgMgrList();
+    showToast("🗑️ ลบแพ็คเกจแล้วค่ะ", "#374151", "#F3F4F6");
+    return;
+  }
+
+  // ── ลบ order ──
+  if(!ref) return;
   if(fbDB || initFirebase()){
     fbDB.ref("/orders/" + ref).remove().catch(function(e){ console.warn("Firebase delete err:", e.message); });
   }
-  // ลบจาก local
   reqs = reqs.filter(function(r){ return r.ref !== ref; });
   try{ localStorage.setItem("pt_requests", JSON.stringify(reqs)); }catch(_){}
 
-  // กลับหน้าหลัก
   var olv = document.getElementById("ord-list-view");
   var odv = document.getElementById("ord-detail-view");
-  if(olv) olv.style.display = "flex";
-  if(odv) odv.style.display = "none";
+  if(olv) olv.style.display="flex";
+  if(odv) odv.style.display="none";
   var homeBtn = document.getElementById("home-btn");
-  if(homeBtn) homeBtn.style.display = "none";
+  if(homeBtn) homeBtn.style.display="none";
   setTopbar("", null, "");
   aref = null;
 
@@ -2532,7 +2571,7 @@ setInterval(function(){
 <div id="delete-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;padding:20px">
   <div style="background:#fff;border-radius:18px;padding:24px 20px;width:100%;max-width:340px;box-shadow:0 8px 32px rgba(0,0,0,.25)">
     <div style="text-align:center;font-size:36px;margin-bottom:8px">🗑️</div>
-    <div style="font-weight:900;font-size:16px;color:#BE123C;text-align:center;margin-bottom:6px">ลบประวัติคำขอ</div>
+    <div id="delete-modal-label" style="font-weight:900;font-size:16px;color:#BE123C;text-align:center;margin-bottom:6px">ลบประวัติคำขอ</div>
     <div style="font-size:12px;color:#6B7280;text-align:center;margin-bottom:16px">ใส่รหัสผ่านเพื่อยืนยันการลบ<br>ข้อมูลจะถูกลบถาวรทั้งระบบ</div>
     <input id="delete-pin" type="password" inputmode="numeric" maxlength="6"
       placeholder="รหัสผ่าน"
