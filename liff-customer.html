@@ -256,17 +256,17 @@ input:focus{border-color:#06C755!important;box-shadow:none!important}
       </div>
 
       <!-- คำเตือน -->
-      <div style="width:100%;background:#FEF2F2;border:1.5px solid #FECACA;border-radius:12px;padding:12px 14px;margin-bottom:12px">
-        <div style="font-size:12px;font-weight:900;color:#BE123C;margin-bottom:4px">⚠️ อย่าลืม! ปิดเน็ตมือถือด้วยนะคะ</div>
-        <div style="font-size:12px;color:#9F1239;line-height:1.8">ถ้าไม่ปิดเน็ต ยอดเงินที่เติมให้<b>จะถูกตัดทันที</b><br>ทางร้านไม่รับผิดชอบทุกกรณี</div>
+      <div style="width:100%;background:#FEF2F2;border:1.5px solid #FECACA;border-radius:12px;padding:14px 16px;margin-bottom:12px;text-align:center">
+        <div style="font-size:13px;font-weight:900;color:#BE123C;margin-bottom:6px">⚠️ อย่าลืม! ปิดเน็ตมือถือด้วยนะคะ</div>
+        <div style="font-size:12px;color:#9F1239;line-height:1.9">ถ้าไม่ปิดเน็ต ยอดเงินที่เติมให้<b>จะถูกตัดทันที</b><br>ทางร้านไม่รับผิดชอบทุกกรณี</div>
       </div>
 
       <!-- ติดต่อ -->
-      <div style="width:100%;background:#EFF6FF;border-radius:12px;padding:12px 14px;margin-bottom:20px">
-        <div style="font-size:12px;color:#1E40AF;line-height:2">
+      <div style="width:100%;background:#EFF6FF;border-radius:12px;padding:14px 16px;margin-bottom:20px;text-align:center">
+        <div style="font-size:12px;color:#1E40AF;line-height:2.1">
           💬 มีข้อสงสัย ติดต่อเจ้าหน้าที่<br>
           <b>แชทไลน์ @programthanarich</b><br>
-          <span style="background:#DBEAFE;border-radius:6px;padding:2px 8px;font-size:11px">🕐 เวลาทำการ 8:00–17:00 น.</span>
+          <span style="display:inline-block;background:#DBEAFE;border-radius:6px;padding:3px 10px;font-size:11px;margin-top:2px">🕐 เวลาทำการ 8:00–17:00 น.</span>
         </div>
       </div>
 
@@ -298,10 +298,10 @@ input:focus{border-color:#06C755!important;box-shadow:none!important}
     <div style="background:#7F1D1D;border:2px solid #EF4444;border-radius:14px;padding:16px;margin-bottom:16px;width:100%">
       <div style="font-size:14px;font-weight:900;color:#FFFF00;margin-bottom:10px;text-align:center">⚠️ เงื่อนไขสำคัญที่ต้องทำ</div>
       <div style="font-size:13px;color:#FEE2E2;line-height:2.2;font-weight:700">
-        1️⃣ ส่งข้อมูลครบแล้ว <b style="color:#FFFF00">ปิดเน็ตมือถือทันที</b><br>
-        2️⃣ ถ้าไม่ปิดเน็ตเมื่อระบบเติมเงินเข้าเบอร์เงินจะ<b style="color:#FFFF00">ถูกตัดทันทีและทางร้านจะไม่รับผิดชอบทุกกรณี</b><br>
-        3️⃣ ต้องใช้งานซิม<b style="color:#FFFF00">3 เดือนขึ้นไป</b>ถึงจะสามารถยกเลิกการใช้งานซิมได้<br>
-        4️⃣ แพ็กเกจเน็ตทุกแพ็กเกจ<b style="color:#FFFF00">ขึ้นอยู่กับบริษัททรูและดีแทคกำหนด</b>ทางร้านเป็นเพียงตัวแทนจำหน่าย<b style="color:#FFFF00">ถ้าแพ็กเกจมีการเปลี่ยนแปลงทางร้านจะไม่สามารถแจ้งให้ทราบล่วงหน้าได้
+        1️⃣ ส่งข้อมูลครบแล้ว <b style="color:#FFFF00;font-weight:900">ปิดเน็ตมือถือทันที</b><br>
+        2️⃣ ถ้าไม่ปิดเน็ตเมื่อระบบเติมเงินเข้าเบอร์เงิน<b style="color:#FFFF00;font-weight:900">จะถูกตัดทันทีและทางร้านจะไม่รับผิดชอบทุกกรณี</b><br>
+        3️⃣ ต้องใช้งานซิม<b style="color:#FFFF00;font-weight:900">3 เดือนขึ้นไป</b>ถึงจะสามารถยกเลิกการใช้งานซิมได้<br>
+        4️⃣ แพ็กเกจเน็ตทุกแพ็กเกจ<b style="color:#FFFF00;font-weight:900">ขึ้นอยู่กับบริษัททรูและดีแทคกำหนด</b>ทางร้านเป็นเพียงตัวแทนจำหน่าย<b style="color:#FFFF00;font-weight:900">ถ้าแพ็กเกจมีการเปลี่ยนแปลงทางร้านจะไม่สามารถแจ้งให้ทราบล่วงหน้าได้</b>
       </div>
     </div>
     <!-- Checkbox -->
@@ -1000,17 +1000,35 @@ async function notifyAdmin(refNo, req, pkg){
   var FB_URL = "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app";
   var orderData = buildOrderData(refNo, req);
 
-  // ── ส่ง Firebase โดยตรง (สำคัญที่สุด) ──
-  fetchWT(FB_URL + "/orders/" + refNo + ".json", {
-    method: "PUT",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify(orderData)
-  }, 5000).then(function(r){
-    console.log(r.ok ? "✅ Firebase saved: "+refNo : "❌ Firebase error: "+r.status);
-  }).catch(function(e){ console.warn("❌ Firebase err:", e.message); });
+  // ── Step A: await Firebase ให้แน่ใจว่าข้อมูลเข้าก่อน (สำคัญที่สุด) ──
+  var fbOk = false;
+  try{
+    var r1 = await fetchWT(FB_URL + "/orders/" + refNo + ".json", {
+      method: "PUT",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(orderData)
+    }, 8000);
+    fbOk = r1.ok;
+    console.log(fbOk ? "✅ Firebase saved: "+refNo : "❌ Firebase HTTP "+r1.status);
+  }catch(e){
+    console.warn("❌ Firebase err:", e.message);
+  }
 
-  // ── แจ้ง LINE Admin ผ่าน Worker (ไม่ await) ──
-  fetchWT("https://programthanarich.programsimpro.workers.dev/notify", {
+  // ── Step B: ถ้า Firebase ล้มเหลว ลอง retry 1 ครั้ง ──
+  if(!fbOk){
+    try{
+      var r1b = await fetchWT(FB_URL + "/orders/" + refNo + ".json", {
+        method: "PUT",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(orderData)
+      }, 8000);
+      fbOk = r1b.ok;
+      console.log(fbOk ? "✅ Firebase retry OK" : "❌ Firebase retry fail");
+    }catch(e){ console.warn("❌ Firebase retry err:", e.message); }
+  }
+
+  // ── Step C: แจ้ง LINE Admin ผ่าน Worker (fire-and-forget หลัง Firebase สำเร็จ) ──
+  fetch("https://programthanarich.programsimpro.workers.dev/notify", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify({
@@ -1022,9 +1040,11 @@ async function notifyAdmin(refNo, req, pkg){
       lineDisplayName: req.lineDisplayName || "",
       orderData: orderData
     })
-  }, 5000).then(function(r){
+  }).then(function(r){
     console.log(r.ok ? "✅ Worker notify OK" : "❌ Worker error: "+r.status);
   }).catch(function(e){ console.warn("❌ Worker err:", e.message); });
+
+  return fbOk;
 }
 
 /* ═══ SUBMIT ═══ */
@@ -1094,9 +1114,9 @@ async function submitForm(){
   setCooldown(orderNo); // ตั้ง cooldown 30 นาทีสำหรับ orderNo นี้
   setP5Step(2, true);
 
-  // ── Step 3: แจ้ง Admin (fire-and-forget ไม่บล็อก UI) ──
+  // ── Step 3: แจ้ง Admin (await Firebase ก่อนไปหน้าถัดไป) ──
   setP5Step(3, false);
-  notifyAdmin(refNo, req, pkg).catch(function(e){ console.warn("notifyAdmin err:", e.message); });
+  try{ await notifyAdmin(refNo, req, pkg); }catch(e){ console.warn("notifyAdmin err:", e.message); }
   setP5Step(3, true);
 
   // ── Step 4: เตรียมดึงวิธีสมัครเน็ต (ทำใน loadNetGuideToP6) ──
