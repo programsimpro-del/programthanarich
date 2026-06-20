@@ -1335,7 +1335,7 @@ function renderOrdList(){
       
       ${r.pkgName?`<span style="background:#F3E5F5;color:#6A1B9A;font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px">${pkgs.find(p=>p.id===r.pkgId)?.emoji||"📶"} ${r.pkgName}</span>`:""}
       ${getQuotaBadge(r.orderNo)}
-      ${r.mobileDataStatus?`<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:8px;color:#FACC15;">📵 ${r.mobileDataStatus}</span>`:""}
+      <span style="font-size:10px;font-weight:800;color:#B91C1C;">✅ ยอมรับเงื่อนไขแล้ว</span>
     </div>`;
   }).join("");
 }
@@ -1530,7 +1530,7 @@ function renderOrdDetail(ref){
         return pn || "ยังไม่ระบุ";
       })()}</span>
       <span style="color:#FFE082;white-space:nowrap">📵 สถานะเน็ต</span>
-      <span style="font-weight:800;padding:2px 8px;border-radius:6px;${req.mobileDataStatus==='ปิดเน็ตมือถือแล้ว'?'background:#166534;color:#BBF7D0':'background:#7F1D1D;color:#FCA5A5'}">${req.mobileDataStatus||'ยังไม่ยืนยัน'}</span>
+      <span style="font-weight:800;color:#FACC15;">${req.mobileDataStatus==='ปิดเน็ตมือถือแล้ว'?'ยอมรับเงื่อนไขแล้ว':'ยังไม่ยืนยัน'}</span>
     </div>
   </div>
 
