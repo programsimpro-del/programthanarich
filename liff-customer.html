@@ -987,9 +987,6 @@ async function notifyAdmin(refNo, req, pkg){
 }
 
 /* ═══ SUBMIT ═══ */
-    return false;
-  }catch(e){ console.warn("loadNetGuide:", e.message); return false; }
-}
 
 function setP5Step(n, done){
   var icon = document.getElementById("p5-icon-"+n);
