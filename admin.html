@@ -635,18 +635,21 @@ function startRealtimeSync(){
   fbDB.ref("/settings/netGuides").on("value", function(snap){
     var d = snap.val();
     if(d !== null && d !== undefined){
-      netGuides = Array.isArray(d) ? d : Object.values(d);
-      localStorage.setItem("pt_netguides", JSON.stringify(netGuides));
-    } else {
-      // Firebase ว่าง — push local
-      var local = localStorage.getItem("pt_netguides");
-      if(local){ try{ netGuides = JSON.parse(local); }catch(_){} }
-      if(netGuides && netGuides.length > 0){
-        fbDB.ref("/settings/netGuides").set(netGuides);
+      var arr = Array.isArray(d) ? d : Object.values(d);
+      arr = arr.filter(function(g){ return g && (g.keyword||g.steps); });
+      if(arr.length > 0){
+        netGuides = arr;
+        localStorage.setItem("pt_netguides", JSON.stringify(netGuides));
+        // render ถ้าหน้าเปิดอยู่
+        var sc = document.getElementById("sc-netguide");
+        if(sc && sc.classList.contains("on")) renderNetGuideList();
       }
-    }
-    if(document.getElementById("sc-netguide") && document.getElementById("sc-netguide").classList.contains("on")){
-      renderNetGuideList();
+    } else {
+      // Firebase ว่าง — push local ขึ้น
+      try{
+        var loc = localStorage.getItem("pt_netguides");
+        if(loc){ var local=JSON.parse(loc); if(local&&local.length>0){ netGuides=local; fbDB.ref("/settings/netGuides").set(netGuides); } }
+      }catch(_){}
     }
   });
 
@@ -2223,7 +2226,14 @@ function showNetGuide(){
     showSettings();
     document.getElementById("tabbar").style.display="flex";
   }, "");
-  renderNetGuideList(); // netGuides อยู่ใน memory แล้ว แสดงทันที
+  // แสดงจาก localStorage ก่อนทันที
+  if(netGuides.length === 0){
+    try{
+      var loc = localStorage.getItem("pt_netguides");
+      if(loc){ var arr=JSON.parse(loc); if(arr&&arr.length>0) netGuides=arr; }
+    }catch(_){}
+  }
+  renderNetGuideList();
 }
 
 var netGuides = [];
@@ -2268,26 +2278,32 @@ function saveNetGuides(){
 function addNetGuide(){
   syncNetGuideInputs();
   netGuides.push({ keyword:"", steps:"", note:"" });
+  _ngCurrentFolder = netGuides.length - 1; // เปิด folder ใหม่ทันที
   renderNetGuideList();
 }
 
 function deleteNetGuide(i){
   syncNetGuideInputs();
   netGuides.splice(i,1);
+  _ngCurrentFolder = null; // กลับไป folder list
+  localStorage.setItem("pt_netguides", JSON.stringify(netGuides));
+  if(fbDB) fbDB.ref("/settings/netGuides").set(netGuides).catch(function(){});
   renderNetGuideList();
+  showToast("🗑️ ลบแล้วค่ะ","#374151","#F3F4F6");
 }
 
 function syncNetGuideInputs(){
-  // sync ค่าจาก input/textarea ก่อน render ใหม่
-  netGuides.forEach(function(g,i){
-    var kw = document.getElementById("ng-kw-"+i);
-    var st = document.getElementById("ng-steps-"+i);
-    if(kw) g.keyword = kw.value;
-    if(st) g.steps  = st.value;
-  });
+  if(_ngCurrentFolder !== null){
+    var kw = document.getElementById("ng-kw-"+_ngCurrentFolder);
+    var st = document.getElementById("ng-steps-"+_ngCurrentFolder);
+    if(kw && netGuides[_ngCurrentFolder]) netGuides[_ngCurrentFolder].keyword = kw.value;
+    if(st && netGuides[_ngCurrentFolder]) netGuides[_ngCurrentFolder].steps  = st.value;
+  }
 }
 
 var _ngSaveTimer = null;
+var _ngCurrentFolder = null; // folder ที่เปิดอยู่
+
 function autoSaveNetGuides(){
   syncNetGuideInputs();
   clearTimeout(_ngSaveTimer);
@@ -2300,29 +2316,50 @@ function autoSaveNetGuides(){
 function renderNetGuideList(){
   var el = document.getElementById("netguide-list");
   if(!el) return;
+
+  if(_ngCurrentFolder !== null){
+    // แสดงข้อมูลใน folder
+    var g = netGuides[_ngCurrentFolder];
+    if(!g){ _ngCurrentFolder=null; renderNetGuideList(); return; }
+    el.innerHTML =
+      '<button onclick="_ngCurrentFolder=null;renderNetGuideList()" style="display:flex;align-items:center;gap:6px;background:none;border:none;color:#1565C0;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;margin-bottom:14px;padding:0">'
+        +'← กลับ</button>'
+      +'<div style="background:#fff;border-radius:14px;padding:16px;border:1.5px solid #E5E7EB">'
+        +'<div style="font-size:12px;color:#6B7280;margin-bottom:4px">🔑 Keyword ตัวเลือกสินค้า</div>'
+        +'<input id="ng-kw-'+_ngCurrentFolder+'" value="'+escH(g.keyword||"")+'" placeholder="เช่น TRUE2MB, AIS30MB"'
+          +' style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;margin-bottom:14px;box-sizing:border-box"'
+          +' oninput="netGuides['+_ngCurrentFolder+'].keyword=this.value;autoSaveNetGuides()">'
+        +'<div style="font-size:12px;color:#6B7280;margin-bottom:4px">📝 วิธีสมัครเน็ต</div>'
+        +'<textarea id="ng-steps-'+_ngCurrentFolder+'" placeholder="กรอกขั้นตอนการสมัครเน็ต..."'
+          +' style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;min-height:140px;resize:vertical;margin-bottom:10px;box-sizing:border-box"'
+          +' oninput="netGuides['+_ngCurrentFolder+'].steps=this.value;autoSaveNetGuides()">'+escH(g.steps||"")+'</textarea>'
+        +'<div style="display:flex;gap:8px">'
+          +'<button onclick="syncNetGuideInputs();saveNetGuides()" style="flex:1;padding:11px;border-radius:10px;border:none;background:#1565C0;color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">💾 บันทึก</button>'
+          +'<button onclick="deleteNetGuide('+_ngCurrentFolder+')" style="padding:11px 16px;border-radius:10px;border:none;background:#FFEBEE;color:#C62828;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">🗑️</button>'
+        +'</div>'
+      +'</div>';
+    return;
+  }
+
+  // แสดง folder list
   if(netGuides.length===0){
     el.innerHTML = '<div style="text-align:center;padding:24px;color:#BDBDBD;font-size:13px">ยังไม่มีวิธีสมัคร<br>กด ➕ เพิ่มวิธีสมัครเน็ต</div>';
     return;
   }
   el.innerHTML = netGuides.map(function(g,i){
-    return '<div style="background:#fff;border-radius:14px;padding:14px;margin-bottom:10px;border:1.5px solid #E5E7EB">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
-        +'<div style="font-weight:800;font-size:13px;color:#374151">📶 วิธีสมัครที่ '+(i+1)+'</div>'
-        +'<button onclick="deleteNetGuide('+i+')" style="background:#FFEBEE;border:none;color:#C62828;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">ลบ</button>'
+    var name = g.keyword || "วิธีสมัครที่ "+(i+1);
+    var preview = (g.steps||"").substring(0,40) + ((g.steps||"").length>40?"...":"");
+    return '<div onclick="_ngCurrentFolder='+i+';renderNetGuideList()" style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:1.5px solid #E5E7EB;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 1px 4px rgba(0,0,0,.06)">'
+      +'<div style="width:44px;height:44px;background:#EFF6FF;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">📶</div>'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="font-weight:800;font-size:14px;color:#1565C0;margin-bottom:3px">'+escH(name)+'</div>'
+        +(preview?'<div style="font-size:12px;color:#9E9E9E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escH(preview)+'</div>':'')
       +'</div>'
-      +'<div style="font-size:12px;color:#6B7280;margin-bottom:4px">🔑 Keyword ตัวเลือกสินค้า (เช่น TRUE2MB, AIS30MB)</div>'
-      +'<input id="ng-kw-'+i+'" value="'+escH(g.keyword||"")+'" placeholder="เช่น TRUE2MB หรือ FREE"'
-        +' style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;margin-bottom:10px;box-sizing:border-box"'
-        +' oninput="netGuides['+i+'].keyword=this.value;autoSaveNetGuides()">'
-      +'<div style="font-size:12px;color:#6B7280;margin-bottom:4px">📝 วิธีสมัครเน็ต (แสดงให้ลูกค้าเห็น)</div>'
-      +'<textarea id="ng-steps-'+i+'" placeholder="กรอกขั้นตอนการสมัครเน็ต..."'
-        +' style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;min-height:120px;resize:vertical;margin-bottom:8px;box-sizing:border-box"'
-        +' oninput="netGuides['+i+'].steps=this.value;autoSaveNetGuides()">'+escH(g.steps||"")+'</textarea>'
-      +'<div id="ng-saved-'+i+'" style="font-size:11px;color:#9E9E9E;text-align:right;margin-bottom:6px"></div>'
-      +'<button onclick="syncNetGuideInputs();saveNetGuides()" style="width:100%;padding:10px;border-radius:10px;border:none;background:#1565C0;color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">💾 บันทึก</button>'
+      +'<span style="color:#BDBDBD;font-size:18px">›</span>'
       +'</div>';
   }).join("");
 }
+
 
 function escH(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 
