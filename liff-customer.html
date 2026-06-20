@@ -14,6 +14,7 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#fff;min-heigh
 #ls{position:fixed;inset:0;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:14px}
 .ring{width:44px;height:44px;border:4px solid #E8F5E9;border-top:4px solid #06C755;border-radius:50%;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+@keyframes ping{75%,100%{transform:scale(2);opacity:0}}
 @keyframes fu{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 /* header */
 .hdr{background:#06C755;height:52px;display:flex;align-items:center;padding:0 14px;gap:10px;flex-shrink:0;position:sticky;top:0;z-index:10}
@@ -225,9 +226,39 @@ input:focus{border-color:#06C755!important;box-shadow:none!important}
 
     <!-- P6: DONE -->
     <div class="pg" id="p6" style="align-items:center;justify-content:center;text-align:center">
-      <div style="font-size:68px;margin-bottom:12px">🎉</div>
-      <h2 style="font-weight:900;font-size:22px;color:#14532D;margin-bottom:8px">ส่งข้อมูลเรียบร้อย!</h2>
-      <p style="font-size:13px;color:#6B7280;margin-bottom:24px;line-height:1.8">ทีมงานได้รับข้อมูลของคุณแล้วนะคะ<br>กรุณารอรับการแจ้งเตือนผ่าน<br><b style="color:#06C755">LINE @programthanarich</b></p>
+
+      <!-- สถานะรอ Admin -->
+      <div style="background:linear-gradient(135deg,#1565C0,#1976D2);border-radius:16px;padding:20px 18px;width:100%;margin-bottom:18px">
+        <!-- Pulse indicator -->
+        <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:14px">
+          <div style="position:relative;width:14px;height:14px">
+            <div style="position:absolute;inset:0;background:#4ADE80;border-radius:50%;animation:ping 1.2s cubic-bezier(0,0,.2,1) infinite;opacity:.75"></div>
+            <div style="position:absolute;inset:0;background:#22C55E;border-radius:50%"></div>
+          </div>
+          <div style="font-weight:900;font-size:15px;color:#fff">รอ Admin ดำเนินการ</div>
+        </div>
+        <div style="font-size:13px;color:#BFDBFE;line-height:1.9;margin-bottom:14px">
+          ⏳ กำลังเปิดเน็ตฟรีเดือนแรกให้คุณ<br>
+          <b style="color:#fff">กรุณารอสักครู่</b>
+        </div>
+        <!-- คำเตือนอย่าทัก -->
+        <div style="background:rgba(255,255,255,.12);border-radius:10px;padding:10px 12px;margin-bottom:12px">
+          <div style="font-size:12px;color:#FDE68A;font-weight:800;margin-bottom:4px">⚠️ เพื่อความรวดเร็ว</div>
+          <div style="font-size:12px;color:#E0F2FE;line-height:1.8">
+            กรุณา<b style="color:#fff">อย่าทักซ้ำ</b>เนื่องจากจะทำให้<br>การดำเนินการล่าช้า
+          </div>
+        </div>
+        <!-- ติดต่อเจ้าหน้าที่ -->
+        <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:10px 12px">
+          <div style="font-size:12px;color:#BAE6FD;line-height:1.9">
+            💬 หากมีข้อสงสัยเพิ่มเติม ติดต่อเจ้าหน้าที่<br>
+            ผ่าน<b style="color:#fff">แชทไลน์ @programthanarich</b><br>
+            <span style="background:rgba(255,255,255,.15);border-radius:6px;padding:2px 8px;font-size:11px;color:#E0F2FE">🕐 เวลาทำการ 8:00–17:00 น.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- เลขอ้างอิง -->
       <div class="refbox">
         <div style="font-size:11px;color:#9E9E9E;margin-bottom:5px">เลขอ้างอิงของคุณ</div>
         <div id="refno" style="font-family:monospace;font-weight:900;font-size:26px;color:#14532D;letter-spacing:2px"></div>
