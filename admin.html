@@ -2405,6 +2405,16 @@ function renderPkgMgrList(){
 }
 
 
+
+// ── PAGE INIT ──────────────────────────────────
+if(document.readyState === "loading"){
+  document.addEventListener("DOMContentLoaded", function(){ loadAll(); });
+} else {
+  loadAll();
+}
+setInterval(function(){
+  if(!fbDB) startRealtimeSync();
+}, 30000);
 </script>
 </body>
 </html>
