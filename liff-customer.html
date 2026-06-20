@@ -935,13 +935,9 @@ async function confirmAndSubmit(){
 
 async function submitForm(){
   goP(5);
-  var logEl=$("loglist");
-  function log(msg){var d=document.createElement("div");d.className="logline";d.textContent=msg;logEl.appendChild(d);}
-  await delay(500); log("📡 กำลังส่งข้อมูล...");
-  await delay(600); log("🔍 ตรวจสอบเลขคำสั่งซื้อ...");
-  var dup=await checkDup(orderNo);
+  var dup = await checkDup(orderNo);
   if(dup){
-    var qd=$("quota-detail");
+    var qd = $("quota-detail");
     if(qd) qd.innerHTML =
       '<div style="text-align:center;padding:12px 0">'
       +'<div style="font-size:40px;margin-bottom:8px">⛔</div>'
@@ -954,37 +950,34 @@ async function submitForm(){
       +'</div>';
     goP(7); return;
   }
-  await delay(600); log("📨 แจ้งเตือนทีมงาน...");
-  var refNo="PT"+Date.now().toString().slice(-6);
-  var now=ts();
-  var pkg=pkgs.find(function(p){return p.id===pkgId;});
-  var simCodeVal=($("simCode")||{}).value?.trim().toUpperCase()||"";
-  var req={ref:refNo,platform:plt,orderNo:orderNo,simPhone:simPhone,
+
+  var refNo = "PT"+Date.now().toString().slice(-6);
+  var now = ts();
+  var pkg = pkgs.find(function(p){ return p.id===pkgId; });
+  var simCodeVal = ($("simCode")||{}).value ? $("simCode").value.trim().toUpperCase() : "";
+  var req = {
+    ref:refNo, platform:plt, orderNo:orderNo, simPhone:simPhone,
     simCode:simCodeVal,
-    branchCode:simCodeVal.length>0?simCodeVal[0]:"",
-    branchName:simCodeVal[0]==="K"?"กาฬสินธุ์":simCodeVal[0]==="L"?"เลย":"ไม่ระบุ",
-    pkgId:pkgId,pkgName:pkg?pkg.name:"",pkgCode:pkg?pkg.code:"",imgOrder:null,imgSim:null,imgReg:null,status:"pending",shopeeVerified:"pending",submittedAt:now,lineUserId:lp?lp.userId:null,lineDisplayName:lp?lp.displayName:null,linePictureUrl:lp?lp.pictureUrl:null,lineMessages:[{id:1,from:"customer",text:"สวัสดีค่ะ ขอรับเน็ตฟรีเดือนแรกค่ะ\nเลขพัสดุ "+orderNo+"\nเบอร์ซิม "+simPhone+"\nแพ็คเกจ "+(pkg?pkg.name:""),time:now}]};
-  try{var list=JSON.parse(localStorage.getItem("pt_requests")||"[]");list.unshift(req);localStorage.setItem("pt_requests",JSON.stringify(list));}catch(_){}
-  recordReq(orderNo,simPhone,refNo);
+    branchCode:simCodeVal.length>0 ? simCodeVal[0] : "",
+    branchName:simCodeVal[0]==="K" ? "กาฬสินธุ์" : simCodeVal[0]==="L" ? "เลย" : "ไม่ระบุ",
+    pkgId:pkgId, pkgName:pkg?pkg.name:"", pkgCode:pkg?pkg.code:"",
+    imgOrder:null, imgSim:null, imgReg:null,
+    status:"pending", shopeeVerified:"pending", submittedAt:now,
+    lineUserId:lp?lp.userId:null,
+    lineDisplayName:lp?lp.displayName:null,
+    linePictureUrl:lp?lp.pictureUrl:null,
+    lineMessages:[{id:1,from:"customer",text:"สวัสดีค่ะ ขอรับเน็ตฟรีเดือนแรกค่ะ\nเลขคำสั่งซื้อ "+orderNo+"\nเบอร์ซิม "+simPhone+"\nแพ็คเกจ "+(pkg?pkg.name:""),time:now}]
+  };
 
+  try{ var list=JSON.parse(localStorage.getItem("pt_requests")||"[]"); list.unshift(req); localStorage.setItem("pt_requests",JSON.stringify(list)); }catch(_){}
+  recordReq(orderNo, simPhone, refNo);
 
+  await notifyAdmin(refNo, req, pkg);
 
-  await notifyAdmin(refNo,req,pkg);
-  await delay(400); log("✅ รับข้อมูลเรียบร้อย ทีมงานจะดำเนินการให้เร็วที่สุด");
-  await delay(400);
-  $("refno").textContent=refNo;
+  var el = $("refno");
+  if(el) el.textContent = refNo;
   goP(6);
-        // แสดงวิธีสมัครเน็ต
-        if(window._lastShopeeItems) loadAndShowNetGuide(window._lastShopeeItems);
+  if(window._lastShopeeItems) loadAndShowNetGuide(window._lastShopeeItems);
 }
 
-/* ═══ INIT ═══ */
-document.addEventListener("DOMContentLoaded",function(){
-  applyLogos();
-  initLiff();
-  // chkForm จัดการ disable ปุ่มเอง
-  chkForm();
-});
-</script>
-</body>
-</html>
+>
