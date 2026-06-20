@@ -816,21 +816,35 @@ async function notifyAdmin(refNo, req, pkg){
     createdAt: new Date().toISOString()
   };
 
-  // บันทึก Firebase ด้วย REST API โดยตรง
+  // บันทึก Firebase — ลอง SDK ก่อน ถ้าไม่ได้ใช้ REST
+  var savedOk = false;
   try{
-    var r1 = await fetch(FB_URL + "/orders/" + refNo + ".json", {
-      method: "PUT",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify(orderData)
-    });
-    if(r1.ok){
-      console.log("✅ Firebase saved:", refNo, "userId:", req.lineUserId);
-    } else {
-      var err = await r1.text();
-      console.warn("❌ Firebase REST error:", r1.status, err);
+    var db = getLFB();
+    if(db){
+      await db.ref("/orders/" + refNo).set(orderData);
+      console.log("✅ Firebase SDK saved:", refNo);
+      savedOk = true;
     }
   } catch(e){
-    console.warn("❌ Firebase fetch error:", e.message);
+    console.warn("⚠️ Firebase SDK error:", e.message, "— trying REST...");
+  }
+  if(!savedOk){
+    // Fallback: REST API
+    try{
+      var r1 = await fetch(FB_URL + "/orders/" + refNo + ".json", {
+        method: "PUT",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(orderData)
+      });
+      if(r1.ok){
+        console.log("✅ Firebase REST saved:", refNo);
+      } else {
+        var err = await r1.text();
+        console.warn("❌ Firebase REST error:", r1.status, err);
+      }
+    } catch(e2){
+      console.warn("❌ Firebase REST error:", e2.message);
+    }
   }
 
   // แจ้ง Admin + บันทึก Firebase ผ่าน Cloudflare Worker
@@ -848,10 +862,30 @@ async function notifyAdmin(refNo, req, pkg){
         orderData: orderData
       })
     });
-    console.log(r2.ok ? "✅ แจ้ง Admin + Firebase สำเร็จ" : "❌ Worker error: " + r2.status);
+    if(r2.ok){
+      console.log("✅ Worker notify สำเร็จ");
+    } else {
+      var wErr = await r2.text();
+      console.warn("❌ Worker error:", r2.status, wErr);
+    }
   } catch(e){
     console.warn("❌ Worker error:", e.message);
   }
+  
+  // ตรวจสอบว่า order บันทึกใน Firebase แล้วจริงๆ
+  try{
+    var checkDB = getLFB();
+    if(checkDB){
+      var checkSnap = await checkDB.ref("/orders/" + refNo).once("value");
+      if(checkSnap.val()){
+        console.log("✅ ยืนยัน: order", refNo, "อยู่ใน Firebase แล้ว");
+      } else {
+        console.warn("⚠️ order ยังไม่อยู่ใน Firebase — บันทึกซ้ำ...");
+        await checkDB.ref("/orders/" + refNo).set(orderData);
+        console.log("✅ บันทึกซ้ำสำเร็จ");
+      }
+    }
+  } catch(e){ console.warn("verify check error:", e.message); }
 }
 
 /* ═══ SUBMIT ═══ */
@@ -904,7 +938,7 @@ async function confirmAndSubmit(){
   simPhone = (document.getElementById("simPhone") || {value:simPhone}).value.trim();
 
   // ส่งข้อมูลก่อนเลย (สำคัญที่สุด)
-  submitForm();
+  await submitForm();
 
   // แสดง popup วิธีสมัครในพื้นหลัง (ไม่ await เพื่อไม่บล็อก)
   fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/settings/netGuides.json")
@@ -953,7 +987,9 @@ async function submitForm(){
 
   var refNo = "PT"+Date.now().toString().slice(-6);
   var now = ts();
-  var pkg = pkgs.find(function(p){ return p.id===pkgId; });
+  // ถ้า pkgId ว่าง ให้เลือก package แรกที่มี
+  if(!pkgId && pkgs && pkgs.length > 0) pkgId = pkgs[0].id;
+  var pkg = pkgs.find(function(p){ return p.id===pkgId; }) || (pkgs.length > 0 ? pkgs[0] : null);
   var simCodeVal = ($("simCode")||{}).value ? $("simCode").value.trim().toUpperCase() : "";
   var req = {
     ref:refNo, platform:plt, orderNo:orderNo, simPhone:simPhone,
@@ -972,7 +1008,9 @@ async function submitForm(){
   try{ var list=JSON.parse(localStorage.getItem("pt_requests")||"[]"); list.unshift(req); localStorage.setItem("pt_requests",JSON.stringify(list)); }catch(_){}
   recordReq(orderNo, simPhone, refNo);
 
+  console.log("📤 Submitting order:", {refNo, orderNo, simPhone, pkgId, platform: plt, hasLineUser: !!(lp&&lp.userId)});
   await notifyAdmin(refNo, req, pkg);
+  console.log("✅ notifyAdmin complete for:", refNo);
 
   var el = $("refno");
   if(el) el.textContent = refNo;
