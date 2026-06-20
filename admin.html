@@ -1658,6 +1658,12 @@ function renderOdActions(req){
     homeBtn2.textContent = "🏠 กลับสู่หน้าหลัก";
     homeBtn2.onclick = function(){ goHome(); };
     el.appendChild(homeBtn2);
+    // ปุ่มลบ
+    var delBtnA = document.createElement("button");
+    delBtnA.style.cssText = "width:100%;margin-top:6px;padding:10px;border-radius:10px;border:none;background:#FFF1F2;color:#BE123C;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit";
+    delBtnA.textContent = "🗑️ ลบประวัติคำขอนี้";
+    delBtnA.onclick = function(){ showDeleteConfirm(aref); };
+    el.appendChild(delBtnA);
     return;
   }
 
@@ -1668,6 +1674,15 @@ function renderOdActions(req){
     rb.textContent = "↩️ คืนสถานะรอตรวจ";
     rb.onclick = function(){ confirmOrd(aref,"pending"); };
     el.appendChild(rb);
+  }
+
+  // ── ปุ่มลบ (ทุก status ยกเว้น activated ที่มีแล้ว) ──
+  if(s !== "activated"){
+    var delBtn = document.createElement("button");
+    delBtn.style.cssText = "width:100%;margin-top:8px;padding:10px;border-radius:10px;border:none;background:#FFF1F2;color:#BE123C;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit";
+    delBtn.textContent = "🗑️ ลบประวัติคำขอนี้";
+    delBtn.onclick = function(){ showDeleteConfirm(aref); };
+    el.appendChild(delBtn);
   }
 }
 
@@ -2457,6 +2472,66 @@ function renderPkgMgrList(){
 
 
 
+
+/* ══ DELETE ORDER ══ */
+var _deleteRef = null;
+// รหัสเก็บแบบ obfuscated เพื่อไม่ให้อ่านตรงๆ
+var _dpin = atob("MTIzNDU2"); // 123456
+
+function showDeleteConfirm(ref){
+  _deleteRef = ref;
+  var inp = document.getElementById("delete-pin");
+  var err = document.getElementById("delete-pin-err");
+  if(inp){ inp.value = ""; inp.focus(); }
+  if(err) err.style.display = "none";
+  var modal = document.getElementById("delete-modal");
+  if(modal) modal.style.display = "flex";
+}
+
+function closeDeleteModal(){
+  _deleteRef = null;
+  var modal = document.getElementById("delete-modal");
+  if(modal) modal.style.display = "none";
+}
+
+function doDeleteOrder(){
+  var inp = document.getElementById("delete-pin");
+  var err = document.getElementById("delete-pin-err");
+  if(!inp) return;
+  if(inp.value !== _dpin){
+    if(err) err.style.display = "block";
+    inp.value = "";
+    inp.focus();
+    return;
+  }
+  closeDeleteModal();
+  var ref = _deleteRef;
+  if(!ref) return;
+
+  // ลบจาก Firebase
+  if(fbDB || initFirebase()){
+    fbDB.ref("/orders/" + ref).remove().catch(function(e){ console.warn("Firebase delete err:", e.message); });
+  }
+  // ลบจาก local
+  reqs = reqs.filter(function(r){ return r.ref !== ref; });
+  try{ localStorage.setItem("pt_requests", JSON.stringify(reqs)); }catch(_){}
+
+  // กลับหน้าหลัก
+  var olv = document.getElementById("ord-list-view");
+  var odv = document.getElementById("ord-detail-view");
+  if(olv) olv.style.display = "flex";
+  if(odv) odv.style.display = "none";
+  var homeBtn = document.getElementById("home-btn");
+  if(homeBtn) homeBtn.style.display = "none";
+  setTopbar("", null, "");
+  aref = null;
+
+  renderOrdList();
+  renderDashboard();
+  updateBadges();
+  showToast("🗑️ ลบประวัติเรียบร้อยแล้วค่ะ", "#374151", "#F3F4F6");
+}
+
 // ── PAGE INIT ──────────────────────────────────
 if(document.readyState === "loading"){
   document.addEventListener("DOMContentLoaded", function(){ loadAll(); });
@@ -2467,5 +2542,22 @@ setInterval(function(){
   if(!fbDB) startRealtimeSync();
 }, 30000);
 </script>
+
+<!-- ── Delete Confirm Modal ── -->
+<div id="delete-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:18px;padding:24px 20px;width:100%;max-width:340px;box-shadow:0 8px 32px rgba(0,0,0,.25)">
+    <div style="text-align:center;font-size:36px;margin-bottom:8px">🗑️</div>
+    <div style="font-weight:900;font-size:16px;color:#BE123C;text-align:center;margin-bottom:6px">ลบประวัติคำขอ</div>
+    <div style="font-size:12px;color:#6B7280;text-align:center;margin-bottom:16px">ใส่รหัสผ่านเพื่อยืนยันการลบ<br>ข้อมูลจะถูกลบถาวรทั้งระบบ</div>
+    <input id="delete-pin" type="password" inputmode="numeric" maxlength="6"
+      placeholder="รหัสผ่าน"
+      style="width:100%;border:2px solid #E0E0E0;border-radius:12px;padding:13px 16px;font-size:20px;font-weight:900;text-align:center;letter-spacing:6px;outline:none;font-family:inherit;box-sizing:border-box;margin-bottom:6px"
+      oninput="document.getElementById('delete-pin-err').style.display='none'"
+      onkeydown="if(event.key==='Enter')doDeleteOrder()">
+    <div id="delete-pin-err" style="display:none;font-size:11px;color:#BE123C;font-weight:700;text-align:center;margin-bottom:8px">❌ รหัสไม่ถูกต้อง</div>
+    <button onclick="doDeleteOrder()" style="width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#C62828,#B71C1C);color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;margin-bottom:8px">🗑️ ยืนยันลบ</button>
+    <button onclick="closeDeleteModal()" style="width:100%;padding:11px;border-radius:12px;border:none;background:#F5F5F5;color:#374151;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">ยกเลิก</button>
+  </div>
+</div>
 </body>
 </html>
