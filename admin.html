@@ -2489,8 +2489,8 @@ function doDeleteOrder(){
     inp.focus();
     return;
   }
+  var ref = _deleteRef;   // เก็บ ref ก่อน closeModal จะ null มัน
   closeDeleteModal();
-  var ref = _deleteRef;
   if(!ref) return;
 
   // ลบจาก Firebase
