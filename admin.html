@@ -680,6 +680,7 @@ function startRealtimeSync(){
     localStorage.setItem("pt_requests", JSON.stringify(reqs));
     renderChatList();
     renderOrdList();
+    renderDashboard();
     updateBadges();
     $("rts").textContent = "🔴 LIVE — อัพเดท " + ts();
   });
@@ -695,6 +696,7 @@ function loadAll(){
   if(tb) tb.style.display="flex";
   switchTab(1);
   renderOrdList();
+  renderDashboard();
   updateBadges();
   $("rts").textContent="อัพเดท "+ts();
   setTopbar("",null,"");
@@ -757,6 +759,7 @@ function syncFromAPI(){
     localStorage.setItem("pt_requests", JSON.stringify(reqs));
     renderChatList();
     renderOrdList();
+    renderDashboard();
     updateBadges();
     $("rts").textContent="อัพเดท "+ts()+" ✅";
   })
@@ -1141,6 +1144,8 @@ function addMsgToReq(ref,from,text){
    TAB 1: ORDER LIST
 ══════════════════════════════ */
 /* ══════ DASHBOARD ══════ */
+function renderReport(){ renderDashboard(); }
+
 function renderDashboard(){
   if(!reqs || !reqs.length) return;
 
