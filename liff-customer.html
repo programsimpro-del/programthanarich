@@ -907,6 +907,8 @@ async function notifyAdmin(refNo, req, pkg){
     pkgCode: req.pkgCode,
     status: "pending",
     submittedAt: req.submittedAt,
+    mobileDataStatus: req.mobileDataStatus || "ยังไม่ยืนยัน",
+    mobileDataAgreedAt: req.mobileDataAgreedAt || null,
     lineUserId: req.lineUserId || null,
     lineDisplayName: req.lineDisplayName || null,
     linePictureUrl: req.linePictureUrl || null,
@@ -956,6 +958,7 @@ async function notifyAdmin(refNo, req, pkg){
         pkgName: pkg ? pkg.name : "",
         platform: req.platform,
         lineDisplayName: req.lineDisplayName || "",
+        mobileDataStatus: req.mobileDataStatus || "ยังไม่ยืนยัน",
         orderData: orderData
       })
     });
