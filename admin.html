@@ -1757,10 +1757,14 @@ async function checkShopeeInline(){
     });
     var si = await r.json();
     req.shopeeInfo = si;
-    fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/orders/"+aref+"/shopeeInfo.json",{
-      method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(si)
+    if(si.found) req.shopeeVerified = "confirmed";
+    else if(si.ready === false) req.shopeeVerified = "pending";
+    else req.shopeeVerified = "rejected";
+    var fbUpd = { shopeeInfo: si, shopeeVerified: req.shopeeVerified };
+    fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/orders/"+aref+".json",{
+      method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(fbUpd)
     });
-    saveReqs(); renderOrdDetail(aref);
+    saveReqs(); renderOrdDetail(aref); renderOrdList();
     if(si.found) showToast("✅ พบคำสั่งซื้อใน Shopee","#166534","#DCFCE7");
     else showToast("❌ ไม่พบคำสั่งซื้อ","#BE123C","#FFF1F2");
   }catch(e){
@@ -1780,10 +1784,14 @@ async function checkShopeeNow(ref){
     });
     var si = await r.json();
     req.shopeeInfo = si;
-    fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/orders/"+ref+"/shopeeInfo.json",{
-      method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(si)
+    if(si.found) req.shopeeVerified = "confirmed";
+    else if(si.ready === false) req.shopeeVerified = "pending";
+    else req.shopeeVerified = "rejected";
+    var fbUpd2 = { shopeeInfo: si, shopeeVerified: req.shopeeVerified };
+    fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/orders/"+ref+".json",{
+      method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(fbUpd2)
     });
-    saveReqs(); renderOrdDetail(ref);
+    saveReqs(); renderOrdDetail(ref); renderOrdList();
     if(si.found) showToast("✅ พบคำสั่งซื้อใน Shopee","#166534","#DCFCE7");
     else if(!si.ready) showToast("⏳ "+si.message,"#E65100","#FFF3E0");
     else showToast("❌ ไม่พบคำสั่งซื้อ","#BE123C","#FFF1F2");
