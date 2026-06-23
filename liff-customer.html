@@ -516,7 +516,7 @@ async function loadNetGuideToP6(){
         } else if(isWarning){
           return '<div style="background:#FFFBEB;border-left:3px solid #F59E0B;border-radius:0 8px 8px 0;padding:8px 12px;margin:8px 0;font-size:12px;font-weight:700;color:#92400E;line-height:1.6">'+escH(l)+'</div>';
         } else {
-          return '<div style="font-size:13px;color:#374151;font-weight:600;line-height:1.8;padding:3px 0">'+escH(l)+'</div>';
+          return '<div style="font-size:13px;color:#374151;font-weight:600;line-height:1.8;padding:3px 0;text-align:center">'+escH(l)+'</div>';
         }
       }).join("");
       var titleEl = document.getElementById("p6-net-title");
