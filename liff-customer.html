@@ -247,9 +247,11 @@ input:focus{border-color:#06C755!important;box-shadow:none!important}
       </div>
 
       <!-- วิธีสมัครเน็ต -->
-      <div style="width:100%;background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.06)">
-        <div style="font-weight:900;font-size:14px;color:#14532D;margin-bottom:4px">📶 <span id="p6-net-title">วิธีสมัครเน็ตฟรีเดือนแรก</span></div>
-        <div style="font-size:11px;color:#6B7280;margin-bottom:12px">ทำตามขั้นตอนด้านล่างได้เลยค่ะ</div>
+      <div style="width:100%;background:#fff;border-radius:16px;padding:18px 16px;margin-bottom:12px;box-shadow:0 2px 12px rgba(0,0,0,.08)">
+        <div style="text-align:center;margin-bottom:14px">
+          <div style="font-weight:900;font-size:15px;color:#14532D">📶 <span id="p6-net-title">วิธีสมัครเน็ตฟรีเดือนแรก</span></div>
+          <div style="font-size:11px;color:#6B7280;margin-top:3px">ทำตามขั้นตอนด้านล่างได้เลยค่ะ</div>
+        </div>
         <div id="p6-net-steps">
           <div style="font-size:13px;color:#9E9E9E;text-align:center;padding:12px">⏳ กำลังโหลด...</div>
         </div>
@@ -296,12 +298,12 @@ input:focus{border-color:#06C755!important;box-shadow:none!important}
     <div style="font-weight:900;font-size:17px;color:#FFFF00;margin-bottom:16px;text-align:center">กรุณาอ่านก่อนยืนยัน</div>
     <!-- เงื่อนไขสำคัญ -->
     <div style="background:#7F1D1D;border:2px solid #EF4444;border-radius:14px;padding:16px;margin-bottom:16px;width:100%">
-      <div style="font-size:14px;font-weight:910;color:#FFFF00;margin-bottom:10px;text-align:center">⚠️ เงื่อนไขสำคัญที่ต้องทำ</div>
-      <div style="font-size:13px;color:#FEE2E2;line-height:2.2;font-weight:710">
+      <div style="font-size:14px;font-weight:900;color:#FFFF00;margin-bottom:10px;text-align:center">⚠️ เงื่อนไขสำคัญที่ต้องทำ</div>
+      <div style="font-size:13px;color:#FEE2E2;line-height:2.2;font-weight:700">
         1️⃣ ส่งข้อมูลครบแล้ว <b style="color:#FFFF00;font-weight:900">ปิดเน็ตมือถือทันที</b><br>
         2️⃣ ถ้าไม่ปิดเน็ตเมื่อระบบเติมเงินเข้าเบอร์เงิน<b style="color:#FFFF00;font-weight:900">จะถูกตัดทันทีและทางร้านจะไม่รับผิดชอบทุกกรณี</b><br>
-        3️⃣ ต้องใช้งานซิม<b style="color:#FFFF00;font-weight:900"> 3 เดือนขึ้นไป</b>ถึงจะสามารถยกเลิกการใช้งานซิมได้<br>
-        4️⃣ แพ็กเกจเน็ตทุกแพ็กเกจ<b style="color:#FFFF00;font-weight:900">ขึ้นอยู่กับบริษัททรูและดีแทคกำหนด</b>ทางร้านเป็นเพียงตัวแทนจำหน่าย<b style="color:#FFFF00;font-weight:900"> ถ้าแพ็กเกจมีการเปลี่ยนแปลงทางร้านจะไม่สามารถแจ้งให้ทราบล่วงหน้าได้</b>
+        3️⃣ ต้องใช้งานซิม<b style="color:#FFFF00;font-weight:900">3 เดือนขึ้นไป</b>ถึงจะสามารถยกเลิกการใช้งานซิมได้<br>
+        4️⃣ แพ็กเกจเน็ตทุกแพ็กเกจ<b style="color:#FFFF00;font-weight:900">ขึ้นอยู่กับบริษัททรูและดีแทคกำหนด</b>ทางร้านเป็นเพียงตัวแทนจำหน่าย<b style="color:#FFFF00;font-weight:900">ถ้าแพ็กเกจมีการเปลี่ยนแปลงทางร้านจะไม่สามารถแจ้งให้ทราบล่วงหน้าได้</b>
       </div>
     </div>
     <!-- Checkbox -->
@@ -500,12 +502,22 @@ async function loadNetGuideToP6(){
     if(matched && matched.steps){
       var lines = matched.steps.split("\n").filter(function(l){ return l.trim(); });
       var stepsEl = document.getElementById("p6-net-steps");
-      if(stepsEl) stepsEl.innerHTML = lines.map(function(line, i){
-        return '<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start">'
-          +'<div style="background:#06C755;color:#fff;border-radius:50%;width:22px;height:22px;min-width:22px;'
-          +'display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900">'+(i+1)+'</div>'
-          +'<div style="font-size:13px;color:#14532D;font-weight:700;line-height:1.6;text-align:left">'+escH(line)+'</div>'
-          +'</div>';
+      if(stepsEl) stepsEl.innerHTML = lines.map(function(line){
+        var l = line.trim();
+        // ตรวจว่าเป็น header หรือรหัส USSD หรือข้อความเตือน
+        var isHeader  = l.startsWith("🌐") || l.startsWith("📶") || (l.startsWith("(") && l.endsWith(")"));
+        var isCode    = /^\*[\d*#]+#/.test(l) || l.includes("โทรออก");
+        var isWarning = l.startsWith("⚠️");
+
+        if(isHeader){
+          return '<div style="text-align:center;font-weight:900;font-size:14px;color:#14532D;margin:8px 0 10px;padding-bottom:8px;border-bottom:1.5px dashed #BBF7D0">'+escH(l)+'</div>';
+        } else if(isCode){
+          return '<div style="text-align:center;background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:10px;padding:10px 14px;margin:6px 0;font-family:monospace;font-weight:900;font-size:16px;color:#166534;letter-spacing:1px">'+escH(l)+'</div>';
+        } else if(isWarning){
+          return '<div style="background:#FFFBEB;border-left:3px solid #F59E0B;border-radius:0 8px 8px 0;padding:8px 12px;margin:8px 0;font-size:12px;font-weight:700;color:#92400E;line-height:1.6">'+escH(l)+'</div>';
+        } else {
+          return '<div style="font-size:13px;color:#374151;font-weight:600;line-height:1.8;padding:3px 0">'+escH(l)+'</div>';
+        }
       }).join("");
       var titleEl = document.getElementById("p6-net-title");
       if(titleEl && matched.keyword)
