@@ -2318,12 +2318,12 @@ var _ngSaveTimer = null;
 var _ngCurrentFolder = null; // folder ที่เปิดอยู่
 
 function autoSaveNetGuides(){
-  syncNetGuideInputs();
+  // ไม่ต้อง syncNetGuideInputs เพราะ oninput อัพเดท netGuides[] โดยตรงแล้ว
   clearTimeout(_ngSaveTimer);
   _ngSaveTimer = setTimeout(function(){
     localStorage.setItem("pt_netguides", JSON.stringify(netGuides));
     if(fbDB) fbDB.ref("/settings/netGuides").set(netGuides).catch(function(){});
-  }, 800);
+  }, 1200); // เพิ่ม delay เป็น 1.2s เพื่อไม่ขัด typing
 }
 
 function renderNetGuideList(){
@@ -2351,6 +2351,11 @@ function renderNetGuideList(){
           +'<button onclick="deleteNetGuide('+_ngCurrentFolder+')" style="padding:11px 16px;border-radius:10px;border:none;background:#FFEBEE;color:#C62828;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">🗑️</button>'
         +'</div>'
       +'</div>';
+    // focus textarea ให้ keyboard ค้างอยู่จนกว่าผู้ใช้จะกดพับเอง
+    setTimeout(function(){
+      var ta = document.getElementById("ng-steps-"+_ngCurrentFolder);
+      if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+    }, 80);
     return;
   }
 
