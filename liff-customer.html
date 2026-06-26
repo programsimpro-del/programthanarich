@@ -791,6 +791,27 @@ function previewShopeeOrder(val){
   box.innerHTML = "<div style='color:#9E9E9E;text-align:center;padding:4px'>⏳ กำลังตรวจสอบคำสั่งซื้อ...</div>";
 
   _previewTimer = setTimeout(async function(){
+    // ── ตรวจก่อนว่าเคยรับเน็ตฟรีไปแล้วหรือยัง ──
+    var dup = await checkDup(val);
+    if(dup && dup.blocked){
+      _shopeeVerified = false;
+      _shopeeChecked  = true;
+      lockNextSteps(true);
+      chkForm();
+      box.style.background="#FFF1F2";
+      box.style.borderColor="#FECDD3";
+      box.innerHTML =
+        "<div style='text-align:center;margin-bottom:10px'><span style='font-size:36px'>⛔</span></div>"
+        +"<div style='color:#BE123C;font-weight:900;font-size:14px;text-align:center;margin-bottom:8px'>รับเน็ตฟรีเดือนแรกไปแล้วค่ะ</div>"
+        +"<div style='background:#fff;border-radius:10px;padding:10px 12px;font-size:12px;color:#374151;line-height:2;border:1px solid #FECDD3'>"
+          +"📦 เลขคำสั่งซื้อ: <b>"+val+"</b><br>"
+          +"✅ ใช้สิทธิ์ไปแล้ว: <b style='color:#BE123C'>"+dup.usedCount+"/"+dup.maxQuota+" ซิม</b><br>"
+          +(dup.lastAt ? "🕐 ครั้งล่าสุด: <b>"+new Date(dup.lastAt).toLocaleString("th-TH")+"</b>" : "")
+        +"</div>"
+        +"<div style='margin-top:10px;font-size:11px;color:#9E9E9E;text-align:center'>หากมีข้อสงสัยติดต่อ <b style='color:#06C755'>@ProgramThanarich</b></div>";
+      return;
+    }
+
     try{
       var r = await fetch("https://programthanarich.programsimpro.workers.dev/shopee-check",{
         method:"POST", headers:{"Content-Type":"application/json"},
@@ -1180,7 +1201,7 @@ if(document.readyState==="loading"){
     <div style="text-align:center;font-size:40px;margin-bottom:10px">📸</div>
     <div style="font-weight:900;font-size:16px;color:#1565C0;text-align:center;margin-bottom:14px">ขั้นตอนการรับสิทธิ์</div>
     <div id="plt-manual-msg" style="font-size:13px;color:#374151;line-height:1.9;text-align:center;margin-bottom:18px"></div>
-    <button onclick="closePltManualPopup()" style="width:100%;padding:13px;border-radius:12px;border:none;background:#1565C0;color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;margin-bottom:8px">เข้าใจแล้ว กรอกข้อมูลต่อ →</button>
+    <button onclick="closePltManualPopup()" style="width:100%;padding:13px;border-radius:12px;border:none;background:#1565C0;color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;margin-bottom:8px">ตกลง</button>
     <button onclick="document.getElementById('plt-manual-popup').style.display='none'" style="width:100%;padding:11px;border-radius:12px;border:none;background:#F5F5F5;color:#374151;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">← ย้อนกลับ</button>
   </div>
 </div>
