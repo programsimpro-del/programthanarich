@@ -434,6 +434,37 @@ function recordReq(orderNo,simPhone,refNo){
   saveQDB(db);
 }
 
+
+/* ── ตรวจเบอร์ซิมว่าเคยรับเน็ตฟรีแล้วหรือยัง ── */
+async function checkSimPhoneUsed(phone){
+  if(!phone || phone.length < 9) return null;
+  var FB_URL = "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app";
+  try{
+    // query orders ที่ simPhone ตรงกัน และ status = activated
+    var r = await fetchWT(
+      FB_URL + "/orders.json?orderBy=%22simPhone%22&equalTo=%22" + encodeURIComponent(phone) + "%22&limitToFirst=5",
+      {}, 4000
+    );
+    if(!r.ok) return null;
+    var data = await r.json();
+    if(!data) return null;
+    var orders = Object.values(data);
+    var used = orders.find(function(o){
+      return o.status === "activated" || o.status === "confirmed" || o.status === "processing";
+    });
+    if(used){
+      return {
+        blocked: true,
+        orderNo: used.orderNo || "",
+        status:  used.status,
+        at:      used.activatedAt || used.submittedAt || "",
+        msg:     "เบอร์ " + phone + " เคยรับเน็ตฟรีเดือนแรกไปแล้วค่ะ"
+      };
+    }
+    return null;
+  }catch(e){ return null; }
+}
+
 /* ═══ LOGO ═══ */
 function applyLogos(){
   ['logo-ls','logo-hdr','logo-wl'].forEach(function(id){
@@ -864,7 +895,30 @@ function previewShopeeOrder(val){
         +"<div style='margin-top:4px'>"+itemsHTML+"</div>";
 
       if(hasFree){
-        // ✅ ผ่าน — อนุญาตกรอกข้อมูลต่อ
+        // ตรวจเบอร์ซิมก่อน ว่าเคยรับเน็ตฟรีแล้วหรือยัง
+        var curPhone = (document.getElementById("simPhone")||{}).value;
+        curPhone = (curPhone||"").trim();
+        if(curPhone && curPhone.length >= 9){
+          var simUsed = await checkSimPhoneUsed(curPhone);
+          if(simUsed){
+            _shopeeVerified = false;
+            _shopeeChecked  = true;
+            lockNextSteps(true);
+            chkForm();
+            box.style.background="#FFF1F2"; box.style.borderColor="#FECDD3";
+            box.innerHTML =
+              "<div style='text-align:center;margin-bottom:10px'><span style='font-size:36px'>⛔</span></div>"
+              +"<div style='color:#BE123C;font-weight:900;font-size:14px;text-align:center;margin-bottom:8px'>เบอร์นี้เคยรับเน็ตฟรีเดือนแรกไปแล้วค่ะ</div>"
+              +"<div style='background:#fff;border-radius:10px;padding:10px 12px;font-size:12px;color:#374151;line-height:2;border:1px solid #FECDD3;text-align:center'>"
+                +"📱 เบอร์: <b>"+curPhone+"</b><br>"
+                +"📦 คำสั่งซื้อเดิม: <b style='color:#BE123C'>"+simUsed.orderNo+"</b><br>"
+                +"<span style='font-size:11px;color:#9E9E9E'>1 เบอร์รับสิทธิ์ได้ 1 ครั้งค่ะ</span>"
+              +"</div>"
+              +"<div style='margin-top:10px;font-size:11px;color:#9E9E9E;text-align:center'>หากมีข้อสงสัยติดต่อ <b style='color:#06C755'>@ProgramThanarich</b></div>";
+            return;
+          }
+        }
+        // ✅ ผ่านทุกการตรวจสอบ
         _shopeeVerified = true;
         _shopeeChecked = true;
         window._lastShopeeItems = si.items || [];
