@@ -700,7 +700,29 @@ function goP(n){
   window.scrollTo(0,0);
 }
 function goBack(){ if(curP>0&&curP<5)goP(curP-1); }
-function selPlt(id){ plt=id; goP(2); }
+function selPlt(id){
+  plt = id;
+  if(id === "tiktok" || id === "lazada"){
+    var pname = id === "tiktok" ? "TikTok Shop" : "Lazada";
+    var popup = document.getElementById("plt-manual-popup");
+    var msg   = document.getElementById("plt-manual-msg");
+    if(msg) msg.innerHTML =
+      "<b style='color:#1565C0'>"+pname+"</b> ไม่มีระบบตรวจสอบอัตโนมัติค่ะ<br><br>"
+      +"📸 กรุณา <b>แคปหน้าจอคำสั่งซื้อ</b> ที่เห็น <b>เลขพัสดุชัดเจน</b> "
+      +"และ <b>เบอร์ซิมที่ต้องการรับสิทธิ์</b><br><br>"
+      +"แล้วส่งให้ Admin ตรวจสอบผ่าน<br>"
+      +"<b style='color:#06C755;font-size:16px'>LINE: @ProgramThanarich</b><br><br>"
+      +"<span style='font-size:11px;color:#9E9E9E'>Admin จะอนุมัติและดำเนินการให้ค่ะ</span>";
+    if(popup) popup.style.display = "flex";
+    return; // ไม่ไปหน้าถัดไปก่อน
+  }
+  goP(2);
+}
+function closePltManualPopup(){ 
+  var popup = document.getElementById("plt-manual-popup");
+  if(popup) popup.style.display = "none";
+  goP(2);
+}
 
 /* ── 30-min cooldown per orderNo ── */
 var COOLDOWN_MS = 30 * 60 * 1000; // 30 นาที
@@ -786,17 +808,23 @@ function previewShopeeOrder(val){
       _shopeeChecked = true;
 
       if(!si.found){
+        _shopeeVerified = false;
+        _shopeeChecked  = true;
+        lockNextSteps(true);  // บล็อกไม่ให้กรอกต่อ
+        chkForm();
         box.style.background="#FFF1F2"; box.style.borderColor="#FECDD3";
-        box.innerHTML = "<div style='color:#BE123C;font-weight:800;margin-bottom:4px'>❌ ไม่พบคำสั่งซื้อนี้</div>"
-          +"<div style='color:#6B7280;font-size:11px'>"+(si.error||"กรุณาตรวจสอบเลขคำสั่งซื้อ")+"</div>";
+        box.innerHTML = "<div style='color:#BE123C;font-weight:800;margin-bottom:6px'>❌ ไม่พบคำสั่งซื้อนี้ในระบบ Shopee</div>"
+          +"<div style='font-size:12px;color:#374151;line-height:1.8'>"+(si.error||"กรุณาตรวจสอบเลขคำสั่งซื้ออีกครั้งค่ะ")+"</div>";
         return;
       }
 
-      // พบคำสั่งซื้อ — ตรวจว่ามีคำว่า FREE ไหม
+      // พบคำสั่งซื้อ — ตรวจว่ามีคำว่า FREE และราคาถูกต้อง
       var allItems = si.items || [];
       var hasFree = allItems.some(function(i){
         var name = ((i.name||"")+" "+(i.model||"")).toUpperCase();
-        return name.indexOf("FREE") >= 0;
+        var price = parseFloat(i.price)||0;
+        // ต้องมี FREE ในชื่อ และราคาต้องมากกว่า 50 บาท
+        return name.indexOf("FREE") >= 0 && price > 50;
       });
 
       var itemsHTML = allItems.map(function(i){
@@ -866,13 +894,13 @@ function previewShopeeOrder(val){
           +"</div>";
       }
     }catch(e){
-      box.style.background="#F9FAFB"; box.style.borderColor="#E5E7EB";
-      box.innerHTML = "<div style='color:#9E9E9E;font-size:11px;text-align:center'>ไม่สามารถตรวจสอบได้ในขณะนี้ กรุณากรอกข้อมูลต่อได้เลยค่ะ</div>";
-      // error → _shopeeChecked=false → ผ่านได้
       _shopeeVerified = false;
-      _shopeeChecked = false;
-      lockNextSteps(false);
+      _shopeeChecked  = true;
+      lockNextSteps(true); // error → บล็อก ห้ามผ่าน
       chkForm();
+      box.style.background="#FFF3E0"; box.style.borderColor="#FFCC02";
+      box.innerHTML = "<div style='color:#B45309;font-weight:800;margin-bottom:6px'>⚠️ ไม่สามารถตรวจสอบได้ในขณะนี้</div>"
+        +"<div style='font-size:12px;color:#374151;line-height:1.8'>กรุณาลองใหม่อีกครั้ง หรือติดต่อ <b style='color:#06C755'>@ProgramThanarich</b></div>";
     }
   }, 800);
 }
@@ -910,11 +938,10 @@ function chkForm(){
   orderNo  = ($("orderNo")  ||{}).value ? $("orderNo").value.trim()  : "";
   simPhone = ($("simPhone") ||{}).value ? $("simPhone").value.trim() : "";
   var simCodeVal = $("simCode") ? $("simCode").value.trim() : "";
-  // ตรวจสอบ Shopee:
-  // _shopeeVerified = true → ผ่าน (มี FREE)
-  // _shopeeVerified = false และ _shopeeChecked = true → ไม่ผ่าน (ไม่มี FREE)
-  // _shopeeVerified = false และ _shopeeChecked = false → ยังไม่ได้ตรวจ → ผ่านได้ (API error)
-  var shopeeOk = _shopeeVerified || !_shopeeChecked;
+  // shopeeOk: Shopee เท่านั้น ต้อง verified จริงๆ
+  // TikTok/Lazada → ผ่านได้ (Admin ตรวจเอง) แต่ต้องแสดง popup
+  var isTikTokLazada = (plt === "tiktok" || plt === "lazada");
+  var shopeeOk = isTikTokLazada ? true : _shopeeVerified;
   var ok = orderNo.length > 0
         && simPhone.length > 0
         && branchCode !== ""
@@ -1146,5 +1173,16 @@ if(document.readyState==="loading"){
   initLiff();
 }
 </script>
+
+<!-- Popup TikTok/Lazada manual -->
+<div id="plt-manual-popup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:18px;padding:24px 20px;width:100%;max-width:340px">
+    <div style="text-align:center;font-size:40px;margin-bottom:10px">📸</div>
+    <div style="font-weight:900;font-size:16px;color:#1565C0;text-align:center;margin-bottom:14px">ขั้นตอนการรับสิทธิ์</div>
+    <div id="plt-manual-msg" style="font-size:13px;color:#374151;line-height:1.9;text-align:center;margin-bottom:18px"></div>
+    <button onclick="closePltManualPopup()" style="width:100%;padding:13px;border-radius:12px;border:none;background:#1565C0;color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;margin-bottom:8px">เข้าใจแล้ว กรอกข้อมูลต่อ →</button>
+    <button onclick="document.getElementById('plt-manual-popup').style.display='none'" style="width:100%;padding:11px;border-radius:12px;border:none;background:#F5F5F5;color:#374151;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">← ย้อนกลับ</button>
+  </div>
+</div>
 </body>
 </html>

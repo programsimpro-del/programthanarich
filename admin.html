@@ -121,6 +121,34 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
   <!-- Firebase SDK — โหลดแบบ sync ก่อน script อื่น -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+<script>
+// ── Service Worker สำหรับ Push Notification (แม้แอพปิดอยู่) ──
+(function(){
+  if(!("serviceWorker" in navigator)) return;
+  var swCode = [
+    "self.addEventListener('push', function(e){",
+    "  var d = e.data ? e.data.json() : {};",
+    "  e.waitUntil(self.registration.showNotification(d.title||'📱 คำขอใหม่!',{",
+    "    body: d.body||'มีลูกค้าขอรับเน็ตฟรีค่ะ',",
+    "    icon: 'https://upload.wikimedia.org/wikipedia/commons/4/41/Simple_green_wifi.png',",
+    "    badge: 'https://upload.wikimedia.org/wikipedia/commons/4/41/Simple_green_wifi.png',",
+    "    tag: 'new-order', requireInteraction: true",
+    "  }));",
+    "});",
+    "self.addEventListener('notificationclick', function(e){",
+    "  e.notification.close();",
+    "  e.waitUntil(clients.openWindow('/'));",
+    "});"
+  ].join("\n");
+  var blob = new Blob([swCode], {type:"application/javascript"});
+  var swUrl = URL.createObjectURL(blob);
+  navigator.serviceWorker.register(swUrl).then(function(reg){
+    console.log("✅ SW registered");
+    window._swReg = reg;
+  }).catch(function(e){ console.warn("SW:", e.message); });
+})();
+</script>
 </head>
 <body>
 <div id="lb" onclick="closeLb()"><button id="lb-x" onclick="closeLb()">✕</button><img id="lb-img" src="" alt=""></div>
