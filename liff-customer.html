@@ -398,32 +398,56 @@ function fetchWT(url, opts, ms){
 
 async function checkDup(orderNo){
   var FB_URL = "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+  // ── Step 1: ตรวจ /quota (activated แล้ว) ──
   try{
     var r = await fetchWT(FB_URL + "/quota/" + orderNo + ".json", {}, 3000);
     if(r.ok){
       var entry = await r.json();
-      if(entry && entry.usedCount !== undefined && entry.maxQuota !== undefined){
+      if(entry && entry.usedCount !== undefined){
         var used = entry.usedCount || 0;
         var max  = entry.maxQuota || 1;
         if(used >= max){
-          // ใช้หมดสิทธิ์แล้ว
           var acts = entry.activations || [];
           return {
-            usedCount: used,
-            maxQuota:  max,
-            lastAt:    acts.length > 0 ? acts[acts.length-1].at : null,
-            blocked:   true,
-            msg:       "เลขคำสั่งซื้อนี้รับเน็ตฟรีเดือนแรกครบแล้ว (" + used + "/" + max + " ซิม) ไม่สามารถรับเน็ตฟรีเดือนแรกได้อีกค่ะ"
+            usedCount: used, maxQuota: max,
+            lastAt: acts.length > 0 ? acts[acts.length-1].at : null,
+            blocked: true,
+            msg: "เลขคำสั่งซื้อนี้รับเน็ตฟรีเดือนแรกครบแล้ว ("+used+"/"+max+" ซิม)"
           };
         }
-        if(used > 0 && used < max){
-          // ยังมีสิทธิ์เหลือ — อนุญาต
-          return null;
+      }
+    }
+  }catch(e){ console.warn("checkDup quota:", e.message); }
+
+  // ── Step 2: ตรวจ /orders ว่ามี orderNo นี้รอดำเนินการอยู่ไหม ──
+  try{
+    var r2 = await fetchWT(
+      FB_URL + "/orders.json?orderBy=%22orderNo%22&equalTo=%22" + encodeURIComponent(orderNo) + "%22&limitToFirst=3",
+      {}, 3000
+    );
+    if(r2.ok){
+      var data = await r2.json();
+      if(data){
+        var orders = Object.values(data);
+        // มี order ที่ยังค้างอยู่ (ยังไม่ activate และไม่ reject)
+        var pending = orders.find(function(o){
+          return o.status === "pending" || o.status === "confirmed" || o.status === "processing";
+        });
+        if(pending){
+          return {
+            blocked: true,
+            usedCount: 1, maxQuota: 1,
+            lastAt: pending.submittedAt || null,
+            msg: "เลขคำสั่งซื้อนี้กำลังรอ Admin ดำเนินการอยู่ค่ะ",
+            isPending: true,
+            pendingStatus: pending.status
+          };
         }
       }
-      return null;
     }
-  }catch(e){ console.warn("checkDup:", e.message); }
+  }catch(e){ console.warn("checkDup orders:", e.message); }
+
   return null;
 }
 
@@ -829,17 +853,30 @@ function previewShopeeOrder(val){
       _shopeeChecked  = true;
       lockNextSteps(true);
       chkForm();
-      box.style.background="#FFF1F2";
-      box.style.borderColor="#FECDD3";
-      box.innerHTML =
-        "<div style='text-align:center;margin-bottom:10px'><span style='font-size:36px'>⛔</span></div>"
-        +"<div style='color:#BE123C;font-weight:900;font-size:14px;text-align:center;margin-bottom:8px'>รับเน็ตฟรีเดือนแรกไปแล้วค่ะ</div>"
-        +"<div style='background:#fff;border-radius:10px;padding:10px 12px;font-size:12px;color:#374151;line-height:2;border:1px solid #FECDD3'>"
-          +"📦 เลขคำสั่งซื้อ: <b>"+val+"</b><br>"
-          +"✅ ใช้สิทธิ์ไปแล้ว: <b style='color:#BE123C'>"+dup.usedCount+"/"+dup.maxQuota+" ซิม</b><br>"
-          +(dup.lastAt ? "🕐 ครั้งล่าสุด: <b>"+new Date(dup.lastAt).toLocaleString("th-TH")+"</b>" : "")
-        +"</div>"
-        +"<div style='margin-top:10px;font-size:11px;color:#9E9E9E;text-align:center'>หากมีข้อสงสัยติดต่อ <b style='color:#06C755'>@ProgramThanarich</b></div>";
+      if(dup.isPending){
+        box.style.background="#FFFBEB"; box.style.borderColor="#FDE68A";
+        var stTh = {pending:"รอตรวจสอบ",confirmed:"ยืนยันแล้ว",processing:"กำลังดำเนินการ"}[dup.pendingStatus]||"รอดำเนินการ";
+        box.innerHTML =
+          "<div style='text-align:center;margin-bottom:8px'><span style='font-size:36px'>⏳</span></div>"
+          +"<div style='color:#B45309;font-weight:900;font-size:14px;text-align:center;margin-bottom:8px'>คำขอนี้อยู่ระหว่างดำเนินการค่ะ</div>"
+          +"<div style='background:#fff;border-radius:10px;padding:10px 12px;font-size:12px;color:#374151;line-height:2;border:1px solid #FDE68A;text-align:center'>"
+            +"📦 เลขคำสั่งซื้อ: <b>"+val+"</b><br>"
+            +"🔄 สถานะ: <b style='color:#B45309'>"+stTh+"</b><br>"
+            +"<span style='font-size:11px;color:#9E9E9E'>Admin กำลังดำเนินการอยู่ กรุณารอค่ะ</span>"
+          +"</div>"
+          +"<div style='margin-top:8px;font-size:11px;color:#9E9E9E;text-align:center'>หากมีข้อสงสัยติดต่อ <b style='color:#06C755'>@ProgramThanarich</b></div>";
+      } else {
+        box.style.background="#FFF1F2"; box.style.borderColor="#FECDD3";
+        box.innerHTML =
+          "<div style='text-align:center;margin-bottom:8px'><span style='font-size:36px'>⛔</span></div>"
+          +"<div style='color:#BE123C;font-weight:900;font-size:14px;text-align:center;margin-bottom:8px'>รับเน็ตฟรีเดือนแรกไปแล้วค่ะ</div>"
+          +"<div style='background:#fff;border-radius:10px;padding:10px 12px;font-size:12px;color:#374151;line-height:2;border:1px solid #FECDD3;text-align:center'>"
+            +"📦 เลขคำสั่งซื้อ: <b>"+val+"</b><br>"
+            +"✅ ใช้สิทธิ์ไปแล้ว: <b style='color:#BE123C'>"+dup.usedCount+"/"+dup.maxQuota+" ซิม</b><br>"
+            +(dup.lastAt ? "🕐 ครั้งล่าสุด: <b>"+new Date(dup.lastAt).toLocaleString("th-TH")+"</b>" : "")
+          +"</div>"
+          +"<div style='margin-top:8px;font-size:11px;color:#9E9E9E;text-align:center'>หากมีข้อสงสัยติดต่อ <b style='color:#06C755'>@ProgramThanarich</b></div>";
+      }
       return;
     }
 
