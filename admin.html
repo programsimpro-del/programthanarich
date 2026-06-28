@@ -1127,9 +1127,9 @@ async function sendChatMsg(userId){
 /* ── เปิดแชทลูกค้าบน LINE OA Manager ── */
 function openLineOAChat(userId){
   if(!userId){ showToast("ไม่พบ LINE User ID ของลูกค้าค่ะ","#BE123C","#FFF1F2"); return; }
-  // LINE OA Manager URL — เปิดหน้าแชทของลูกค้าได้เลย
-  var url = "https://manager.line.biz/account/@programthanarich/chat/" + userId;
-  window.open(url, "_blank");
+  // Deep link เปิดแอพ LINE OA ตรงไปหน้าแชทลูกค้า
+  var deepLink = "https://line.me/R/oaMessage?userId=" + userId;
+  window.location.href = deepLink;
 }
 
 function openChat(ref){
