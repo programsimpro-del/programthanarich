@@ -1127,15 +1127,23 @@ async function sendChatMsg(userId){
 /* ── เปิดแชทลูกค้าบน LINE OA Manager ── */
 function openLineOAChat(userId){
   if(!userId){ showToast("ไม่พบ LINE User ID ของลูกค้าค่ะ","#BE123C","#FFF1F2"); return; }
-  // Deep link เปิดแอพ LINE OA Manager ตรงไปหน้าแชทลูกค้า
-  // linechat:// = LINE Official Account Manager app
-  var deepLink = "linechat://chat?userId=" + userId;
-  var timer = setTimeout(function(){
-    // fallback: ถ้าแอพไม่ได้ติดตั้ง ให้เปิด Play Store / App Store
-    window.location.href = "https://manager.line.biz/account/@programthanarich/chat/" + userId;
-  }, 1500);
-  window.addEventListener("blur", function(){ clearTimeout(timer); }, {once:true});
-  window.location.href = deepLink;
+  // เปิดแชทลูกค้าใน LINE OA Manager ผ่าน intent URI (Android)
+  var intentUrl = "intent://chat?userId=" + userId
+    + "#Intent;scheme=linechat;package=jp.linebiz.chain;end";
+  // iOS fallback ใช้ linechat://
+  var iosUrl = "linechat://chat?userId=" + userId;
+  // ตรวจ OS
+  var isAndroid = /android/i.test(navigator.userAgent);
+  if(isAndroid){
+    window.location.href = intentUrl;
+  } else {
+    // iOS
+    var t = setTimeout(function(){
+      showToast("กรุณาติดตั้งแอพ LINE Official Account ก่อนค่ะ","#B45309","#FFFBEB");
+    }, 2000);
+    window.addEventListener("blur", function(){ clearTimeout(t); }, {once:true});
+    window.location.href = iosUrl;
+  }
 }
 
 function openChat(ref){
