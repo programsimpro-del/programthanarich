@@ -1688,7 +1688,7 @@ async function sendPackageAndProcess(ref, pkgId){
     .replace(/\{simCode\}/g,   req.simCode||"")
     .replace(/\{branch\}/g,    req.branchName||"");
 
-  if(req.lineUserId) sendLineMsg(req.lineUserId, msg);
+  if(req.lineUserId) sendAdminMsg(req.lineUserId, msg);
   addMsgToReq(ref, "admin", msg);
 
   // อัพเดทสถานะ → processing
@@ -2063,7 +2063,7 @@ async function doActivate(pkgId){
     .replace(/\{maxQuota\}/g,  String(q.maxQuota));
 
   // ส่งใน LINE จริง
-  if(req.lineUserId) sendLineMsg(req.lineUserId, notifyMsg);
+  if(req.lineUserId) sendAdminMsg(req.lineUserId, notifyMsg);
   addMsgToReq(aref, "admin", notifyMsg);
 
   // อัพเดทสถานะ
