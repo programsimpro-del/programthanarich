@@ -1354,7 +1354,16 @@ function renderOrdList(){
     "</div>";
   }).join("");
   $("filter-row").innerHTML=[["all","ทั้งหมด"],["pending","รอตรวจ"],["confirmed","ยืนยัน"],["activated","เปิดเน็ต"],["rejected","ปฏิเสธ"]].map(function(kv){var k=kv[0],v=kv[1],a=fstat===k;return "<button class='fbtn' data-f='"+k+"' onclick='setFilter(this.dataset.f)' style='background:"+(a?"#1565C0":"#EEEEEE")+";color:"+(a?"#fff":"#616161")+"'>"+v+"</button>";}).join("");
-  const filtered=fstat==="all"?reqs:reqs.filter(r=>r.status===fstat);
+  // activated แสดงแค่ 3 ล่าสุด, รายการอื่นแสดงทั้งหมด
+  var filtered;
+  if(fstat==="all"){
+    var _active = reqs.filter(function(r){ return r.status==="activated"; }).slice(0,3);
+    var _other  = reqs.filter(function(r){ return r.status!=="activated"; });
+    filtered = _other.concat(_active);
+    filtered.sort(function(a,b){ return (b.createdAt||b.submittedAt||"").localeCompare(a.createdAt||a.submittedAt||""); });
+  } else {
+    filtered = reqs.filter(function(r){ return r.status===fstat; });
+  }
   const el=$("ord-list"),em=$("empty");
   if(!filtered.length){el.innerHTML="";em.style.display="block";return;}
   em.style.display="none";
