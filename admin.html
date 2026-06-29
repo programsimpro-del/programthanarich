@@ -1088,13 +1088,20 @@ async function sendLineMsg(userId, text) {
   if(!userId){ console.warn("❌ userId ว่าง"); return; }
   if(!text){ console.warn("❌ text ว่าง"); return; }
   console.log("📤 ส่งหา:", userId.slice(0,8)+"...");
+  var LINE_TOKEN = "/vY4vJJFVsmc87w5GAICEhdlpOPHhQRcSbxwf0IHxAexw2p68xaHTvcEA7G/e0MPScdVCeVnus2Ud/qv8NZ42J3b3Nwec5/O+8pYcau+FktdFMD8G+Jb/GYwHpTGLSUSMsnHK5txylLa1Lt4Iv2P/QdB04t89/1O/w1cDnyilFU=";
   try {
-    var r = await fetch("https://programthanarich.programsimpro.workers.dev/send", {
+    var r = await fetch("https://api.line.me/v2/bot/message/push", {
       method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({to: userId, text: text})
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + LINE_TOKEN
+      },
+      body: JSON.stringify({
+        to: userId,
+        messages: [{ type: "text", text: text }]
+      })
     });
-    console.log(r.ok ? "✅ ส่งสำเร็จ" : "❌ error: "+r.status);
+    console.log(r.ok ? "✅ ส่งสำเร็จ" : "❌ LINE error: "+r.status);
   } catch(e) { console.warn("❌ sendLineMsg:", e.message); }
 }
 
