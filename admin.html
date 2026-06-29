@@ -1436,7 +1436,7 @@ function renderOrderBox(req){
 
 function detectType(no){const n=(no||"").trim().toUpperCase();if(/^TH[0-9A-Z]{10,}$/.test(n)&&/[A-Z]/.test(n.slice(2)))return"flash";if(/^TH[0-9]{10,}[A-Z]?$/.test(n))return"spx";if(/^(KA|KEX|KER)/.test(n))return"kerry";if(/^JT/.test(n))return"jt";if(/^\d{15,20}$/.test(n))return"shopee_order";return"unknown";}
 
-function confirmOrd(ref,verdict){
+async function confirmOrd(ref,verdict){
   const req=reqs.find(r=>r.ref===ref);if(!req)return;
   req.shopeeVerified=verdict;
 
@@ -1508,7 +1508,7 @@ function closeQuotaDialog(){
   if(el) el.remove();
 }
 
-function applyQuotaConfirm(ref){
+async function applyQuotaConfirm(ref){
   if(window._selectedQuota === null || window._selectedQuota === undefined){
     alert("กรุณาเลือกจำนวนสิทธิ์ก่อนค่ะ");
     return;
