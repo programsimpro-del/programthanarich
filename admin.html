@@ -680,7 +680,7 @@ function startRealtimeSync(){
 
 function loadAll(){
   try{ pkgs = JSON.parse(localStorage.getItem("pt_packages")||"null")||DEFAULT_PKGS; }catch(_){ pkgs=DEFAULT_PKGS; }
-  reqs = [];
+  try{ reqs = JSON.parse(localStorage.getItem("pt_requests")||"[]"); }catch(_){ reqs=[]; }
   try{ var ng=localStorage.getItem("pt_netguides"); if(ng) netGuides=JSON.parse(ng); }catch(_){}
 
   var tb = $("tabbar");
@@ -739,7 +739,7 @@ function syncFromAPI(){
       var lo = localMap[o.ref];
       if(lo){
         if(lo.status)           o.status           = lo.status;
-        if(lo.shopeeVerified && o.shopeeVerified !== "confirmed") o.shopeeVerified = lo.shopeeVerified;
+        if(lo.shopeeVerified)   o.shopeeVerified   = lo.shopeeVerified;
         if(lo.lineMessages)     o.lineMessages     = lo.lineMessages;
         if(lo.activatedPackage) o.activatedPackage = lo.activatedPackage;
         if(lo.activatedAt)      o.activatedAt      = lo.activatedAt;
@@ -1308,8 +1308,7 @@ function renderOrdList(){
   el.innerHTML=filtered.map(r=>{
     const sC={pending:["#E65100","#FFF3E0","รอตรวจ"],confirmed:["#1565C0","#E3F2FD","รอเปิดเน็ต"],processing:["#6A1B9A","#F3E8FF","กำลังดำเนินการ"],activated:["#2E7D32","#E8F5E9","เสร็จแล้ว"],rejected:["#C62828","#FFE4E6","ปฏิเสธ"]};
     const[sc,sb,sl]=sC[r.status]||sC.pending;
-    const _svOk=r.shopeeVerified==="confirmed"||(r.shopeeInfo&&r.shopeeInfo.found);
-    const svB=_svOk?`<span class="tag" style="background:#DCFCE7;color:#166534">✅ Shopee ยืนยัน</span>`:r.shopeeVerified==="rejected"?`<span class="tag" style="background:#FFE4E6;color:#BE123C">❌ ปฏิเสธ</span>`:`<span class="tag" style="background:#FEF3C7;color:#D97706">⏳ รอตรวจ Shopee</span>`;
+    const svB=r.shopeeVerified==="confirmed"?`<span class="tag" style="background:#DCFCE7;color:#166534">✅ Shopee ยืนยัน</span>`:r.shopeeVerified==="rejected"?`<span class="tag" style="background:#FFE4E6;color:#BE123C">❌ ปฏิเสธ</span>`:`<span class="tag" style="background:#FEF3C7;color:#D97706">⏳ รอตรวจ Shopee</span>`;
     return`<div class="ord-card fade" onclick="openOrdDetail('${r.ref}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">
         <div style="display:flex;align-items:center;gap:8px">
@@ -1756,10 +1755,11 @@ async function checkShopeeInline(){
     });
     var si = await r.json();
     req.shopeeInfo = si;
-    req.shopeeVerified = si.found ? "confirmed" : (!si.ready ? "pending" : "rejected");
-    if(fbDB||initFirebase()) fbDB.ref("/orders/"+aref).update({shopeeVerified:req.shopeeVerified, shopeeInfo:si});
-    saveReqs(); renderOrdDetail(aref); renderOrdList();
-    if(si.found) showToast("✅ Shopee ยืนยันแล้วค่ะ","#166534","#DCFCE7");
+    fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/orders/"+aref+"/shopeeInfo.json",{
+      method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(si)
+    });
+    saveReqs(); renderOrdDetail(aref);
+    if(si.found) showToast("✅ พบคำสั่งซื้อใน Shopee","#166534","#DCFCE7");
     else showToast("❌ ไม่พบคำสั่งซื้อ","#BE123C","#FFF1F2");
   }catch(e){
     showToast("❌ "+e.message,"#BE123C","#FFF1F2");
@@ -1778,10 +1778,11 @@ async function checkShopeeNow(ref){
     });
     var si = await r.json();
     req.shopeeInfo = si;
-    req.shopeeVerified = si.found ? "confirmed" : (!si.ready ? "pending" : "rejected");
-    if(fbDB||initFirebase()) fbDB.ref("/orders/"+ref).update({shopeeVerified:req.shopeeVerified, shopeeInfo:si});
-    saveReqs(); renderOrdDetail(ref); renderOrdList();
-    if(si.found) showToast("✅ Shopee ยืนยันแล้วค่ะ","#166534","#DCFCE7");
+    fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/orders/"+ref+"/shopeeInfo.json",{
+      method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(si)
+    });
+    saveReqs(); renderOrdDetail(ref);
+    if(si.found) showToast("✅ พบคำสั่งซื้อใน Shopee","#166534","#DCFCE7");
     else if(!si.ready) showToast("⏳ "+si.message,"#E65100","#FFF3E0");
     else showToast("❌ ไม่พบคำสั่งซื้อ","#BE123C","#FFF1F2");
   }catch(e){ showToast("❌ "+e.message,"#BE123C","#FFF1F2"); }
