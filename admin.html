@@ -1089,16 +1089,14 @@ function chatQuickSend(t){if(t&&t.target)t=t.target.dataset.t;addMsgToReq(active
 async function sendLineMsg(userId, text) {
   if(!userId){ console.warn("❌ userId ว่าง"); return; }
   if(!text){ console.warn("❌ text ว่าง"); return; }
-  // แปลง newline เป็น \n string เพื่อไม่ให้ JSON เสีย
-  var safeText = text;
-  console.log("📤 ส่งหา:", userId.slice(0,8)+"...");
+  var _TK = "/vY4vJJFVsmc87w5GAICEhdlpOPHhQRcSbxwf0IHxAexw2p68xaHTvcEA7G/e0MPScdVCeVnus2Ud/qv8NZ42J3b3Nwec5/O+8pYcau+FktdFMD8G+Jb/GYwHpTGLSUSMsnHK5txylLa1Lt4Iv2P/QdB04t89/1O/w1cDnyilFU=";
   try {
-    var r = await fetch("https://programthanarich.programsimpro.workers.dev/send", {
+    var r = await fetch("https://programthanarich.programsimpro.workers.dev/notify", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({to: userId, text: safeText.replace(/\\n/g, "\n")})
+      body: JSON.stringify({_sendMsg:true, to:userId, text:text, token:_TK})
     });
-    console.log(r.ok ? "✅ ส่งสำเร็จ" : "❌ error: "+r.status);
+    console.log(r.ok ? "✅ ส่งสำเร็จ" : "❌ error:"+r.status);
   } catch(e) { console.warn("❌ sendLineMsg:", e.message); }
 }
 
@@ -1688,7 +1686,7 @@ async function sendPackageAndProcess(ref, pkgId){
     .replace(/\{simCode\}/g,   req.simCode||"")
     .replace(/\{branch\}/g,    req.branchName||"");
 
-  if(req.lineUserId) sendAdminMsg(req.lineUserId, msg);
+  if(req.lineUserId) sendLineMsg(req.lineUserId, msg);
   addMsgToReq(ref, "admin", msg);
 
   // อัพเดทสถานะ → processing
@@ -2063,7 +2061,7 @@ async function doActivate(pkgId){
     .replace(/\{maxQuota\}/g,  String(q.maxQuota));
 
   // ส่งใน LINE จริง
-  if(req.lineUserId) sendAdminMsg(req.lineUserId, notifyMsg);
+  if(req.lineUserId) sendLineMsg(req.lineUserId, notifyMsg);
   addMsgToReq(aref, "admin", notifyMsg);
 
   // อัพเดทสถานะ
