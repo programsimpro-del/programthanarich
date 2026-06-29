@@ -306,6 +306,7 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
         </div>
       </div>
     <div id="report-stats" style="padding:14px"></div>
+    <div style="text-align:center;padding:20px;color:#9E9E9E">⏳ กำลังโหลดรายงาน...</div>
   </div>
     <!-- ── สถิติแยกสาขา Real-time ── -->
       <div style="background:#fff;border:1.5px solid #E8E8E8;border-radius:14px;padding:12px 14px;margin:0 12px 8px">
@@ -357,14 +358,12 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
 
 
   <!-- SCREEN: PKG MGR -->
-  <div class="screen" id="sc-pkgs" style="display:none;flex-direction:column;flex:1;overflow:hidden">
-    <div style="flex:1;overflow-y:auto;padding:14px">
-      <div style="background:#fff;border-radius:14px;padding:16px;margin-bottom:14px;border:1.5px solid #E5E7EB">
-        <div style="font-weight:800;font-size:14px;color:#374151;margin-bottom:4px">🗂️ แพ็คเกจเน็ต</div>
-        <div style="font-size:12px;color:#9E9E9E;margin-bottom:12px">จัดการแพ็คเกจที่ลูกค้าเลือกสมัครได้ในระบบ</div>
-        <button onclick="addPkgInline()" style="width:100%;padding:11px;border-radius:10px;border:2px dashed #1565C0;background:#EFF6FF;color:#1565C0;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">➕ เพิ่มแพ็คเกจใหม่</button>
-      </div>
+  <div class="screen" id="sc-pkgs" class="screen" style="display:none;flex-direction:column;flex:1;overflow-y:auto">
+    <div class="pad">
       <div id="pkg-mgr-list"></div>
+      <button class="btn btn-od" style="margin-bottom:8px" onclick="openPkgForm(null)">➕ เพิ่มแพ็คเกจใหม่</button>
+      <button class="btn btn-blue" style="margin-bottom:8px" onclick="saveAllPkgs()">✅ บันทึกและอัพเดทระบบ</button>
+      <button class="btn" style="margin-bottom:8px;background:#F3F4F6;color:#374151" onclick="goBackHome()">🏠 กลับสู่หน้าแรก</button>
     </div>
   </div>
 
@@ -573,9 +572,10 @@ var fbDB = null;
 
 // Firebase init — รอให้ SDK โหลดเสร็จก่อน
 function initFirebase(){
+  // ตรวจ firebase global ก่อน
   if(typeof firebase === "undefined"){
-    console.warn("Firebase SDK not loaded yet, retrying in 500ms...");
-    setTimeout(function(){ if(initFirebase()) startRealtimeSync(); }, 500);
+    console.warn("Firebase SDK not loaded yet, retrying...");
+    setTimeout(function(){ initFirebase(); startRealtimeSync(); }, 1000);
     return false;
   }
   try{
@@ -591,36 +591,13 @@ function initFirebase(){
     return true;
   }catch(e){
     console.warn("Firebase init failed:", e.message);
-    setTimeout(function(){ if(initFirebase()) startRealtimeSync(); }, 1000);
     return false;
   }
 }
 
 // Real-time listener — Orders + Packages
 function startRealtimeSync(){
-  if(!fbDB && !initFirebase()){
-    return;
-  }
-
-  // ── Orders real-time (ขึ้นก่อนเพื่อให้ข้อมูลแสดงเร็วที่สุด) ──
-  fbDB.ref("/orders").on("value", function(snap){
-    var data = snap.val();
-    var newReqs = [];
-    if(data){ newReqs = Object.values(data); }
-    newReqs.sort(function(a,b){
-      var ta = b.createdAt||b.submittedAt||"";
-      var tb = a.createdAt||a.submittedAt||"";
-      return ta.localeCompare(tb);
-    });
-    reqs = newReqs;
-    localStorage.setItem("pt_requests", JSON.stringify(reqs));
-    console.log("📡 Orders:", reqs.length);
-    renderChatList();
-    renderOrdList();
-    renderDashboard();
-    updateBadges();
-    $("rts").textContent = "🔴 LIVE — อัพเดท " + ts();
-  });
+  if(!fbDB && !initFirebase()) return;
 
   // ── Packages real-time ────────────────────────
   fbDB.ref("/packages").on("value", function(snap){
@@ -676,29 +653,55 @@ function startRealtimeSync(){
     }
   });
 
+  fbDB.ref("/orders").on("value", function(snap){
+    console.log("📡 Firebase orders received:", snap.val() ? Object.keys(snap.val()).length : 0);
+    var data = snap.val();
+    if(!data) return;
+    var newReqs = Object.values(data);
+    newReqs.sort(function(a,b){ var ta=b.createdAt||b.submittedAt||""; var tb=a.createdAt||a.submittedAt||""; return ta.localeCompare(tb); });
+    var localMap = {};
+    reqs.forEach(function(r){ localMap[r.ref]=r; });
+    newReqs = newReqs.map(function(r){
+      var lo = localMap[r.ref];
+      if(lo){
+        // merge status จาก local (Admin อัพเดท)
+        if(lo.status)           r.status           = lo.status;
+        if(lo.shopeeVerified)   r.shopeeVerified   = lo.shopeeVerified;
+        if(lo.lineMessages)     r.lineMessages     = lo.lineMessages;
+        if(lo.activatedPackage) r.activatedPackage = lo.activatedPackage;
+        if(lo.activatedAt)      r.activatedAt      = lo.activatedAt;
+        if(lo.aiResult)         r.aiResult         = lo.aiResult;
+        // *** ห้ามทับ lineUserId จาก Firebase — ข้อมูลสำคัญสำหรับส่ง LINE ***
+        if(!r.lineUserId && lo.lineUserId) r.lineUserId = lo.lineUserId;
+      }
+      return r;
+    });
+    reqs = newReqs;
+    localStorage.setItem("pt_requests", JSON.stringify(reqs));
+    renderChatList();
+    renderOrdList();
+    updateBadges();
+    $("rts").textContent = "🔴 LIVE — อัพเดท " + ts();
+  });
 }
 
 function loadAll(){
+  // โหลดจาก localStorage ก่อน (แสดงทันที)
   try{ pkgs = JSON.parse(localStorage.getItem("pt_packages")||"null")||DEFAULT_PKGS; }catch(_){ pkgs=DEFAULT_PKGS; }
-  reqs = [];
+  try{ reqs = JSON.parse(localStorage.getItem("pt_requests")||"null")||[]; }catch(_){ reqs=[]; }
   try{ var ng=localStorage.getItem("pt_netguides"); if(ng) netGuides=JSON.parse(ng); }catch(_){}
 
   var tb = $("tabbar");
   if(tb) tb.style.display="flex";
   switchTab(1);
   renderOrdList();
-  renderDashboard();
   updateBadges();
-  $("rts").textContent = "⏳ กำลังเชื่อมต่อ Firebase...";
+  $("rts").textContent="อัพเดท "+ts();
   setTopbar("",null,"");
 
-  // init Firebase แล้ว start listener ทันที
-  if(initFirebase()){
-    startRealtimeSync();
-  }
-  // initFirebase จะ retry+startRealtimeSync เองถ้า SDK ยังไม่พร้อม
-
+  // sync Firebase ทั้งหมดพร้อมกัน
   if(ORDERS_API) syncFromAPI();
+  startRealtimeSync();
   syncPkgsFromFirebase();
   loadNetGuides();
 }
@@ -754,7 +757,6 @@ function syncFromAPI(){
     localStorage.setItem("pt_requests", JSON.stringify(reqs));
     renderChatList();
     renderOrdList();
-    renderDashboard();
     updateBadges();
     $("rts").textContent="อัพเดท "+ts()+" ✅";
   })
@@ -1087,26 +1089,16 @@ function chatQuickSend(t){if(t&&t.target)t=t.target.dataset.t;addMsgToReq(active
 async function sendLineMsg(userId, text) {
   if(!userId){ console.warn("❌ userId ว่าง"); return; }
   if(!text){ console.warn("❌ text ว่าง"); return; }
+  // แปลง newline เป็น \n string เพื่อไม่ให้ JSON เสีย
+  var safeText = text;
   console.log("📤 ส่งหา:", userId.slice(0,8)+"...");
-  // ส่งผ่าน Worker (หลีกเลี่ยง CORS ของ LINE API)
   try {
     var r = await fetch("https://programthanarich.programsimpro.workers.dev/send", {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({to: userId, text: text})
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({to: userId, text: safeText.replace(/\\n/g, "\n")})
     });
-    if(r.ok){
-      console.log("✅ Worker /send สำเร็จ");
-    } else {
-      var err = await r.text();
-      console.warn("❌ Worker /send error:", r.status, err);
-      // Fallback: ส่งผ่าน /notify พร้อม token
-      await fetch("https://programthanarich.programsimpro.workers.dev/notify", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({_sendMsg:true, to:userId, text:text, token:"/vY4vJJFVsmc87w5GAICEhdlpOPHhQRcSbxwf0IHxAexw2p68xaHTvcEA7G/e0MPScdVCeVnus2Ud/qv8NZ42J3b3Nwec5/O+8pYcau+FktdFMD8G+Jb/GYwHpTGLSUSMsnHK5txylLa1Lt4Iv2P/QdB04t89/1O/w1cDnyilFU="})
-      });
-    }
+    console.log(r.ok ? "✅ ส่งสำเร็จ" : "❌ error: "+r.status);
   } catch(e) { console.warn("❌ sendLineMsg:", e.message); }
 }
 
@@ -1114,21 +1106,13 @@ async function sendLineMsg(userId, text) {
 async function sendAdminMsg(userId, text) {
   if(!userId) return;
   const LINE_TOKEN = "/vY4vJJFVsmc87w5GAICEhdlpOPHhQRcSbxwf0IHxAexw2p68xaHTvcEA7G/e0MPScdVCeVnus2Ud/qv8NZ42J3b3Nwec5/O+8pYcau+FktdFMD8G+Jb/GYwHpTGLSUSMsnHK5txylLa1Lt4Iv2P/QdB04t89/1O/w1cDnyilFU=";
-  // ส่งผ่าน Worker /send
+  // ส่งผ่าน Vercel API เพื่อหลีกเลี่ยง CORS
   try {
-    var sr = await fetch("https://programthanarich.programsimpro.workers.dev/send", {
+    await fetch("https://programthanarich.programsimpro.workers.dev/notify", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({to: userId, text: text})
+      body: JSON.stringify({ _sendMsg: true, to: userId, text, token: LINE_TOKEN })
     });
-    if(!sr.ok){
-      // fallback /notify
-      await fetch("https://programthanarich.programsimpro.workers.dev/notify", {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({_sendMsg:true, to:userId, text:text, token:LINE_TOKEN})
-      });
-    }
   } catch(_) {}
   // บันทึกใน Firebase
   if(fbDB && userId) {
@@ -1157,8 +1141,6 @@ function addMsgToReq(ref,from,text){
    TAB 1: ORDER LIST
 ══════════════════════════════ */
 /* ══════ DASHBOARD ══════ */
-function renderReport(){ renderDashboard(); }
-
 function renderDashboard(){
   if(!reqs || !reqs.length) return;
 
@@ -1348,7 +1330,7 @@ function renderOrdList(){
       
       ${r.pkgName?`<span style="background:#F3E5F5;color:#6A1B9A;font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px">${pkgs.find(p=>p.id===r.pkgId)?.emoji||"📶"} ${r.pkgName}</span>`:""}
       ${getQuotaBadge(r.orderNo)}
-      <span style="font-size:10px;font-weight:800;color:#B91C1C;">✅ ยอมรับเงื่อนไขแล้ว</span>
+      ${r.mobileDataStatus?`<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:8px;${r.mobileDataStatus==='ปิดเน็ตมือถือแล้ว'?'background:#DCFCE7;color:#166534':'background:#FEE2E2;color:#BE123C'}">📵 ${r.mobileDataStatus}</span>`:""}
     </div>`;
   }).join("");
 }
@@ -1543,7 +1525,7 @@ function renderOrdDetail(ref){
         return pn || "ยังไม่ระบุ";
       })()}</span>
       <span style="color:#FFE082;white-space:nowrap">📵 สถานะเน็ต</span>
-      <span style="font-weight:800;color:#FFE082;">${req.mobileDataStatus?'ยอมรับเงื่อนไขแล้ว':'ยังไม่ยืนยัน'}</span>
+      <span style="font-weight:800;padding:2px 8px;border-radius:6px;${req.mobileDataStatus==='ปิดเน็ตมือถือแล้ว'?'background:#166534;color:#BBF7D0':'background:#7F1D1D;color:#FCA5A5'}">${req.mobileDataStatus||'ยังไม่ยืนยัน'}</span>
     </div>
   </div>
 
@@ -1573,41 +1555,42 @@ function renderOdActions(req){
   var el = $("od-actions");
   var nm = $("od-netmenu");
   if(!el) return;
-
-  // เปลี่ยน od-actions ให้เป็น block แทน flex เพื่อให้ width:100% ใช้ได้
-  el.style.display  = "block";
-  el.style.padding  = "10px";
   el.innerHTML = "";
-  nm.style.display  = "none";
+  nm.style.display = "none";
   var s = req.status;
 
-  // ── ฟังก์ชันสร้างปุ่มลบ (ใช้ร่วมกันทุก status) ──
-  function addDeleteBtn(){
-    var d = document.createElement("button");
-    d.style.cssText = "display:block;width:100%;margin-top:10px;padding:11px;border-radius:10px;border:1.5px solid #FECDD3;background:#FFF1F2;color:#BE123C;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;text-align:center";
-    d.textContent = "🗑️ ลบประวัติคำขอนี้";
-    d.onclick = function(){ showDeleteConfirm(aref); };
-    el.appendChild(d);
-  }
+  // ── STATUS BADGE ──────────────────────────────────────
+  var statusInfo = {
+    "pending":     {label:"📋 รอตรวจสอบคำสั่งซื้อ",          bg:"#FFF3E0", color:"#E65100"},
+    "confirmed":   {label:"⏳ รอเปิดเน็ตฟรีเดือนแรก",         bg:"#E3F2FD", color:"#1565C0"},
+    "processing":  {label:"📤 กำลังดำเนินการ — รอแอดมินสมัคร", bg:"#F3E8FF", color:"#6A1B9A"},
+    "activated":   {label:"✅ เสร็จสมบูรณ์",                   bg:"#E8F5E9", color:"#2E7D32"},
+    "rejected":    {label:"❌ ปฏิเสธคำสั่งซื้อ",               bg:"#FFEBEE", color:"#C62828"},
+  };
+  var si = statusInfo[s] || {label:s, bg:"#F5F5F5", color:"#666"};
 
-  // ── pending ──
+
+  // ── STEP 1: pending ───────────────────────────────────
   if(s === "pending"){
+    // ปุ่มตรวจสอบ Shopee
+
+    // ปุ่มยืนยัน
     var b1 = document.createElement("button");
-    b1.style.cssText = "display:block;width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#2E7D32,#388E3C);color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(46,125,50,.25);margin-bottom:8px";
+    b1.style.cssText = "width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#2E7D32,#388E3C);color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(46,125,50,.25);margin-bottom:8px";
     b1.textContent = "✅ ยืนยันคำสั่งซื้อ";
     b1.onclick = function(){ showQuotaDialog(aref, reqs.find(function(r){return r.ref===aref;})); };
     el.appendChild(b1);
     var b2 = document.createElement("button");
-    b2.style.cssText = "display:block;width:100%;padding:11px;border-radius:12px;border:none;background:#FFEBEE;color:#C62828;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit";
+    b2.style.cssText = "width:100%;padding:11px;border-radius:12px;border:none;background:#FFEBEE;color:#C62828;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit";
     b2.textContent = "❌ ปฏิเสธคำสั่งซื้อ";
     b2.onclick = function(){ confirmOrd(aref,"rejected"); };
     el.appendChild(b2);
-    addDeleteBtn();
     return;
   }
 
-  // ── confirmed ──
+  // ── STEP 2: confirmed — เลือก package + ยืนยัน ───────
   if(s === "confirmed"){
+    // แสดง package list ให้เลือก
     nm.style.display = "block";
     nm.innerHTML = "";
     var hd = document.createElement("div");
@@ -1627,11 +1610,15 @@ function renderOdActions(req){
        +'<div style="font-size:10px;font-family:monospace;color:#9E9E9E">'+p.code+'</div></div>'
        +(req.pkgId===p.id ? '<span style="font-size:10px;color:'+p.color+';font-weight:700">ลูกค้าเลือก</span>' : '')
        +(isSelected ? '<span style="font-size:16px;color:'+p.color+'">✓</span>' : '');
-      card.onclick = function(){ window._selectedPkg = p.id; renderOdActions(req); };
+      card.onclick = function(){
+        window._selectedPkg = p.id;
+        renderOdActions(req);
+      };
       nm.appendChild(card);
     });
+    // ปุ่มยืนยัน package
     var confirmPkg = document.createElement("button");
-    confirmPkg.style.cssText = "display:block;width:100%;margin-top:10px;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#1565C0,#1976D2);color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(21,101,192,.25)";
+    confirmPkg.style.cssText = "width:100%;margin-top:10px;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#1565C0,#1976D2);color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(21,101,192,.25)";
     confirmPkg.textContent = "📤 ยืนยันแพ็คเกจ — ส่งวิธีสมัครให้ลูกค้า";
     confirmPkg.onclick = function(){
       var selPkg = window._selectedPkg || req.pkgId;
@@ -1639,48 +1626,43 @@ function renderOdActions(req){
       sendPackageAndProcess(aref, selPkg);
     };
     nm.appendChild(confirmPkg);
-    addDeleteBtn();
     return;
   }
 
-  // ── processing ──
+  // ── STEP 3: processing — รอสมัคร ─────────────────────
   if(s === "processing"){
     var bDone = document.createElement("button");
-    bDone.style.cssText = "display:block;width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#6A1B9A,#7B1FA2);color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(106,27,154,.25)";
+    bDone.style.cssText = "width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#6A1B9A,#7B1FA2);color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(106,27,154,.25)";
     bDone.textContent = "🌐 สมัครเน็ตแล้ว — กดยืนยัน";
     bDone.onclick = function(){
       var req2 = reqs.find(function(r){return r.ref===aref;});
       if(req2) doActivate(req2.activatedPackage || req2.pkgId);
     };
     el.appendChild(bDone);
-    addDeleteBtn();
     return;
   }
 
-  // ── activated ──
+  // ── STEP 4: activated ─────────────────────────────────
   if(s === "activated"){
     var done = document.createElement("div");
     done.style.cssText = "text-align:center;padding:8px;font-size:12px;color:#9E9E9E;margin-bottom:10px";
     done.textContent = "เสร็จสมบูรณ์แล้วค่ะ 🎉";
     el.appendChild(done);
     var homeBtn2 = document.createElement("button");
-    homeBtn2.style.cssText = "display:block;width:100%;padding:12px;border-radius:12px;border:none;background:#F0FDF4;color:#166534;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit";
+    homeBtn2.style.cssText = "width:100%;padding:12px;border-radius:12px;border:none;background:#F0FDF4;color:#166534;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit";
     homeBtn2.textContent = "🏠 กลับสู่หน้าหลัก";
     homeBtn2.onclick = function(){ goHome(); };
     el.appendChild(homeBtn2);
-    addDeleteBtn();
     return;
   }
 
-  // ── rejected ──
+  // ── rejected ─────────────────────────────────────────
   if(s === "rejected"){
     var rb = document.createElement("button");
-    rb.style.cssText = "display:block;width:100%;padding:9px;border-radius:10px;border:none;background:#F5F5F5;color:#757575;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit";
+    rb.style.cssText = "flex:1;padding:9px;border-radius:10px;border:none;background:#F5F5F5;color:#757575;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit";
     rb.textContent = "↩️ คืนสถานะรอตรวจ";
     rb.onclick = function(){ confirmOrd(aref,"pending"); };
     el.appendChild(rb);
-    addDeleteBtn();
-    return;
   }
 }
 
@@ -2385,15 +2367,13 @@ function renderNetGuideList(){
 function escH(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 
 function showPkgMgr(){
-  syncPkgInputs();
-  _pkgCurrentFolder = null;
   showScreen("sc-pkgs");
   document.getElementById("tabbar").style.display="none";
-  setTopbar("🗂️ แพ็คเกจเน็ต", function(){
+  setTopbar("🗂️ จัดการแพ็คเกจ", function(){
     showSettings();
     document.getElementById("tabbar").style.display="flex";
   }, "");
-  renderPkgMgrList();
+  renderPkgMgrList(); // pkgs อยู่ใน memory แล้ว แสดงทันที
 }
 
 function showFormSettings(){
@@ -2449,232 +2429,28 @@ function savePkgForm(){
   showPkgMgr();
 }
 
-var _pkgCurrentFolder = null; // folder index ที่เปิดอยู่
-
-function addPkgInline(){
-  syncPkgInputs();
-  var color  = "#1565C0";
-  var colors = ["#1565C0","#2E7D32","#6A1B9A","#E65100","#B71C1C","#00838F","#4527A0","#558B2F"];
-  color = colors[pkgs.length % colors.length];
-  pkgs.push({ id:"pkg_"+Date.now(), name:"", code:"", price:"", emoji:"📶", color:color, confirmMsg:"", activateMsg:"" });
-  _pkgCurrentFolder = pkgs.length - 1;
-  renderPkgMgrList();
-}
-
-function syncPkgInputs(){
-  if(_pkgCurrentFolder === null) return;
-  var p = pkgs[_pkgCurrentFolder];
-  if(!p) return;
-  var nm = document.getElementById("pk-name-"+_pkgCurrentFolder);
-  var cd = document.getElementById("pk-code-"+_pkgCurrentFolder);
-  var pr = document.getElementById("pk-price-"+_pkgCurrentFolder);
-  var cm = document.getElementById("pk-confirmMsg-"+_pkgCurrentFolder);
-  var am = document.getElementById("pk-activateMsg-"+_pkgCurrentFolder);
-  var em = document.querySelector("#pk-ep-"+_pkgCurrentFolder+" .sel");
-  var cl = document.querySelector("#pk-cp-"+_pkgCurrentFolder+" .sel");
-  if(nm) p.name        = nm.value;
-  if(cd) p.code        = cd.value;
-  if(pr) p.price       = pr.value;
-  if(cm) p.confirmMsg  = cm.value;
-  if(am) p.activateMsg = am.value;
-  if(em) p.emoji       = em.textContent.trim();
-  if(cl) p.color       = cl.dataset.color;
-}
-
-function savePkgsInline(){
-  syncPkgInputs();
-  pkgs = pkgs.filter(function(p){ return p && p.name; });
-  localStorage.setItem("pt_packages", JSON.stringify(pkgs));
-  if(fbDB || initFirebase()){
-    fbDB.ref("/packages").set(pkgs)
-      .then(function(){ showToast("✅ บันทึกแล้วค่ะ","#166534","#DCFCE7"); _pkgCurrentFolder=null; renderPkgMgrList(); })
-      .catch(function(e){ showToast("❌ "+e.message,"#BE123C","#FFF1F2"); });
-  } else {
-    showToast("✅ บันทึก local แล้วค่ะ","#166534","#DCFCE7");
-    _pkgCurrentFolder = null;
-    renderPkgMgrList();
-  }
-}
-
-var _pkgAutoSaveTimer = null;
-function autoSavePkg(){
-  syncPkgInputs();
-  clearTimeout(_pkgAutoSaveTimer);
-  _pkgAutoSaveTimer = setTimeout(function(){
-    localStorage.setItem("pt_packages", JSON.stringify(pkgs));
-    if(fbDB) fbDB.ref("/packages").set(pkgs).catch(function(){});
-  }, 800);
-}
-
-function deletePkgInline(idx){
-  var p = pkgs[idx];
-  if(!p) return;
-  _deletePkgIdx = idx;
-  _deleteType   = "pkg";
-  var inp = document.getElementById("delete-pin");
-  var err = document.getElementById("delete-pin-err");
-  var lbl = document.getElementById("delete-modal-label");
-  if(inp){ inp.value=""; setTimeout(function(){ inp.focus(); },100); }
-  if(err) err.style.display="none";
-  if(lbl) lbl.textContent = "ลบแพ็คเกจ \""+p.name+"\"";
-  var modal = document.getElementById("delete-modal");
-  if(modal) modal.style.display="flex";
-}
-
-var EMOJIS_PKG = ["📶","📱","🌐","⚡","🚀","💎","🎯","🔥","✨","🛜"];
-var COLORS_PKG = ["#1565C0","#2E7D32","#6A1B9A","#E65100","#B71C1C","#00838F","#4527A0","#558B2F","#00695C","#AD1457"];
-
 function renderPkgMgrList(){
-  var el = document.getElementById("pkg-mgr-list");
+  var el = $("pkg-mgr-list");
   if(!el) return;
-
-  // ── หน้า form (folder เปิดอยู่) ──
-  if(_pkgCurrentFolder !== null){
-    var p = pkgs[_pkgCurrentFolder];
-    if(!p){ _pkgCurrentFolder=null; renderPkgMgrList(); return; }
-    var color = p.color || "#1565C0";
-
-    // emoji picker html
-    var epHtml = EMOJIS_PKG.map(function(e){
-      var sel = (p.emoji||"📶") === e;
-      return '<span class="'+(sel?"sel":"")+('" onclick="pkgs['+_pkgCurrentFolder+'].emoji=\"'+e+'\";renderPkgMgrList()" ')
-        +'style="font-size:22px;cursor:pointer;padding:4px;border-radius:8px;'+(sel?"background:#E3F2FD;":"")+'">'
-        +e+'</span>';
-    }).join("");
-
-    // color picker html
-    var cpHtml = COLORS_PKG.map(function(c){
-      var sel = (p.color||"#1565C0") === c;
-      return '<span data-color="'+c+'" class="'+(sel?"sel":"")+('" onclick="pkgs['+_pkgCurrentFolder+'].color=\"'+c+'\";renderPkgMgrList()" ')
-        +'style="display:inline-block;width:28px;height:28px;border-radius:50%;background:'+c+';cursor:pointer;'
-        +(sel?"outline:3px solid "+c+";outline-offset:2px;":"")+'">'
-        +'</span>';
-    }).join("");
-
-    el.innerHTML =
-      '<button onclick="syncPkgInputs();_pkgCurrentFolder=null;renderPkgMgrList()" style="display:flex;align-items:center;gap:6px;background:none;border:none;color:#1565C0;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;margin-bottom:14px;padding:0">← กลับ</button>'
-     +'<div style="background:#fff;border-radius:14px;padding:16px;border:1.5px solid #E5E7EB">'
-       +'<div style="font-size:12px;color:#6B7280;margin-bottom:6px">ไอคอน</div>'
-       +'<div id="pk-ep-'+_pkgCurrentFolder+'" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px">'+epHtml+'</div>'
-       +'<div style="font-size:12px;color:#6B7280;margin-bottom:6px">สี</div>'
-       +'<div id="pk-cp-'+_pkgCurrentFolder+'" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'+cpHtml+'</div>'
-       +'<div style="font-size:12px;color:#6B7280;margin-bottom:4px">ชื่อแพ็คเกจ *</div>'
-       +'<input id="pk-name-'+_pkgCurrentFolder+'" value="'+escH(p.name||"")+'" placeholder="ซิมเทพดีแทค..." '
-         +'style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;margin-bottom:12px;box-sizing:border-box" '
-         +'oninput="autoSavePkg()">'
-       +'<div style="font-size:12px;color:#6B7280;margin-bottom:4px">รหัสสินค้า</div>'
-       +'<input id="pk-code-'+_pkgCurrentFolder+'" value="'+escH(p.code||"")+'" placeholder="TRUE2MB159(FREE)" '
-         +'style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:13px;font-family:monospace;margin-bottom:12px;box-sizing:border-box" '
-         +'oninput="autoSavePkg()">'
-       +'<div style="font-size:12px;color:#6B7280;margin-bottom:4px">ราคา (฿)</div>'
-       +'<input id="pk-price-'+_pkgCurrentFolder+'" value="'+escH(p.price||"")+'" placeholder="149" type="number" '
-         +'style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;margin-bottom:12px;box-sizing:border-box" '
-         +'oninput="autoSavePkg()">'
-       +'<div style="font-size:12px;color:#1565C0;font-weight:800;margin-bottom:4px">💬 ข้อความตอน ยืนยันแพ็คเกจ</div>'       +'<div style="font-size:11px;color:#9E9E9E;margin-bottom:6px">ใช้ {simPhone} {orderNo} {pkgName} {simCode}</div>'       +'<textarea id="pk-confirmMsg-'+_pkgCurrentFolder+'" '         +'style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:12px;font-family:inherit;min-height:120px;resize:vertical;margin-bottom:14px;box-sizing:border-box" '         +'oninput="autoSavePkg()">'+escH(p.confirmMsg||'')+'</textarea>'       +'<div style="font-size:12px;color:#2E7D32;font-weight:800;margin-bottom:4px">✅ ข้อความตอน สมัครเน็ตแล้ว</div>'       +'<div style="font-size:11px;color:#9E9E9E;margin-bottom:6px">ใช้ {simPhone} {orderNo} {pkgName} {remaining} {maxQuota}</div>'       +'<textarea id="pk-activateMsg-'+_pkgCurrentFolder+'" '         +'style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:12px;font-family:inherit;min-height:120px;resize:vertical;margin-bottom:14px;box-sizing:border-box" '         +'oninput="autoSavePkg()">'+escH(p.activateMsg||'')+'</textarea>'       +'<div style="display:flex;gap:8px">'         +'<button onclick="savePkgsInline()" style="flex:1;padding:11px;border-radius:10px;border:none;background:#1565C0;color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">💾 บันทึก</button>'         +'<button onclick="deletePkgInline('+_pkgCurrentFolder+')" style="padding:11px 16px;border-radius:10px;border:none;background:#FFEBEE;color:#C62828;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">🗑️</button>'       +'</div>'     +'</div>';
-    return;
-  }
-
-  // ── folder list ──
   if(!pkgs || !pkgs.length){
-    el.innerHTML = '<div style="text-align:center;padding:24px;color:#BDBDBD;font-size:13px">ยังไม่มีแพ็คเกจ<br>กด ➕ เพิ่มได้เลยค่ะ</div>';
+    el.innerHTML = '<div style="text-align:center;padding:28px;color:#BDBDBD;font-size:13px">ยังไม่มีแพ็คเกจ<br>กด ➕ เพิ่มได้เลยค่ะ</div>';
     return;
   }
   el.innerHTML = pkgs.map(function(p,i){
-    var color   = p.color || "#1565C0";
-    var preview = p.code || "";
-    return '<div onclick="syncPkgInputs();_pkgCurrentFolder='+i+';renderPkgMgrList()" '
-      +'style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:1.5px solid #E5E7EB;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 1px 4px rgba(0,0,0,.06)">'
+    var color = p.color || "#1565C0";
+    var preview = p.code ? "รหัส: "+p.code : (p.name||"");
+    return '<div onclick="openPkgForm(pkgs['+i+'],'+i+')" style="background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:10px;border:1.5px solid #E5E7EB;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 1px 4px rgba(0,0,0,.06)">'
       +'<div style="width:44px;height:44px;background:'+color+'18;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">'+(p.emoji||"📶")+'</div>'
       +'<div style="flex:1;min-width:0">'
         +'<div style="font-weight:800;font-size:14px;color:'+color+';margin-bottom:3px">'+escH(p.name||"-")+'</div>'
-        +(preview?'<div style="font-size:12px;color:#9E9E9E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:monospace">'+escH(preview)+'</div>':"")
+        +'<div style="font-size:12px;color:#9E9E9E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escH(preview)+'</div>'
       +'</div>'
       +'<span style="color:#BDBDBD;font-size:18px">›</span>'
       +'</div>';
   }).join("");
 }
 
-// ── ฟังก์ชัน alias เพื่อ backward-compat ──
-function deletePkg(idx){ deletePkgInline(idx); }
 
-
-
-
-/* ══ DELETE ORDER ══ */
-var _deleteRef    = null;
-var _deletePkgIdx = null;
-var _deleteType   = "order"; // "order" | "pkg"
-// รหัสเก็บแบบ obfuscated เพื่อไม่ให้อ่านตรงๆ
-var _dpin = atob("MTIzNDU2"); // 123456
-
-function showDeleteConfirm(ref){
-  _deleteRef  = ref;
-  _deleteType = "order";
-  var inp = document.getElementById("delete-pin");
-  var err = document.getElementById("delete-pin-err");
-  var lbl = document.getElementById("delete-modal-label");
-  if(inp){ inp.value=""; setTimeout(function(){ inp.focus(); }, 100); }
-  if(err) err.style.display="none";
-  if(lbl) lbl.textContent = "ลบประวัติคำขอนี้";
-  var modal = document.getElementById("delete-modal");
-  if(modal) modal.style.display="flex";
-}
-
-function closeDeleteModal(){
-  _deleteRef = null;
-  var modal = document.getElementById("delete-modal");
-  if(modal) modal.style.display = "none";
-}
-
-function doDeleteOrder(){
-  var inp = document.getElementById("delete-pin");
-  var err = document.getElementById("delete-pin-err");
-  if(!inp) return;
-  if(inp.value !== _dpin){
-    if(err) err.style.display = "block";
-    inp.value = "";
-    inp.focus();
-    return;
-  }
-  var ref  = _deleteRef;
-  var pidx = _deletePkgIdx;
-  var type = _deleteType;
-  closeDeleteModal();
-
-  if(type === "pkg"){
-    // ── ลบแพ็คเกจ ──
-    if(pidx === null || !pkgs[pidx]) return;
-    pkgs.splice(pidx, 1);
-    _pkgCurrentFolder = null;
-    localStorage.setItem("pt_packages", JSON.stringify(pkgs));
-    if(fbDB || initFirebase()) fbDB.ref("/packages").set(pkgs).catch(function(){});
-    renderPkgMgrList();
-    showToast("🗑️ ลบแพ็คเกจแล้วค่ะ", "#374151", "#F3F4F6");
-    return;
-  }
-
-  // ── ลบ order ──
-  if(!ref) return;
-  if(fbDB || initFirebase()){
-    fbDB.ref("/orders/" + ref).remove().catch(function(e){ console.warn("Firebase delete err:", e.message); });
-  }
-  reqs = reqs.filter(function(r){ return r.ref !== ref; });
-  try{ localStorage.setItem("pt_requests", JSON.stringify(reqs)); }catch(_){}
-
-  var olv = document.getElementById("ord-list-view");
-  var odv = document.getElementById("ord-detail-view");
-  if(olv) olv.style.display="flex";
-  if(odv) odv.style.display="none";
-  var homeBtn = document.getElementById("home-btn");
-  if(homeBtn) homeBtn.style.display="none";
-  setTopbar("", null, "");
-  aref = null;
-
-  renderOrdList();
-  renderDashboard();
-  updateBadges();
-  showToast("🗑️ ลบประวัติเรียบร้อยแล้วค่ะ", "#374151", "#F3F4F6");
-}
 
 // ── PAGE INIT ──────────────────────────────────
 if(document.readyState === "loading"){
@@ -2684,24 +2460,7 @@ if(document.readyState === "loading"){
 }
 setInterval(function(){
   if(!fbDB) startRealtimeSync();
-}, 5000);
+}, 30000);
 </script>
-
-<!-- ── Delete Confirm Modal ── -->
-<div id="delete-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;padding:20px">
-  <div style="background:#fff;border-radius:18px;padding:24px 20px;width:100%;max-width:340px;box-shadow:0 8px 32px rgba(0,0,0,.25)">
-    <div style="text-align:center;font-size:36px;margin-bottom:8px">🗑️</div>
-    <div id="delete-modal-label" style="font-weight:900;font-size:16px;color:#BE123C;text-align:center;margin-bottom:6px">ลบประวัติคำขอ</div>
-    <div style="font-size:12px;color:#6B7280;text-align:center;margin-bottom:16px">ใส่รหัสผ่านเพื่อยืนยันการลบ<br>ข้อมูลจะถูกลบถาวรทั้งระบบ</div>
-    <input id="delete-pin" type="password" inputmode="numeric" maxlength="6"
-      placeholder="รหัสผ่าน"
-      style="width:100%;border:2px solid #E0E0E0;border-radius:12px;padding:13px 16px;font-size:20px;font-weight:900;text-align:center;letter-spacing:6px;outline:none;font-family:inherit;box-sizing:border-box;margin-bottom:6px"
-      oninput="document.getElementById('delete-pin-err').style.display='none'"
-      onkeydown="if(event.key==='Enter')doDeleteOrder()">
-    <div id="delete-pin-err" style="display:none;font-size:11px;color:#BE123C;font-weight:700;text-align:center;margin-bottom:8px">❌ รหัสไม่ถูกต้อง</div>
-    <button onclick="doDeleteOrder()" style="width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#C62828,#B71C1C);color:#fff;font-weight:900;font-size:14px;cursor:pointer;font-family:inherit;margin-bottom:8px">🗑️ ยืนยันลบ</button>
-    <button onclick="closeDeleteModal()" style="width:100%;padding:11px;border-radius:12px;border:none;background:#F5F5F5;color:#374151;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit">ยกเลิก</button>
-  </div>
-</div>
 </body>
 </html>
