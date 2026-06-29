@@ -516,7 +516,276 @@ const ts=()=>new Date().toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-dig
 const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
 const isMob=/Android|iPhone|iPad/i.test(navigator.userAgent);
 
+/* ══════ SUPABASE ══════ */
+/* ══════ QUOTA SYSTEM — ป้องกันซ้ำ + นับสิทธิ์ ══════ */
+function getQuotaDB(){ try{return JSON.parse(localStorage.getItem("pt_quota")||"{}");}catch(_){return {};} }
+function saveQuotaDB(db){ try{localStorage.setItem("pt_quota",JSON.stringify(db));}catch(_){} }
 
+// เรียกเมื่อ Admin กดเปิดเน็ต — บันทึกการใช้สิทธิ์
+window.markActivated = function(orderNo, simPhone, refNo, quota) {
+  // บันทึก localStorage
+  var db = getQDB();
+  if (!db[orderNo]) db[orderNo] = { usedCount:0, maxQuota: quota||1, activations:[] };
+  if(quota) db[orderNo].maxQuota = quota;
+  db[orderNo].usedCount = (db[orderNo].usedCount||0) + 1;
+  db[orderNo].activations = db[orderNo].activations || [];
+  db[orderNo].activations.push({ sim:simPhone, ref:refNo, at:new Date().toISOString() });
+  saveQDB(db);
+  // บันทึก Firebase — ให้ลูกค้าทุกเครื่องเช็คได้
+  if(fbDB){
+    var q = db[orderNo];
+    fbDB.ref("/quota/"+orderNo).set({
+      orderNo:    orderNo,
+      usedCount:  q.usedCount,
+      maxQuota:   q.maxQuota,
+      activations: q.activations,
+      updatedAt:  new Date().toISOString()
+    }).catch(function(){});
+  }
+  console.log("✅ สิทธิ์: "+orderNo+" ("+db[orderNo].usedCount+"/"+db[orderNo].maxQuota+")");
+};
+
+
+// ดึงสรุปสิทธิ์ของออเดอร์
+function getQuotaSummary(orderNo) {
+  const db    = getQuotaDB();
+  const entry = db[orderNo] || { usedCount:0, maxQuota:1, activations:[] };
+  return {
+    usedCount: entry.usedCount || 0,
+    maxQuota:  entry.maxQuota  || 1,
+    remaining: (entry.maxQuota||1) - (entry.usedCount||0),
+    activations: entry.activations || [],
+    pending: entry.pending || [],
+  };
+}
+
+// Admin ปรับโควต้า (จำนวนซิมในออเดอร์)
+function setQuota(orderNo, quota) {
+  const db = getQuotaDB();
+  if (!db[orderNo]) db[orderNo] = { usedCount:0, maxQuota:1, activations:[] };
+  db[orderNo].maxQuota = quota;
+  saveQuotaDB(db);
+}
+
+/* ══════ LOAD / SAVE ══════ */
+const ORDERS_API = ""; // ไม่ใช้แล้ว Firebase แทน
+var fbDB = null;
+
+// Firebase init — รอให้ SDK โหลดเสร็จก่อน
+function initFirebase(){
+  if(typeof firebase === "undefined"){
+    console.warn("Firebase SDK not loaded yet, retrying in 500ms...");
+    setTimeout(function(){ if(initFirebase()) startRealtimeSync(); }, 500);
+    return false;
+  }
+  try{
+    var FB_CONFIG = {
+      apiKey:      "AIzaSyCnvEoyaadcOManjeyLcpkIM_rtWt3GLy8",
+      authDomain:  "programthanrich.firebaseapp.com",
+      databaseURL: "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId:   "programthanrich"
+    };
+    if(!firebase.apps || !firebase.apps.length) firebase.initializeApp(FB_CONFIG);
+    fbDB = firebase.database();
+    console.log("✅ Firebase ready");
+    return true;
+  }catch(e){
+    console.warn("Firebase init failed:", e.message);
+    setTimeout(function(){ if(initFirebase()) startRealtimeSync(); }, 1000);
+    return false;
+  }
+}
+
+// Real-time listener — Orders + Packages
+function startRealtimeSync(){
+  if(!fbDB && !initFirebase()){
+    return;
+  }
+
+  // ── Orders real-time (ขึ้นก่อนเพื่อให้ข้อมูลแสดงเร็วที่สุด) ──
+  fbDB.ref("/orders").on("value", function(snap){
+    var data = snap.val();
+    var newReqs = [];
+    if(data){ newReqs = Object.values(data); }
+    newReqs.sort(function(a,b){
+      var ta = b.createdAt||b.submittedAt||"";
+      var tb = a.createdAt||a.submittedAt||"";
+      return ta.localeCompare(tb);
+    });
+    reqs = newReqs;
+    localStorage.setItem("pt_requests", JSON.stringify(reqs));
+    console.log("📡 Orders:", reqs.length);
+    renderChatList();
+    renderOrdList();
+    renderDashboard();
+    updateBadges();
+    $("rts").textContent = "🔴 LIVE — อัพเดท " + ts();
+  });
+
+  // ── Packages real-time ────────────────────────
+  fbDB.ref("/packages").on("value", function(snap){
+    var fbPkgs = snap.val();
+    if(fbPkgs && Array.isArray(fbPkgs) && fbPkgs.length > 0){
+      pkgs = fbPkgs;
+      localStorage.setItem("pt_packages", JSON.stringify(pkgs));
+      // ถ้าหน้า sc-pkgs เปิดอยู่ให้ refresh
+      if(document.getElementById("sc-pkgs").classList.contains("on")){
+        renderPkgMgrList();
+      }
+    } else {
+      // Firebase ว่าง — push local pkgs ขึ้น
+      if(pkgs && pkgs.length > 0 && (fbDB||initFirebase())){
+        fbDB.ref("/packages").set(pkgs).catch(function(){});
+      }
+    }
+  });
+
+
+  // ── Chats real-time (LINE OA) ────────────────────
+  fbDB.ref("/chats").on("value", function(snap){
+    var data = snap.val();
+    window._chats = data ? Object.values(data) : [];
+    window._chats.sort(function(a,b){
+      return ((b.info||b).lastTs||0) - ((a.info||a).lastTs||0);
+    });
+    if(document.getElementById("sc0") && document.getElementById("sc0").classList.contains("on")){
+      renderChatListFB();
+    }
+  });
+
+  // ── Orders real-time ────────────────────────────
+  // ── NetGuides real-time ──────────────────────
+  fbDB.ref("/settings/netGuides").on("value", function(snap){
+    var d = snap.val();
+    if(d !== null && d !== undefined){
+      var arr = Array.isArray(d) ? d : Object.values(d);
+      arr = arr.filter(function(g){ return g && (g.keyword||g.steps); });
+      if(arr.length > 0){
+        netGuides = arr;
+        localStorage.setItem("pt_netguides", JSON.stringify(netGuides));
+        // render ถ้าหน้าเปิดอยู่
+        var sc = document.getElementById("sc-netguide");
+        if(sc && sc.classList.contains("on")) renderNetGuideList();
+      }
+    } else {
+      // Firebase ว่าง — push local ขึ้น
+      try{
+        var loc = localStorage.getItem("pt_netguides");
+        if(loc){ var local=JSON.parse(loc); if(local&&local.length>0){ netGuides=local; fbDB.ref("/settings/netGuides").set(netGuides); } }
+      }catch(_){}
+    }
+  });
+
+}
+
+function loadAll(){
+  try{ pkgs = JSON.parse(localStorage.getItem("pt_packages")||"null")||DEFAULT_PKGS; }catch(_){ pkgs=DEFAULT_PKGS; }
+  reqs = [];
+  try{ var ng=localStorage.getItem("pt_netguides"); if(ng) netGuides=JSON.parse(ng); }catch(_){}
+
+  var tb = $("tabbar");
+  if(tb) tb.style.display="flex";
+  switchTab(1);
+  renderOrdList();
+  renderDashboard();
+  updateBadges();
+  $("rts").textContent = "⏳ กำลังเชื่อมต่อ Firebase...";
+  setTopbar("",null,"");
+
+  // init Firebase แล้ว start listener ทันที
+  if(initFirebase()){
+    startRealtimeSync();
+  }
+  // initFirebase จะ retry+startRealtimeSync เองถ้า SDK ยังไม่พร้อม
+
+  if(ORDERS_API) syncFromAPI();
+  syncPkgsFromFirebase();
+  loadNetGuides();
+}
+
+function syncPkgsFromFirebase(){
+  if(!fbDB && !initFirebase()) return;
+  fbDB.ref("/packages").once("value").then(function(snap){
+    var fbPkgs = snap.val();
+    if(fbPkgs && Array.isArray(fbPkgs) && fbPkgs.length > 0){
+      pkgs = fbPkgs;
+      localStorage.setItem("pt_packages", JSON.stringify(pkgs));
+      console.log("✅ pkgs synced from Firebase:", pkgs.length, "packages");
+    } else {
+      // Firebase ว่าง — upload LOCAL pkgs ขึ้น Firebase
+      if(pkgs && pkgs.length > 0){
+        fbDB.ref("/packages").set(pkgs).catch(function(){});
+      }
+    }
+  }).catch(function(e){ console.warn("syncPkgs:", e.message); });
+}
+
+function syncFromAPI(){
+  fetch(ORDERS_API, {
+    method: "GET",
+    headers: {"Content-Type":"application/json"},
+    cache: "no-store"
+  })
+  .then(function(r){
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    return r.json();
+  })
+  .then(function(data){
+    if(!data.orders || !data.orders.length) return;
+    var local = JSON.parse(localStorage.getItem("pt_requests")||"[]");
+    var localMap = {};
+    local.forEach(function(o){ localMap[o.ref]=o; });
+    var merged = data.orders.map(function(o){
+      var lo = localMap[o.ref];
+      if(lo){
+        if(lo.status)           o.status           = lo.status;
+        if(lo.shopeeVerified)   o.shopeeVerified   = lo.shopeeVerified;
+        if(lo.lineMessages)     o.lineMessages     = lo.lineMessages;
+        if(lo.activatedPackage) o.activatedPackage = lo.activatedPackage;
+        if(lo.activatedAt)      o.activatedAt      = lo.activatedAt;
+        if(lo.aiResult)         o.aiResult         = lo.aiResult;
+      }
+      return o;
+    });
+    local.forEach(function(lo){
+      if(!merged.find(function(o){return o.ref===lo.ref;})) merged.push(lo);
+    });
+    reqs = merged;
+    localStorage.setItem("pt_requests", JSON.stringify(reqs));
+    renderChatList();
+    renderOrdList();
+    renderDashboard();
+    updateBadges();
+    $("rts").textContent="อัพเดท "+ts()+" ✅";
+  })
+  .catch(function(e){
+    // API ไม่พร้อม — ใช้ localStorage ปกติ ไม่แสดง error
+  });
+}
+function saveReqs(){
+  try{localStorage.setItem("pt_requests",JSON.stringify(reqs));}catch(_){}
+  // sync status กลับไป Firebase
+  reqs.forEach(function(r){
+    if(r.ref && r.status && r.status!=="pending" && fbDB){
+      try{
+        // อัพเดทเฉพาะ status fields ไม่ทับ lineUserId
+        var updates = {
+          status:           r.status,
+          shopeeVerified:   r.shopeeVerified||"pending",
+          activatedPackage: r.activatedPackage||null,
+          activatedAt:      r.activatedAt||null
+        };
+        if(r.maxQuota) updates.maxQuota = r.maxQuota;
+        fbDB.ref("/orders/"+r.ref).update(updates);
+      }catch(_){}
+    }
+  });
+}
+
+function demoReqs(){return[
+  {ref:"PT571784",platform:"shopee",orderNo:"TH01058RRVBA5D0",simPhone:"0951986769",pkgId:"TRUE2MB159",pkgName:"ซิมเทพดีแทค 2Mbps ไม่จำกัด",pkgCode:"TRUE2MB159(FREE)",status:"pending",shopeeVerified:"pending",submittedAt:"09:31",lineDisplayName:"คุณปวีณา",linePictureUrl:null,imgOrder:null,imgSim:null,imgReg:null,aiResult:null,lineMessages:[{id:1,from:"customer",text:"สวัสดีค่ะ ขอรับเน็ตฟรีเดือนแรกค่ะ\nเลขพัสดุ TH01058RRVBA5D0\nเบอร์ซิม 0951986769\nแพ็คเกจ ซิมเทพดีแทค 2Mbps ไม่จำกัด",time:"09:31"}]},
+  {ref:"PT524600",platform:"tiktok",orderNo:"TKT2024005678",simPhone:"0987654321",pkgId:"DTAC30D",pkgName:"ซิม DTAC 2Mbps ไม่จำกัด",pkgCode:"DTAC30DAYS(FREE)",status:"activated",shopeeVerified:"confirmed",submittedAt:"08:30",lineDisplayName:"คุณวิชัย",linePictureUrl:null,imgOrder:null,imgSim:null,imgReg:null,aiResult:{verdict:"pass",summary:"ข้อมูลตรงกัน"},activatedPackage:"DTAC30D",activatedAt:"08:45",lineMessages:[{id:1,from:"customer",text:"ขอรับเน็ตฟรีค่ะ",time:"08:30"},{id:2,from:"admin",text:"ดำเนินการเรียบร้อยแล้วค่ะ ✅",time:"08:45"}]},
+];}
 
 function updateBadges(){
   var notifPend = reqs.filter(function(r){ return r.status==="pending"; }).length;
@@ -587,7 +856,7 @@ function renderChatListFB(){
 
   function chatRow(chat){
     var info = chat.info || chat;
-    var userId = info._lineUserId || info.userId || "";
+    var userId = info.userId || "";
     var name = info.displayName || userId;
     var pic = info.pictureUrl || "";
     var lastMsg = info.lastMsg || "";
@@ -744,6 +1013,28 @@ function openChatFB(userId, name, pic){
   }
 }
 
+async function sendChatMsg(userId){
+  var inp = document.getElementById("chat-input-"+userId);
+  if(!inp) return;
+  var text = inp.value.trim();
+  if(!text) return;
+  inp.value = "";
+
+  var now = new Date();
+  var ts = now.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});
+  var msgId = "m"+Date.now();
+
+  // บันทึก Firebase
+  if(fbDB){
+    fbDB.ref("/chats/"+userId+"/messages/"+msgId).set({
+      id: msgId, from: "admin", text: text, time: ts, ts: Date.now()
+    });
+    fbDB.ref("/chats/"+userId+"/info").update({lastMsg: "คุณ: "+text, lastTime: ts, lastTs: Date.now(), unread: false});
+  }
+
+  // ส่งผ่าน Worker
+  sendLineMsg(userId, text);
+}
 
 function openChat(ref){
   activeChat=ref;
@@ -783,191 +1074,61 @@ function renderQP(){
     el.innerHTML='<div style="font-size:10px;color:#9E9E9E;font-weight:700;margin-bottom:5px">⚡ ตอบด่วน</div>'+QUICK.map(function(q){var t=q.t.replace(/'/g,"&apos;");return '<button class="qbtn" onclick="chatQuickSend(this.dataset.t)" data-t="'+t+'">['+q.k+'] '+q.t.slice(0,44)+'...</button>';}).join("");
 }
 function chkSend(){$("send-btn").disabled=!$("msg-input").value.trim();}
-// sendMsg อยู่ใน NEW SEND SYSTEM ด้านล่าง
+function sendMsg(){
+  var v=$("msg-input").value.trim(); if(!v)return;
+  var req=reqs.find(function(r){return r.ref===activeChat;});
+  addMsgToReq(activeChat,"admin",v);
+  // ส่งไปหาลูกค้าผ่าน LINE
+  if(req && req.lineUserId) sendLineMsg(req.lineUserId, v);
+  $("msg-input").value=""; $("send-btn").disabled=true;
+}
+function chatQuickSend(t){if(t&&t.target)t=t.target.dataset.t;addMsgToReq(activeChat,"admin",t);showQ=false;renderQP();$("qtoggle").style.background="#E8F5E9";$("qtoggle").style.color="#06C755";}
+// ส่งข้อความจาก Admin → ลูกค้า ผ่าน Vercel API (หลีกเลี่ยง CORS)
+async function sendLineMsg(userId, text) {
+  if(!userId){ console.warn("❌ userId ว่าง"); return; }
+  if(!text){ console.warn("❌ text ว่าง"); return; }
+  console.log("📤 ส่งหา:", userId.slice(0,8)+"...");
+  var LINE_TOKEN = "/vY4vJJFVsmc87w5GAICEhdlpOPHhQRcSbxwf0IHxAexw2p68xaHTvcEA7G/e0MPScdVCeVnus2Ud/qv8NZ42J3b3Nwec5/O+8pYcau+FktdFMD8G+Jb/GYwHpTGLSUSMsnHK5txylLa1Lt4Iv2P/QdB04t89/1O/w1cDnyilFU=";
+  try {
+    var r = await fetch("https://api.line.me/v2/bot/message/push", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + LINE_TOKEN
+      },
+      body: JSON.stringify({
+        to: userId,
+        messages: [{ type: "text", text: text }]
+      })
+    });
+    console.log(r.ok ? "✅ ส่งสำเร็จ" : "❌ LINE error: "+r.status);
+  } catch(e) { console.warn("❌ sendLineMsg:", e.message); }
+}
 
-/* ══════════════════════════════════════════════════════
-   ระบบส่งข้อความ LINE — เขียนใหม่ทั้งหมด
-   Worker endpoint: /send  รับ { to: LINE_userId, text: string }
-══════════════════════════════════════════════════════ */
-
-// ── 1. ส่งข้อความไปหา LINE userId โดยตรง ──
-async function sendLineMsg(userId, text){
-  if(!userId || !text){
-    console.warn("❌ sendLineMsg หยุด: userId=["+userId+"] text=["+text+"]");
-    return false;
-  }
-  if(userId.length < 10){
-    console.warn("❌ userId ดูผิดปกติ (สั้นเกิน):", userId);
-    return false;
-  }
-  console.log("📤 sendLineMsg → ["+userId.slice(0,10)+"...] ข้อความ: "+text.slice(0,40));
-  try{
-    var r = await fetch("https://programthanarich.programsimpro.workers.dev/send", {
+// ส่งข้อความจาก Admin ไปหาลูกค้า + บันทึก Firebase
+async function sendAdminMsg(userId, text) {
+  if(!userId) return;
+  const LINE_TOKEN = "/vY4vJJFVsmc87w5GAICEhdlpOPHhQRcSbxwf0IHxAexw2p68xaHTvcEA7G/e0MPScdVCeVnus2Ud/qv8NZ42J3b3Nwec5/O+8pYcau+FktdFMD8G+Jb/GYwHpTGLSUSMsnHK5txylLa1Lt4Iv2P/QdB04t89/1O/w1cDnyilFU=";
+  // ส่งผ่าน Vercel API เพื่อหลีกเลี่ยง CORS
+  try {
+    await fetch("https://programthanarich.programsimpro.workers.dev/notify", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({to: userId, text: text})
+      body: JSON.stringify({ _sendMsg: true, to: userId, text, token: LINE_TOKEN })
     });
-    var d = {};
-    try{ d = await r.json(); } catch(_){}
-    if(r.ok && !d.error){
-      console.log("✅ LINE ส่งสำเร็จ → "+userId.slice(0,8)+"...");
-      return true;
-    } else {
-      console.error("❌ LINE error HTTP "+r.status+" body:", JSON.stringify(d));
-      // แสดง toast เตือน admin
-      if(typeof showToast==="function") showToast("⚠️ ส่ง LINE ไม่สำเร็จ: "+JSON.stringify(d).slice(0,60), "#fff", "#E53935");
-      return false;
-    }
-  } catch(e){
-    console.error("❌ sendLineMsg network error:", e.message);
-    if(typeof showToast==="function") showToast("⚠️ Network error: "+e.message, "#fff", "#E53935");
-    return false;
-  }
-}
-
-// ── 2. ค้นหา LINE userId จาก req (รองรับทุก field + lookup จาก /chats) ──
-async function resolveLineUserId(req){
-  if(!req) return null;
-
-  // 1) ลอง field โดยตรงก่อน (ต้องขึ้นต้นด้วย U และยาวพอ)
-  var uid = req.lineUserId || req.userId || req.line_user_id || null;
-  if(uid && uid.length > 10){ console.log("✅ uid จาก req field:", uid.slice(0,8)+"..."); return uid; }
-
-  // 2) ค้นจาก window._chats ที่โหลดไว้แล้ว (เร็วกว่า)
-  var cached = window._chats || [];
-  var norm = function(s){ return s ? String(s).replace(/[^0-9]/g,"") : ""; };
-  for(var i=0; i<cached.length; i++){
-    var info = cached[i].info || cached[i];
-    var chatUid = info._lineUserId || info.userId || "";
-    if(!chatUid) continue;
-    if( (req.simPhone && norm(info.simPhone) === norm(req.simPhone) && norm(req.simPhone).length >= 9) ||
-        (req.ref      && info.ref      === req.ref) ||
-        (req.orderNo  && info.orderNo  === req.orderNo) ){
-      uid = chatUid;
-      req.lineUserId = uid;
-      if(fbDB) fbDB.ref("/orders/"+req.ref).update({lineUserId: uid}).catch(function(){});
-      console.log("✅ uid จาก _chats cache:", uid.slice(0,8)+"...");
-      return uid;
-    }
-  }
-
-  // 3) ถ้ายังไม่เจอ → query Firebase /chats โดยตรง
-  if(!fbDB){ console.warn("❌ fbDB ยังไม่พร้อม"); return null; }
-  try{
-    var snap = await fbDB.ref("/chats").once("value");
-    var chats = snap.val();
-    if(!chats){ console.warn("❌ /chats ว่าง"); return null; }
-    for(var k in chats){
-      var info2 = chats[k].info || chats[k];
-      if( (req.simPhone && norm(info2.simPhone) === norm(req.simPhone) && norm(req.simPhone).length >= 9) ||
-          (req.ref      && info2.ref      === req.ref) ||
-          (req.orderNo  && info2.orderNo  === req.orderNo) ){
-        uid = k; // key = LINE userId
-        req.lineUserId = uid;
-        fbDB.ref("/orders/"+req.ref).update({lineUserId: uid}).catch(function(){});
-        console.log("✅ uid จาก /chats Firebase:", uid.slice(0,8)+"...");
-        return uid;
-      }
-    }
-  } catch(e){ console.error("❌ /chats lookup error:", e.message); }
-
-  console.warn("❌ หา lineUserId ไม่เจอ ref="+req.ref+" simPhone="+req.simPhone);
-  return null;
-}
-
-// ── 3. ส่งข้อความ + บันทึก Firebase /chats ──
-async function sendToCustomer(req, text){
-  if(!req || !text) return;
-  var uid = await resolveLineUserId(req);
-  if(!uid){ console.warn("❌ sendToCustomer: ไม่มี uid"); return; }
-
-  // ส่ง LINE จริง
-  await sendLineMsg(uid, text);
-
-  // บันทึกประวัติใน req.lineMessages
-  addMsgToReq(req.ref, "admin", text);
-
-  // บันทึกใน Firebase /chats/{uid}/messages
-  if(fbDB){
-    var now = new Date();
-    var tstr = now.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});
-    var msgId = "adm"+Date.now();
-    fbDB.ref("/chats/"+uid+"/messages/"+msgId).set({
-      id: msgId, from: "admin", text: text, time: tstr, ts: Date.now()
-    }).catch(function(){});
-    fbDB.ref("/chats/"+uid+"/info").update({
-      lastMsg: "คุณ: "+text, lastTime: tstr, lastTs: Date.now(), unread: false
-    }).catch(function(){});
-  }
-}
-
-// ── 4. ส่งจาก Tab Chat (openChatFB) — userId คือ LINE userId โดยตรง ──
-async function sendChatMsg(userId){
-  var inp = document.getElementById("chat-input-"+userId);
-  if(!inp) return;
-  var text = inp.value.trim();
-  if(!text) return;
-  inp.value = "";
-
-  // ส่ง LINE
-  await sendLineMsg(userId, text);
-
-  // บันทึก Firebase /chats
-  if(fbDB){
-    var now = new Date();
-    var tstr = now.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});
-    var msgId = "adm"+Date.now();
+  } catch(_) {}
+  // บันทึกใน Firebase
+  if(fbDB && userId) {
+    var msgId = "a" + Date.now();
+    var ts2   = new Date().toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});
     fbDB.ref("/chats/"+userId+"/messages/"+msgId).set({
-      id: msgId, from: "admin", text: text, time: tstr, ts: Date.now()
-    }).catch(function(){});
+      id:msgId, from:"admin", text, time:ts2, timestamp:Date.now()
+    });
     fbDB.ref("/chats/"+userId+"/info").update({
-      lastMsg: "คุณ: "+text, lastTime: tstr, lastTs: Date.now(), unread: false
-    }).catch(function(){});
+      lastMessage:"คุณ: "+text, lastTime:ts2, unread:false
+    });
   }
 }
-
-// ── 5. ส่งจากช่อง Order Detail (od-input) ──
-async function sendOdMsg(){
-  var v = $("od-input").value.trim(); if(!v) return;
-  var req = reqs.find(function(r){ return r.ref===aref; });
-  if(!req){ console.warn("❌ sendOdMsg: req ไม่เจอ"); return; }
-  $("od-input").value = ""; $("od-send").disabled = true;
-  await sendToCustomer(req, v);
-}
-
-// ── 6. ปุ่มตอบด่วน Order Detail ──
-async function odQuickSend(t){
-  if(t && t.target) t = t.target.dataset.t;
-  if(!t) return;
-  var req = reqs.find(function(r){ return r.ref===aref; });
-  showOdQ = false; renderOdQP();
-  $("od-qt").style.background = "#E3F2FD"; $("od-qt").style.color = "#1565C0";
-  await sendToCustomer(req, t);
-}
-
-// ── 7. ส่งจากช่อง Chat Tab (msg-input) ──
-async function sendMsg(){
-  var v = $("msg-input").value.trim(); if(!v) return;
-  var req = reqs.find(function(r){ return r.ref===activeChat; });
-  $("msg-input").value = ""; $("send-btn").disabled = true;
-  await sendToCustomer(req, v);
-}
-
-// ── 8. ปุ่มตอบด่วน Chat Tab ──
-async function chatQuickSend(t){
-  if(t && t.target) t = t.target.dataset.t;
-  if(!t || !activeChat) return;
-  var req = reqs.find(function(r){ return r.ref===activeChat; });
-  showQ = false; renderQP();
-  $("qtoggle").style.background = "#E8F5E9"; $("qtoggle").style.color = "#06C755";
-  await sendToCustomer(req, t);
-}
-
-// ── 9. backward compat ──
-async function sendAdminMsg(userId, text){ await sendLineMsg(userId, text); }
-function getLineUserId(req){ return req && (req.lineUserId || req.userId || req.line_user_id || null); }
-async function sendLineMsgSafe(req, text){ await sendToCustomer(req, text); }
-
 
 function addMsgToReq(ref,from,text){
   var req=reqs.find(function(r){return r.ref===ref;}); if(!req)return;
@@ -1532,7 +1693,7 @@ async function sendPackageAndProcess(ref, pkgId){
     .replace(/\{simCode\}/g,   req.simCode||"")
     .replace(/\{branch\}/g,    req.branchName||"");
 
-  await sendToCustomer(req, msg);
+  if(req.lineUserId) sendLineMsg(req.lineUserId, msg);
   addMsgToReq(ref, "admin", msg);
 
   // อัพเดทสถานะ → processing
@@ -1573,7 +1734,14 @@ function renderOdQP(){
     el.innerHTML='<div style="font-size:10px;color:#9E9E9E;font-weight:700;margin-bottom:5px">⚡ ตอบด่วน</div>'+QUICK.map(function(q){var t=q.t.replace(/'/g,"&apos;");return '<button class="qbtn" onclick="odQuickSend(this.dataset.t)" data-t="'+t+'">['+q.k+'] '+q.t.slice(0,44)+'...</button>';}).join("");
 }
 function chkOdSend(){$("od-send").disabled=!$("od-input").value.trim();}
-// sendOdMsg และ odQuickSend อยู่ด้านบนแล้ว
+function sendOdMsg(){
+  var v=$("od-input").value.trim(); if(!v)return;
+  var req=reqs.find(function(r){return r.ref===aref;});
+  addMsgToReq(aref,"admin",v);
+  if(req && req.lineUserId) sendLineMsg(req.lineUserId, v);
+  $("od-input").value=""; $("od-send").disabled=true;
+}
+function odQuickSend(t){if(t&&t.target)t=t.target.dataset.t;addMsgToReq(aref,"admin",t);showOdQ=false;renderOdQP();$("od-qt").style.background="#E3F2FD";$("od-qt").style.color="#1565C0";}
 function toggleNet(){showActivateMenu();}
 
 /* ══════ ORDER BOX ══════ */
@@ -1731,7 +1899,7 @@ function renderOrderBox(req){
 
 function detectType(no){const n=(no||"").trim().toUpperCase();if(/^TH[0-9A-Z]{10,}$/.test(n)&&/[A-Z]/.test(n.slice(2)))return"flash";if(/^TH[0-9]{10,}[A-Z]?$/.test(n))return"spx";if(/^(KA|KEX|KER)/.test(n))return"kerry";if(/^JT/.test(n))return"jt";if(/^\d{15,20}$/.test(n))return"shopee_order";return"unknown";}
 
-async function confirmOrd(ref,verdict){
+function confirmOrd(ref,verdict){
   const req=reqs.find(r=>r.ref===ref);if(!req)return;
   req.shopeeVerified=verdict;
 
@@ -1743,34 +1911,11 @@ async function confirmOrd(ref,verdict){
   else if(verdict==="rejected"){
     req.status="rejected";
     // แจ้งลูกค้าผ่าน LINE
-    await sendToCustomer(req, "ขออภัยค่ะ ไม่พบคำสั่งซื้อนี้ในระบบ กรุณาตรวจสอบและติดต่อใหม่อีกครั้งนะคะ 🙏");
+    if(req.lineUserId) sendLineMsg(req.lineUserId, "ขออภัยค่ะ ไม่พบคำสั่งซื้อนี้ในระบบ กรุณาตรวจสอบและติดต่อใหม่อีกครั้งนะคะ 🙏");
     addMsgToReq(ref,"admin","ขออภัยค่ะ ไม่พบคำสั่งซื้อนี้ในระบบ กรุณาตรวจสอบและติดต่อใหม่อีกครั้งนะคะ 🙏");
   }
   else{req.shopeeVerified="pending";req.status="pending";}
   saveReqs();renderOrdDetail(ref);renderOrdList();
-}
-
-// ── Quota helper functions ──
-function getQuotaDB(){ try{return JSON.parse(localStorage.getItem("pt_quota")||"{}");}catch(_){return {};} }
-function saveQuotaDB(db){ try{localStorage.setItem("pt_quota",JSON.stringify(db));}catch(_){} }
-
-function getQuotaSummary(orderNo){
-  var db = getQuotaDB();
-  var entry = db[orderNo] || {usedCount:0, maxQuota:1, activations:[]};
-  return {
-    usedCount:   entry.usedCount  || 0,
-    maxQuota:    entry.maxQuota   || 1,
-    remaining:   (entry.maxQuota||1) - (entry.usedCount||0),
-    activations: entry.activations || [],
-    pending:     entry.pending     || []
-  };
-}
-
-function setQuota(orderNo, quota){
-  var db = getQuotaDB();
-  if(!db[orderNo]) db[orderNo] = {usedCount:0, maxQuota:1, activations:[]};
-  db[orderNo].maxQuota = quota;
-  saveQuotaDB(db);
 }
 
 // Dialog เลือกจำนวนสิทธิ์
@@ -1826,7 +1971,7 @@ function closeQuotaDialog(){
   if(el) el.remove();
 }
 
-async function applyQuotaConfirm(ref){
+function applyQuotaConfirm(ref){
   if(window._selectedQuota === null || window._selectedQuota === undefined){
     alert("กรุณาเลือกจำนวนสิทธิ์ก่อนค่ะ");
     return;
@@ -1859,7 +2004,7 @@ async function applyQuotaConfirm(ref){
     "✅ คงเหลือ: " + quota + " สิทธิ์\n\n" +
     "ทีมงานกำลังดำเนินการเปิดเน็ตฟรีให้ค่ะ รอสักครู่นะคะ 🙏";
 
-  await sendToCustomer(req, msg);
+  if(req.lineUserId) sendLineMsg(req.lineUserId, msg);
   addMsgToReq(ref, "admin", msg);
 
   showNet = true;
@@ -1923,7 +2068,7 @@ async function doActivate(pkgId){
     .replace(/\{maxQuota\}/g,  String(q.maxQuota));
 
   // ส่งใน LINE จริง
-  await sendToCustomer(req, notifyMsg);
+  if(req.lineUserId) sendLineMsg(req.lineUserId, notifyMsg);
   addMsgToReq(aref, "admin", notifyMsg);
 
   // อัพเดทสถานะ
@@ -2516,142 +2661,6 @@ function doDeleteOrder(){
   renderDashboard();
   updateBadges();
   showToast("🗑️ ลบประวัติเรียบร้อยแล้วค่ะ", "#374151", "#F3F4F6");
-}
-
-/* ══════ FIREBASE ══════ */
-var fbDB = null;
-
-function initFirebase(){
-  if(typeof firebase === "undefined"){
-    setTimeout(function(){ if(initFirebase()) startRealtimeSync(); }, 500);
-    return false;
-  }
-  try{
-    var FB_CONFIG = {
-      apiKey:      "AIzaSyCnvEoyaadcOManjeyLcpkIM_rtWt3GLy8",
-      authDomain:  "programthanrich.firebaseapp.com",
-      databaseURL: "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId:   "programthanrich"
-    };
-    if(!firebase.apps || !firebase.apps.length) firebase.initializeApp(FB_CONFIG);
-    fbDB = firebase.database();
-    console.log("✅ Firebase ready");
-    return true;
-  }catch(e){
-    console.warn("Firebase init failed:", e.message);
-    setTimeout(function(){ if(initFirebase()) startRealtimeSync(); }, 1000);
-    return false;
-  }
-}
-
-function startRealtimeSync(){
-  if(!fbDB && !initFirebase()) return;
-
-  fbDB.ref("/orders").on("value", function(snap){
-    var data = snap.val();
-    var newReqs = [];
-    if(data){ newReqs = Object.values(data); }
-    newReqs.sort(function(a,b){
-      var ta = b.createdAt||b.submittedAt||"";
-      var tb = a.createdAt||a.submittedAt||"";
-      return ta.localeCompare(tb);
-    });
-    newReqs.forEach(function(r){
-      if(!r.lineUserId && r.userId) r.lineUserId = r.userId;
-    });
-    reqs = newReqs;
-    try{ localStorage.setItem("pt_requests", JSON.stringify(reqs)); }catch(_){}
-    console.log("📡 Orders:", reqs.length);
-    renderChatList();
-    renderOrdList();
-    renderDashboard();
-    updateBadges();
-    var rts = document.getElementById("rts");
-    if(rts) rts.textContent = "🔴 LIVE — อัพเดท " + ts();
-  });
-
-  fbDB.ref("/packages").on("value", function(snap){
-    var fbPkgs = snap.val();
-    if(fbPkgs && Array.isArray(fbPkgs) && fbPkgs.length > 0){
-      pkgs = fbPkgs;
-      try{ localStorage.setItem("pt_packages", JSON.stringify(pkgs)); }catch(_){}
-      var sc = document.getElementById("sc-pkgs");
-      if(sc && sc.classList.contains("on")) renderPkgMgrList();
-    } else {
-      if(pkgs && pkgs.length > 0 && (fbDB||initFirebase())){
-        fbDB.ref("/packages").set(pkgs).catch(function(){});
-      }
-    }
-  });
-
-  fbDB.ref("/chats").on("value", function(snap){
-    var data = snap.val();
-    // เก็บ key (LINE userId) ไว้ใน _lineUserId ของแต่ละ chat
-    window._chats = data ? Object.keys(data).map(function(k){
-      var ch = data[k];
-      var info = ch.info || ch;
-      info._lineUserId = k; // key ของ /chats = LINE userId จริง
-      if(!info.userId) info.userId = k;
-      return ch;
-    }) : [];
-    window._chats.sort(function(a,b){
-      return ((b.info||b).lastTs||0) - ((a.info||a).lastTs||0);
-    });
-    var sc0 = document.getElementById("sc0");
-    if(sc0 && sc0.classList.contains("on")) renderChatListFB();
-  });
-
-  fbDB.ref("/settings/netGuides").on("value", function(snap){
-    var d = snap.val();
-    if(d !== null && d !== undefined){
-      var arr = Array.isArray(d) ? d : Object.values(d);
-      arr = arr.filter(function(g){ return g && (g.keyword||g.steps); });
-      if(arr.length > 0){
-        netGuides = arr;
-        try{ localStorage.setItem("pt_netguides", JSON.stringify(netGuides)); }catch(_){}
-        var sc = document.getElementById("sc-netguide");
-        if(sc && sc.classList.contains("on")) renderNetGuideList();
-      }
-    }
-  });
-}
-
-function saveReqs(){
-  try{ localStorage.setItem("pt_requests", JSON.stringify(reqs)); }catch(_){}
-  reqs.forEach(function(r){
-    if(r.ref && r.status && r.status!=="pending" && fbDB){
-      try{
-        var updates = {
-          status:           r.status,
-          shopeeVerified:   r.shopeeVerified||"pending",
-          activatedPackage: r.activatedPackage||null,
-          activatedAt:      r.activatedAt||null
-        };
-        if(r.maxQuota) updates.maxQuota = r.maxQuota;
-        fbDB.ref("/orders/"+r.ref).update(updates);
-      }catch(_){}
-    }
-  });
-}
-
-function loadAll(){
-  try{ pkgs = JSON.parse(localStorage.getItem("pt_packages")||"null")||DEFAULT_PKGS; }catch(_){ pkgs=DEFAULT_PKGS; }
-  reqs = [];
-  try{ var ng=localStorage.getItem("pt_netguides"); if(ng) netGuides=JSON.parse(ng); }catch(_){}
-
-  var tb = document.getElementById("tabbar");
-  if(tb) tb.style.display="flex";
-  switchTab(1);
-  renderOrdList();
-  renderDashboard();
-  updateBadges();
-  var rts = document.getElementById("rts");
-  if(rts) rts.textContent = "⏳ กำลังเชื่อมต่อ Firebase...";
-  setTopbar("",null,"");
-
-  if(initFirebase()) startRealtimeSync();
-
-  loadNetGuides();
 }
 
 // ── PAGE INIT ──────────────────────────────────
