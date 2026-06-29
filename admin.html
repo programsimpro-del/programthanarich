@@ -1107,14 +1107,23 @@ async function sendLineMsg(userId, text) {
 async function sendAdminMsg(userId, text) {
   if(!userId) return;
   const LINE_TOKEN = "mpLms1e0rLzOjYORU3YzyokEnn6u4VUUdu3WQoMlrUFV/FG/KFJ79P1SWQokv7CfScdVCeVnus2Ud/qv8NZ42J3b3Nwec5/O+8pYcau+FktDFkiQoLC778obQjMEMOBrzybFJNTUj3Zvcx8CaYt2OQdB04t89/1O/w1cDnyilFU=";
-  // ส่งผ่าน Vercel API เพื่อหลีกเลี่ยง CORS
+  // ส่งผ่าน LINE Messaging API โดยตรง (push message)
   try {
-    await fetch("https://programthanarich.programsimpro.workers.dev/notify", {
+    var resp = await fetch("https://api.line.me/v2/bot/message/push", {
       method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ _sendMsg: true, to: userId, text, token: LINE_TOKEN })
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + LINE_TOKEN
+      },
+      body: JSON.stringify({
+        to: userId,
+        messages: [{ type: "text", text: text }]
+      })
     });
-  } catch(_) {}
+    var result = await resp.json();
+    if(!resp.ok) console.warn("❌ LINE API error:", resp.status, JSON.stringify(result));
+    else console.log("✅ LINE push สำเร็จ");
+  } catch(e){ console.warn("❌ LINE push error:", e.message); }
   // บันทึกใน Firebase
   if(fbDB && userId) {
     var msgId = "a" + Date.now();
