@@ -587,7 +587,7 @@ function renderChatListFB(){
 
   function chatRow(chat){
     var info = chat.info || chat;
-    var userId = info.userId || "";
+    var userId = info._lineUserId || info.userId || "";
     var name = info.displayName || userId;
     var pic = info.pictureUrl || "";
     var lastMsg = info.lastMsg || "";
@@ -793,26 +793,34 @@ function chkSend(){$("send-btn").disabled=!$("msg-input").value.trim();}
 // ── 1. ส่งข้อความไปหา LINE userId โดยตรง ──
 async function sendLineMsg(userId, text){
   if(!userId || !text){
-    console.warn("❌ sendLineMsg: userId="+userId+" text="+text);
+    console.warn("❌ sendLineMsg หยุด: userId=["+userId+"] text=["+text+"]");
     return false;
   }
-  console.log("📤 sendLineMsg → "+userId.slice(0,8)+"... : "+text.slice(0,30));
+  if(userId.length < 10){
+    console.warn("❌ userId ดูผิดปกติ (สั้นเกิน):", userId);
+    return false;
+  }
+  console.log("📤 sendLineMsg → ["+userId.slice(0,10)+"...] ข้อความ: "+text.slice(0,40));
   try{
     var r = await fetch("https://programthanarich.programsimpro.workers.dev/send", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify({to: userId, text: text})
     });
-    var d = await r.json().catch(function(){return {};});
-    if(r.ok){
-      console.log("✅ ส่งสำเร็จ");
+    var d = {};
+    try{ d = await r.json(); } catch(_){}
+    if(r.ok && !d.error){
+      console.log("✅ LINE ส่งสำเร็จ → "+userId.slice(0,8)+"...");
       return true;
     } else {
-      console.error("❌ LINE error HTTP "+r.status, d);
+      console.error("❌ LINE error HTTP "+r.status+" body:", JSON.stringify(d));
+      // แสดง toast เตือน admin
+      if(typeof showToast==="function") showToast("⚠️ ส่ง LINE ไม่สำเร็จ: "+JSON.stringify(d).slice(0,60), "#fff", "#E53935");
       return false;
     }
   } catch(e){
-    console.error("❌ sendLineMsg fetch error:", e.message);
+    console.error("❌ sendLineMsg network error:", e.message);
+    if(typeof showToast==="function") showToast("⚠️ Network error: "+e.message, "#fff", "#E53935");
     return false;
   }
 }
@@ -820,30 +828,49 @@ async function sendLineMsg(userId, text){
 // ── 2. ค้นหา LINE userId จาก req (รองรับทุก field + lookup จาก /chats) ──
 async function resolveLineUserId(req){
   if(!req) return null;
-  // ลอง field ทั้งหมดใน req ก่อน
-  var uid = req.lineUserId || req.userId || req.line_user_id || null;
-  if(uid){ console.log("✅ uid จาก req:", uid.slice(0,8)+"..."); return uid; }
 
-  // ถ้าไม่มี → lookup จาก Firebase /chats
+  // 1) ลอง field โดยตรงก่อน (ต้องขึ้นต้นด้วย U และยาวพอ)
+  var uid = req.lineUserId || req.userId || req.line_user_id || null;
+  if(uid && uid.length > 10){ console.log("✅ uid จาก req field:", uid.slice(0,8)+"..."); return uid; }
+
+  // 2) ค้นจาก window._chats ที่โหลดไว้แล้ว (เร็วกว่า)
+  var cached = window._chats || [];
+  var norm = function(s){ return s ? String(s).replace(/[^0-9]/g,"") : ""; };
+  for(var i=0; i<cached.length; i++){
+    var info = cached[i].info || cached[i];
+    var chatUid = info._lineUserId || info.userId || "";
+    if(!chatUid) continue;
+    if( (req.simPhone && norm(info.simPhone) === norm(req.simPhone) && norm(req.simPhone).length >= 9) ||
+        (req.ref      && info.ref      === req.ref) ||
+        (req.orderNo  && info.orderNo  === req.orderNo) ){
+      uid = chatUid;
+      req.lineUserId = uid;
+      if(fbDB) fbDB.ref("/orders/"+req.ref).update({lineUserId: uid}).catch(function(){});
+      console.log("✅ uid จาก _chats cache:", uid.slice(0,8)+"...");
+      return uid;
+    }
+  }
+
+  // 3) ถ้ายังไม่เจอ → query Firebase /chats โดยตรง
   if(!fbDB){ console.warn("❌ fbDB ยังไม่พร้อม"); return null; }
   try{
     var snap = await fbDB.ref("/chats").once("value");
     var chats = snap.val();
-    if(!chats) return null;
+    if(!chats){ console.warn("❌ /chats ว่าง"); return null; }
     for(var k in chats){
-      var info = chats[k].info || chats[k];
-      if( (req.simPhone && info.simPhone === req.simPhone) ||
-          (req.ref      && info.ref      === req.ref)      ||
-          (req.orderNo  && info.orderNo  === req.orderNo) ){
-        uid = k;
-        // cache กลับเข้า req และ Firebase เพื่อครั้งต่อไป
+      var info2 = chats[k].info || chats[k];
+      if( (req.simPhone && norm(info2.simPhone) === norm(req.simPhone) && norm(req.simPhone).length >= 9) ||
+          (req.ref      && info2.ref      === req.ref) ||
+          (req.orderNo  && info2.orderNo  === req.orderNo) ){
+        uid = k; // key = LINE userId
         req.lineUserId = uid;
         fbDB.ref("/orders/"+req.ref).update({lineUserId: uid}).catch(function(){});
-        console.log("✅ uid จาก /chats lookup:", uid.slice(0,8)+"...");
+        console.log("✅ uid จาก /chats Firebase:", uid.slice(0,8)+"...");
         return uid;
       }
     }
-  } catch(e){ console.error("❌ lookup /chats error:", e.message); }
+  } catch(e){ console.error("❌ /chats lookup error:", e.message); }
+
   console.warn("❌ หา lineUserId ไม่เจอ ref="+req.ref+" simPhone="+req.simPhone);
   return null;
 }
@@ -2559,7 +2586,14 @@ function startRealtimeSync(){
 
   fbDB.ref("/chats").on("value", function(snap){
     var data = snap.val();
-    window._chats = data ? Object.values(data) : [];
+    // เก็บ key (LINE userId) ไว้ใน _lineUserId ของแต่ละ chat
+    window._chats = data ? Object.keys(data).map(function(k){
+      var ch = data[k];
+      var info = ch.info || ch;
+      info._lineUserId = k; // key ของ /chats = LINE userId จริง
+      if(!info.userId) info.userId = k;
+      return ch;
+    }) : [];
     window._chats.sort(function(a,b){
       return ((b.info||b).lastTs||0) - ((a.info||a).lastTs||0);
     });
