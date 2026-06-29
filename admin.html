@@ -1751,7 +1751,6 @@ async function sendPackageAndProcess(ref, pkgId){
     .replace(/\{simCode\}/g,   req.simCode||"")
     .replace(/\{branch\}/g,    req.branchName||"");
 
-  if(req.lineUserId) sendLineMsg(req.lineUserId, msg);
   addMsgToReq(ref, "admin", msg);
 
   // อัพเดทสถานะ → processing
@@ -2060,7 +2059,6 @@ function applyQuotaConfirm(ref){
     "✅ คงเหลือ: " + quota + " สิทธิ์\n\n" +
     "ทีมงานกำลังดำเนินการเปิดเน็ตฟรีให้ค่ะ รอสักครู่นะคะ 🙏";
 
-  if(req.lineUserId) sendLineMsg(req.lineUserId, msg);
   addMsgToReq(ref, "admin", msg);
 
   showNet = true;
