@@ -247,11 +247,9 @@ input:focus{border-color:#06C755!important;box-shadow:none!important}
       </div>
 
       <!-- วิธีสมัครเน็ต -->
-      <div style="width:100%;background:#fff;border-radius:16px;padding:18px 16px;margin-bottom:12px;box-shadow:0 2px 12px rgba(0,0,0,.08)">
-        <div style="text-align:center;margin-bottom:14px">
-          <div style="font-weight:900;font-size:15px;color:#14532D">📶 <span id="p6-net-title">วิธีสมัครเน็ตฟรีเดือนแรก</span></div>
-          <div style="font-size:11px;color:#6B7280;margin-top:3px">ทำตามขั้นตอนด้านล่างได้เลยค่ะ</div>
-        </div>
+      <div style="width:100%;background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.06)">
+        <div style="font-weight:900;font-size:14px;color:#14532D;margin-bottom:4px">📶 <span id="p6-net-title">วิธีสมัครเน็ตฟรีเดือนแรก</span></div>
+        <div style="font-size:11px;color:#6B7280;margin-bottom:12px">ทำตามขั้นตอนด้านล่างได้เลยค่ะ</div>
         <div id="p6-net-steps">
           <div style="font-size:13px;color:#9E9E9E;text-align:center;padding:12px">⏳ กำลังโหลด...</div>
         </div>
@@ -298,12 +296,12 @@ input:focus{border-color:#06C755!important;box-shadow:none!important}
     <div style="font-weight:900;font-size:17px;color:#FFFF00;margin-bottom:16px;text-align:center">กรุณาอ่านก่อนยืนยัน</div>
     <!-- เงื่อนไขสำคัญ -->
     <div style="background:#7F1D1D;border:2px solid #EF4444;border-radius:14px;padding:16px;margin-bottom:16px;width:100%">
-      <div style="font-size:14px;font-weight:900;color:#FFFF00;margin-bottom:10px;text-align:center">⚠️ เงื่อนไขสำคัญที่ต้องทำ</div>
-      <div style="font-size:13px;color:#FEE2E2;line-height:2.2;font-weight:700">
+      <div style="font-size:14px;font-weight:910;color:#FFFF00;margin-bottom:10px;text-align:center">⚠️ เงื่อนไขสำคัญที่ต้องทำ</div>
+      <div style="font-size:13px;color:#FEE2E2;line-height:2.2;font-weight:710">
         1️⃣ ส่งข้อมูลครบแล้ว <b style="color:#FFFF00;font-weight:900">ปิดเน็ตมือถือทันที</b><br>
         2️⃣ ถ้าไม่ปิดเน็ตเมื่อระบบเติมเงินเข้าเบอร์เงิน<b style="color:#FFFF00;font-weight:900">จะถูกตัดทันทีและทางร้านจะไม่รับผิดชอบทุกกรณี</b><br>
-        3️⃣ ต้องใช้งานซิม<b style="color:#FFFF00;font-weight:900">3 เดือนขึ้นไป</b>ถึงจะสามารถยกเลิกการใช้งานซิมได้<br>
-        4️⃣ แพ็กเกจเน็ตทุกแพ็กเกจ<b style="color:#FFFF00;font-weight:900">ขึ้นอยู่กับบริษัททรูและดีแทคกำหนด</b>ทางร้านเป็นเพียงตัวแทนจำหน่าย<b style="color:#FFFF00;font-weight:900">ถ้าแพ็กเกจมีการเปลี่ยนแปลงทางร้านจะไม่สามารถแจ้งให้ทราบล่วงหน้าได้</b>
+        3️⃣ ต้องใช้งานซิม<b style="color:#FFFF00;font-weight:900"> 3 เดือนขึ้นไป</b>ถึงจะสามารถยกเลิกการใช้งานซิมได้<br>
+        4️⃣ แพ็กเกจเน็ตทุกแพ็กเกจ<b style="color:#FFFF00;font-weight:900">ขึ้นอยู่กับบริษัททรูและดีแทคกำหนด</b>ทางร้านเป็นเพียงตัวแทนจำหน่าย<b style="color:#FFFF00;font-weight:900"> ถ้าแพ็กเกจมีการเปลี่ยนแปลงทางร้านจะไม่สามารถแจ้งให้ทราบล่วงหน้าได้</b>
       </div>
     </div>
     <!-- Checkbox -->
@@ -398,56 +396,32 @@ function fetchWT(url, opts, ms){
 
 async function checkDup(orderNo){
   var FB_URL = "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app";
-
-  // ── Step 1: ตรวจ /quota (activated แล้ว) ──
   try{
     var r = await fetchWT(FB_URL + "/quota/" + orderNo + ".json", {}, 3000);
     if(r.ok){
       var entry = await r.json();
-      if(entry && entry.usedCount !== undefined){
+      if(entry && entry.usedCount !== undefined && entry.maxQuota !== undefined){
         var used = entry.usedCount || 0;
         var max  = entry.maxQuota || 1;
         if(used >= max){
+          // ใช้หมดสิทธิ์แล้ว
           var acts = entry.activations || [];
           return {
-            usedCount: used, maxQuota: max,
-            lastAt: acts.length > 0 ? acts[acts.length-1].at : null,
-            blocked: true,
-            msg: "เลขคำสั่งซื้อนี้รับเน็ตฟรีเดือนแรกครบแล้ว ("+used+"/"+max+" ซิม)"
+            usedCount: used,
+            maxQuota:  max,
+            lastAt:    acts.length > 0 ? acts[acts.length-1].at : null,
+            blocked:   true,
+            msg:       "เลขคำสั่งซื้อนี้รับเน็ตฟรีเดือนแรกครบแล้ว (" + used + "/" + max + " ซิม) ไม่สามารถรับเน็ตฟรีเดือนแรกได้อีกค่ะ"
           };
         }
-      }
-    }
-  }catch(e){ console.warn("checkDup quota:", e.message); }
-
-  // ── Step 2: ตรวจ /orders ว่ามี orderNo นี้รอดำเนินการอยู่ไหม ──
-  try{
-    var r2 = await fetchWT(
-      FB_URL + "/orders.json?orderBy=%22orderNo%22&equalTo=%22" + encodeURIComponent(orderNo) + "%22&limitToFirst=3",
-      {}, 3000
-    );
-    if(r2.ok){
-      var data = await r2.json();
-      if(data){
-        var orders = Object.values(data);
-        // มี order ที่ยังค้างอยู่ (ยังไม่ activate และไม่ reject)
-        var pending = orders.find(function(o){
-          return o.status === "pending" || o.status === "confirmed" || o.status === "processing";
-        });
-        if(pending){
-          return {
-            blocked: true,
-            usedCount: 1, maxQuota: 1,
-            lastAt: pending.submittedAt || null,
-            msg: "เลขคำสั่งซื้อนี้กำลังรอ Admin ดำเนินการอยู่ค่ะ",
-            isPending: true,
-            pendingStatus: pending.status
-          };
+        if(used > 0 && used < max){
+          // ยังมีสิทธิ์เหลือ — อนุญาต
+          return null;
         }
       }
+      return null;
     }
-  }catch(e){ console.warn("checkDup orders:", e.message); }
-
+  }catch(e){ console.warn("checkDup:", e.message); }
   return null;
 }
 
@@ -456,37 +430,6 @@ function recordReq(orderNo,simPhone,refNo){
   var db=getQDB();
   if(!db[orderNo])db[orderNo]={usedCount:0,maxQuota:1,activations:[]};
   saveQDB(db);
-}
-
-
-/* ── ตรวจเบอร์ซิมว่าเคยรับเน็ตฟรีแล้วหรือยัง ── */
-async function checkSimPhoneUsed(phone){
-  if(!phone || phone.length < 9) return null;
-  var FB_URL = "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app";
-  try{
-    // query orders ที่ simPhone ตรงกัน และ status = activated
-    var r = await fetchWT(
-      FB_URL + "/orders.json?orderBy=%22simPhone%22&equalTo=%22" + encodeURIComponent(phone) + "%22&limitToFirst=5",
-      {}, 4000
-    );
-    if(!r.ok) return null;
-    var data = await r.json();
-    if(!data) return null;
-    var orders = Object.values(data);
-    var used = orders.find(function(o){
-      return o.status === "activated" || o.status === "confirmed" || o.status === "processing";
-    });
-    if(used){
-      return {
-        blocked: true,
-        orderNo: used.orderNo || "",
-        status:  used.status,
-        at:      used.activatedAt || used.submittedAt || "",
-        msg:     "เบอร์ " + phone + " เคยรับเน็ตฟรีเดือนแรกไปแล้วค่ะ"
-      };
-    }
-    return null;
-  }catch(e){ return null; }
 }
 
 /* ═══ LOGO ═══ */
@@ -557,22 +500,12 @@ async function loadNetGuideToP6(){
     if(matched && matched.steps){
       var lines = matched.steps.split("\n").filter(function(l){ return l.trim(); });
       var stepsEl = document.getElementById("p6-net-steps");
-      if(stepsEl) stepsEl.innerHTML = lines.map(function(line){
-        var l = line.trim();
-        // ตรวจว่าเป็น header หรือรหัส USSD หรือข้อความเตือน
-        var isHeader  = l.startsWith("🌐") || l.startsWith("📶") || (l.startsWith("(") && l.endsWith(")"));
-        var isCode    = /^\*[\d*#]+#/.test(l) || l.includes("โทรออก");
-        var isWarning = l.startsWith("⚠️");
-
-        if(isHeader){
-          return '<div style="text-align:center;font-weight:900;font-size:14px;color:#14532D;margin:8px 0 10px;padding-bottom:8px;border-bottom:1.5px dashed #BBF7D0">'+escH(l)+'</div>';
-        } else if(isCode){
-          return '<div style="text-align:center;background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:10px;padding:10px 14px;margin:6px 0;font-family:monospace;font-weight:900;font-size:16px;color:#166534;letter-spacing:1px">'+escH(l)+'</div>';
-        } else if(isWarning){
-          return '<div style="background:#FFFBEB;border-left:3px solid #F59E0B;border-radius:0 8px 8px 0;padding:8px 12px;margin:8px 0;font-size:12px;font-weight:700;color:#92400E;line-height:1.6">'+escH(l)+'</div>';
-        } else {
-          return '<div style="font-size:13px;color:#374151;font-weight:600;line-height:1.8;padding:3px 0;text-align:center">'+escH(l)+'</div>';
-        }
+      if(stepsEl) stepsEl.innerHTML = lines.map(function(line, i){
+        return '<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start">'
+          +'<div style="background:#06C755;color:#fff;border-radius:50%;width:22px;height:22px;min-width:22px;'
+          +'display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900">'+(i+1)+'</div>'
+          +'<div style="font-size:13px;color:#14532D;font-weight:700;line-height:1.6;text-align:left">'+escH(line)+'</div>'
+          +'</div>';
       }).join("");
       var titleEl = document.getElementById("p6-net-title");
       if(titleEl && matched.keyword)
@@ -755,29 +688,7 @@ function goP(n){
   window.scrollTo(0,0);
 }
 function goBack(){ if(curP>0&&curP<5)goP(curP-1); }
-function selPlt(id){
-  plt = id;
-  if(id === "tiktok" || id === "lazada"){
-    var pname = id === "tiktok" ? "TikTok Shop" : "Lazada";
-    var popup = document.getElementById("plt-manual-popup");
-    var msg   = document.getElementById("plt-manual-msg");
-    if(msg) msg.innerHTML =
-      "<b style='color:#1565C0'>"+pname+"</b> ไม่มีระบบตรวจสอบอัตโนมัติค่ะ<br><br>"
-      +"📸 กรุณา <b>แคปหน้าจอคำสั่งซื้อ</b> ที่เห็น <b>เลขพัสดุชัดเจน</b> "
-      +"และ <b>เบอร์ซิมที่ต้องการรับสิทธิ์</b><br><br>"
-      +"แล้วส่งให้ Admin ตรวจสอบผ่าน<br>"
-      +"<b style='color:#06C755;font-size:16px'>LINE: @ProgramThanarich</b><br><br>"
-      +"<span style='font-size:11px;color:#9E9E9E'>Admin จะอนุมัติและดำเนินการให้ค่ะ</span>";
-    if(popup) popup.style.display = "flex";
-    return; // ไม่ไปหน้าถัดไปก่อน
-  }
-  goP(2);
-}
-function closePltManualPopup(){ 
-  var popup = document.getElementById("plt-manual-popup");
-  if(popup) popup.style.display = "none";
-  goP(2);
-}
+function selPlt(id){ plt=id; goP(2); }
 
 /* ── 30-min cooldown per orderNo ── */
 var COOLDOWN_MS = 30 * 60 * 1000; // 30 นาที
@@ -846,40 +757,6 @@ function previewShopeeOrder(val){
   box.innerHTML = "<div style='color:#9E9E9E;text-align:center;padding:4px'>⏳ กำลังตรวจสอบคำสั่งซื้อ...</div>";
 
   _previewTimer = setTimeout(async function(){
-    // ── ตรวจก่อนว่าเคยรับเน็ตฟรีไปแล้วหรือยัง ──
-    var dup = await checkDup(val);
-    if(dup && dup.blocked){
-      _shopeeVerified = false;
-      _shopeeChecked  = true;
-      lockNextSteps(true);
-      chkForm();
-      if(dup.isPending){
-        box.style.background="#FFFBEB"; box.style.borderColor="#FDE68A";
-        var stTh = {pending:"รอตรวจสอบ",confirmed:"ยืนยันแล้ว",processing:"กำลังดำเนินการ"}[dup.pendingStatus]||"รอดำเนินการ";
-        box.innerHTML =
-          "<div style='text-align:center;margin-bottom:8px'><span style='font-size:36px'>⏳</span></div>"
-          +"<div style='color:#B45309;font-weight:900;font-size:14px;text-align:center;margin-bottom:8px'>คำขอนี้อยู่ระหว่างดำเนินการค่ะ</div>"
-          +"<div style='background:#fff;border-radius:10px;padding:10px 12px;font-size:12px;color:#374151;line-height:2;border:1px solid #FDE68A;text-align:center'>"
-            +"📦 เลขคำสั่งซื้อ: <b>"+val+"</b><br>"
-            +"🔄 สถานะ: <b style='color:#B45309'>"+stTh+"</b><br>"
-            +"<span style='font-size:11px;color:#9E9E9E'>Admin กำลังดำเนินการอยู่ กรุณารอค่ะ</span>"
-          +"</div>"
-          +"<div style='margin-top:8px;font-size:11px;color:#9E9E9E;text-align:center'>หากมีข้อสงสัยติดต่อ <b style='color:#06C755'>@ProgramThanarich</b></div>";
-      } else {
-        box.style.background="#FFF1F2"; box.style.borderColor="#FECDD3";
-        box.innerHTML =
-          "<div style='text-align:center;margin-bottom:8px'><span style='font-size:36px'>⛔</span></div>"
-          +"<div style='color:#BE123C;font-weight:900;font-size:14px;text-align:center;margin-bottom:8px'>รับเน็ตฟรีเดือนแรกไปแล้วค่ะ</div>"
-          +"<div style='background:#fff;border-radius:10px;padding:10px 12px;font-size:12px;color:#374151;line-height:2;border:1px solid #FECDD3;text-align:center'>"
-            +"📦 เลขคำสั่งซื้อ: <b>"+val+"</b><br>"
-            +"✅ ใช้สิทธิ์ไปแล้ว: <b style='color:#BE123C'>"+dup.usedCount+"/"+dup.maxQuota+" ซิม</b><br>"
-            +(dup.lastAt ? "🕐 ครั้งล่าสุด: <b>"+new Date(dup.lastAt).toLocaleString("th-TH")+"</b>" : "")
-          +"</div>"
-          +"<div style='margin-top:8px;font-size:11px;color:#9E9E9E;text-align:center'>หากมีข้อสงสัยติดต่อ <b style='color:#06C755'>@ProgramThanarich</b></div>";
-      }
-      return;
-    }
-
     try{
       var r = await fetch("https://programthanarich.programsimpro.workers.dev/shopee-check",{
         method:"POST", headers:{"Content-Type":"application/json"},
@@ -897,23 +774,17 @@ function previewShopeeOrder(val){
       _shopeeChecked = true;
 
       if(!si.found){
-        _shopeeVerified = false;
-        _shopeeChecked  = true;
-        lockNextSteps(true);  // บล็อกไม่ให้กรอกต่อ
-        chkForm();
         box.style.background="#FFF1F2"; box.style.borderColor="#FECDD3";
-        box.innerHTML = "<div style='color:#BE123C;font-weight:800;margin-bottom:6px'>❌ ไม่พบคำสั่งซื้อนี้ในระบบ Shopee</div>"
-          +"<div style='font-size:12px;color:#374151;line-height:1.8'>"+(si.error||"กรุณาตรวจสอบเลขคำสั่งซื้ออีกครั้งค่ะ")+"</div>";
+        box.innerHTML = "<div style='color:#BE123C;font-weight:800;margin-bottom:4px'>❌ ไม่พบคำสั่งซื้อนี้</div>"
+          +"<div style='color:#6B7280;font-size:11px'>"+(si.error||"กรุณาตรวจสอบเลขคำสั่งซื้อ")+"</div>";
         return;
       }
 
-      // พบคำสั่งซื้อ — ตรวจว่ามีคำว่า FREE และราคาถูกต้อง
+      // พบคำสั่งซื้อ — ตรวจว่ามีคำว่า FREE ไหม
       var allItems = si.items || [];
       var hasFree = allItems.some(function(i){
         var name = ((i.name||"")+" "+(i.model||"")).toUpperCase();
-        var price = parseFloat(i.price)||0;
-        // ต้องมี FREE ในชื่อ และราคาต้องมากกว่า 50 บาท
-        return name.indexOf("FREE") >= 0 && price > 50;
+        return name.indexOf("FREE") >= 0;
       });
 
       var itemsHTML = allItems.map(function(i){
@@ -932,30 +803,7 @@ function previewShopeeOrder(val){
         +"<div style='margin-top:4px'>"+itemsHTML+"</div>";
 
       if(hasFree){
-        // ตรวจเบอร์ซิมก่อน ว่าเคยรับเน็ตฟรีแล้วหรือยัง
-        var curPhone = (document.getElementById("simPhone")||{}).value;
-        curPhone = (curPhone||"").trim();
-        if(curPhone && curPhone.length >= 9){
-          var simUsed = await checkSimPhoneUsed(curPhone);
-          if(simUsed){
-            _shopeeVerified = false;
-            _shopeeChecked  = true;
-            lockNextSteps(true);
-            chkForm();
-            box.style.background="#FFF1F2"; box.style.borderColor="#FECDD3";
-            box.innerHTML =
-              "<div style='text-align:center;margin-bottom:10px'><span style='font-size:36px'>⛔</span></div>"
-              +"<div style='color:#BE123C;font-weight:900;font-size:14px;text-align:center;margin-bottom:8px'>เบอร์นี้เคยรับเน็ตฟรีเดือนแรกไปแล้วค่ะ</div>"
-              +"<div style='background:#fff;border-radius:10px;padding:10px 12px;font-size:12px;color:#374151;line-height:2;border:1px solid #FECDD3;text-align:center'>"
-                +"📱 เบอร์: <b>"+curPhone+"</b><br>"
-                +"📦 คำสั่งซื้อเดิม: <b style='color:#BE123C'>"+simUsed.orderNo+"</b><br>"
-                +"<span style='font-size:11px;color:#9E9E9E'>1 เบอร์รับสิทธิ์ได้ 1 ครั้งค่ะ</span>"
-              +"</div>"
-              +"<div style='margin-top:10px;font-size:11px;color:#9E9E9E;text-align:center'>หากมีข้อสงสัยติดต่อ <b style='color:#06C755'>@ProgramThanarich</b></div>";
-            return;
-          }
-        }
-        // ✅ ผ่านทุกการตรวจสอบ
+        // ✅ ผ่าน — อนุญาตกรอกข้อมูลต่อ
         _shopeeVerified = true;
         _shopeeChecked = true;
         window._lastShopeeItems = si.items || [];
@@ -1006,13 +854,13 @@ function previewShopeeOrder(val){
           +"</div>";
       }
     }catch(e){
+      box.style.background="#F9FAFB"; box.style.borderColor="#E5E7EB";
+      box.innerHTML = "<div style='color:#9E9E9E;font-size:11px;text-align:center'>ไม่สามารถตรวจสอบได้ในขณะนี้ กรุณากรอกข้อมูลต่อได้เลยค่ะ</div>";
+      // error → _shopeeChecked=false → ผ่านได้
       _shopeeVerified = false;
-      _shopeeChecked  = true;
-      lockNextSteps(true); // error → บล็อก ห้ามผ่าน
+      _shopeeChecked = false;
+      lockNextSteps(false);
       chkForm();
-      box.style.background="#FFF3E0"; box.style.borderColor="#FFCC02";
-      box.innerHTML = "<div style='color:#B45309;font-weight:800;margin-bottom:6px'>⚠️ ไม่สามารถตรวจสอบได้ในขณะนี้</div>"
-        +"<div style='font-size:12px;color:#374151;line-height:1.8'>กรุณาลองใหม่อีกครั้ง หรือติดต่อ <b style='color:#06C755'>@ProgramThanarich</b></div>";
     }
   }, 800);
 }
@@ -1050,10 +898,11 @@ function chkForm(){
   orderNo  = ($("orderNo")  ||{}).value ? $("orderNo").value.trim()  : "";
   simPhone = ($("simPhone") ||{}).value ? $("simPhone").value.trim() : "";
   var simCodeVal = $("simCode") ? $("simCode").value.trim() : "";
-  // shopeeOk: Shopee เท่านั้น ต้อง verified จริงๆ
-  // TikTok/Lazada → ผ่านได้ (Admin ตรวจเอง) แต่ต้องแสดง popup
-  var isTikTokLazada = (plt === "tiktok" || plt === "lazada");
-  var shopeeOk = isTikTokLazada ? true : _shopeeVerified;
+  // ตรวจสอบ Shopee:
+  // _shopeeVerified = true → ผ่าน (มี FREE)
+  // _shopeeVerified = false และ _shopeeChecked = true → ไม่ผ่าน (ไม่มี FREE)
+  // _shopeeVerified = false และ _shopeeChecked = false → ยังไม่ได้ตรวจ → ผ่านได้ (API error)
+  var shopeeOk = _shopeeVerified || !_shopeeChecked;
   var ok = orderNo.length > 0
         && simPhone.length > 0
         && branchCode !== ""
@@ -1285,15 +1134,5 @@ if(document.readyState==="loading"){
   initLiff();
 }
 </script>
-
-<!-- Popup TikTok/Lazada manual -->
-<div id="plt-manual-popup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;padding:20px">
-  <div style="background:#fff;border-radius:18px;padding:24px 20px;width:100%;max-width:340px">
-    <div style="text-align:center;font-size:40px;margin-bottom:10px">📸</div>
-    <div style="font-weight:900;font-size:16px;color:#1565C0;text-align:center;margin-bottom:14px">ขั้นตอนการรับสิทธิ์</div>
-    <div id="plt-manual-msg" style="font-size:13px;color:#374151;line-height:1.9;text-align:center;margin-bottom:18px"></div>
-    <button onclick="document.getElementById('plt-manual-popup').style.display='none'" style="width:100%;padding:13px;border-radius:12px;border:none;background:#F5F5F5;color:#374151;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit">← ย้อนกลับ</button>
-  </div>
-</div>
 </body>
 </html>
