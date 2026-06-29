@@ -500,12 +500,20 @@ async function loadNetGuideToP6(){
     if(matched && matched.steps){
       var lines = matched.steps.split("\n").filter(function(l){ return l.trim(); });
       var stepsEl = document.getElementById("p6-net-steps");
-      if(stepsEl) stepsEl.innerHTML = lines.map(function(line, i){
-        return '<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start">'
-          +'<div style="background:#06C755;color:#fff;border-radius:50%;width:22px;height:22px;min-width:22px;'
-          +'display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900">'+(i+1)+'</div>'
-          +'<div style="font-size:13px;color:#14532D;font-weight:700;line-height:1.6;text-align:left">'+escH(line)+'</div>'
-          +'</div>';
+      if(stepsEl) stepsEl.innerHTML = lines.map(function(line){
+        var l = line.trim();
+        var isHeader  = l.startsWith("🌐") || l.startsWith("📶") || (l.startsWith("(") && l.endsWith(")"));
+        var isCode    = /^\*[\d*#]+#/.test(l) || l.includes("โทรออก");
+        var isWarning = l.startsWith("⚠️");
+        if(isHeader){
+          return '<div style="text-align:center;font-weight:900;font-size:14px;color:#14532D;margin:8px 0 10px;padding-bottom:8px;border-bottom:1.5px dashed #BBF7D0">'+escH(l)+'</div>';
+        } else if(isCode){
+          return '<div style="text-align:center;background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:10px;padding:10px 14px;margin:6px 0;font-family:monospace;font-weight:900;font-size:16px;color:#166534;letter-spacing:1px">'+escH(l)+'</div>';
+        } else if(isWarning){
+          return '<div style="background:#FFFBEB;border-left:3px solid #F59E0B;border-radius:0 8px 8px 0;padding:8px 12px;margin:8px 0;font-size:12px;font-weight:700;color:#92400E;line-height:1.6;text-align:left">'+escH(l)+'</div>';
+        } else {
+          return '<div style="font-size:13px;color:#374151;font-weight:600;line-height:1.8;padding:3px 0;text-align:center">'+escH(l)+'</div>';
+        }
       }).join("");
       var titleEl = document.getElementById("p6-net-title");
       if(titleEl && matched.keyword)
