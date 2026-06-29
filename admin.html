@@ -1088,20 +1088,25 @@ async function sendLineMsg(userId, text) {
   if(!userId){ console.warn("❌ userId ว่าง"); return; }
   if(!text){ console.warn("❌ text ว่าง"); return; }
   console.log("📤 ส่งหา:", userId.slice(0,8)+"...");
-  var LINE_TOKEN = "/vY4vJJFVsmc87w5GAICEhdlpOPHhQRcSbxwf0IHxAexw2p68xaHTvcEA7G/e0MPScdVCeVnus2Ud/qv8NZ42J3b3Nwec5/O+8pYcau+FktdFMD8G+Jb/GYwHpTGLSUSMsnHK5txylLa1Lt4Iv2P/QdB04t89/1O/w1cDnyilFU=";
+  // ส่งผ่าน Worker (หลีกเลี่ยง CORS ของ LINE API)
   try {
-    var r = await fetch("https://api.line.me/v2/bot/message/push", {
+    var r = await fetch("https://programthanarich.programsimpro.workers.dev/send", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + LINE_TOKEN
-      },
-      body: JSON.stringify({
-        to: userId,
-        messages: [{ type: "text", text: text }]
-      })
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({to: userId, text: text})
     });
-    console.log(r.ok ? "✅ ส่งสำเร็จ" : "❌ LINE error: "+r.status);
+    if(r.ok){
+      console.log("✅ Worker /send สำเร็จ");
+    } else {
+      var err = await r.text();
+      console.warn("❌ Worker /send error:", r.status, err);
+      // Fallback: ส่งผ่าน /notify พร้อม token
+      await fetch("https://programthanarich.programsimpro.workers.dev/notify", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({_sendMsg:true, to:userId, text:text, token:"/vY4vJJFVsmc87w5GAICEhdlpOPHhQRcSbxwf0IHxAexw2p68xaHTvcEA7G/e0MPScdVCeVnus2Ud/qv8NZ42J3b3Nwec5/O+8pYcau+FktdFMD8G+Jb/GYwHpTGLSUSMsnHK5txylLa1Lt4Iv2P/QdB04t89/1O/w1cDnyilFU="})
+      });
+    }
   } catch(e) { console.warn("❌ sendLineMsg:", e.message); }
 }
 
@@ -1109,13 +1114,21 @@ async function sendLineMsg(userId, text) {
 async function sendAdminMsg(userId, text) {
   if(!userId) return;
   const LINE_TOKEN = "/vY4vJJFVsmc87w5GAICEhdlpOPHhQRcSbxwf0IHxAexw2p68xaHTvcEA7G/e0MPScdVCeVnus2Ud/qv8NZ42J3b3Nwec5/O+8pYcau+FktdFMD8G+Jb/GYwHpTGLSUSMsnHK5txylLa1Lt4Iv2P/QdB04t89/1O/w1cDnyilFU=";
-  // ส่งผ่าน Vercel API เพื่อหลีกเลี่ยง CORS
+  // ส่งผ่าน Worker /send
   try {
-    await fetch("https://programthanarich.programsimpro.workers.dev/notify", {
+    var sr = await fetch("https://programthanarich.programsimpro.workers.dev/send", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ _sendMsg: true, to: userId, text, token: LINE_TOKEN })
+      body: JSON.stringify({to: userId, text: text})
     });
+    if(!sr.ok){
+      // fallback /notify
+      await fetch("https://programthanarich.programsimpro.workers.dev/notify", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({_sendMsg:true, to:userId, text:text, token:LINE_TOKEN})
+      });
+    }
   } catch(_) {}
   // บันทึกใน Firebase
   if(fbDB && userId) {
