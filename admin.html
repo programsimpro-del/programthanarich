@@ -1082,24 +1082,18 @@ function sendMsg(){
   if(req && req.lineUserId) sendLineMsg(req.lineUserId, v);
   $("msg-input").value=""; $("send-btn").disabled=true;
 }
-function chatQuickSend(t){if(t&&t.target)t=t.target.dataset.t;addMsgToReq(activeChat,"admin",t);showQ=false;renderQP();$("qtoggle").style.background="#E8F5E9";$("qtoggle").style.color="#06C755";}
+function chatQuickSend(t){if(t&&t.target)t=t.target.dataset.t;addMsgToReq(activeChat,"admin",t);sendChatMsg(activeChat,t);showQ=false;renderQP();$("qtoggle").style.background="#E8F5E9";$("qtoggle").style.color="#06C755";}
 // ส่งข้อความจาก Admin → ลูกค้า ผ่าน Vercel API (หลีกเลี่ยง CORS)
 async function sendLineMsg(userId, text) {
   if(!userId){ console.warn("❌ userId ว่าง"); return; }
   if(!text){ console.warn("❌ text ว่าง"); return; }
   console.log("📤 ส่งหา:", userId.slice(0,8)+"...");
-  var LINE_TOKEN = "/vY4vJJFVsmc87w5GAICEhdlpOPHhQRcSbxwf0IHxAexw2p68xaHTvcEA7G/e0MPScdVCeVnus2Ud/qv8NZ42J3b3Nwec5/O+8pYcau+FktdFMD8G+Jb/GYwHpTGLSUSMsnHK5txylLa1Lt4Iv2P/QdB04t89/1O/w1cDnyilFU=";
+  const LINE_TOKEN = "mpLms1e0rLzOjYORU3YzyokEnn6u4VUUdu3WQoMlrUFV/FG/KFJ79P1SWQokv7CfScdVCeVnus2Ud/qv8NZ42J3b3Nwec5/O+8pYcau+FktDFkiQoLC778obQjMEMOBrzybFJNTUj3Zvcx8CaYt2OQdB04t89/1O/w1cDnyilFU=";
   try {
-    var r = await fetch("https://api.line.me/v2/bot/message/push", {
+    var r = await fetch("https://programthanarich.programsimpro.workers.dev/notify", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + LINE_TOKEN
-      },
-      body: JSON.stringify({
-        to: userId,
-        messages: [{ type: "text", text: text }]
-      })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ _sendMsg: true, to: userId, text: text, token: LINE_TOKEN })
     });
     console.log(r.ok ? "✅ ส่งสำเร็จ" : "❌ LINE error: "+r.status);
   } catch(e) { console.warn("❌ sendLineMsg:", e.message); }
@@ -1741,7 +1735,7 @@ function sendOdMsg(){
   if(req && req.lineUserId) sendLineMsg(req.lineUserId, v);
   $("od-input").value=""; $("od-send").disabled=true;
 }
-function odQuickSend(t){if(t&&t.target)t=t.target.dataset.t;addMsgToReq(aref,"admin",t);showOdQ=false;renderOdQP();$("od-qt").style.background="#E3F2FD";$("od-qt").style.color="#1565C0";}
+function odQuickSend(t){if(t&&t.target)t=t.target.dataset.t;var req=reqs.find(function(r){return r.ref===aref;});addMsgToReq(aref,"admin",t);if(req&&req.lineUserId)sendLineMsg(req.lineUserId,t);showOdQ=false;renderOdQP();$("od-qt").style.background="#E3F2FD";$("od-qt").style.color="#1565C0";}
 function toggleNet(){showActivateMenu();}
 
 /* ══════ ORDER BOX ══════ */
