@@ -1648,6 +1648,30 @@ function renderOdActions(req){
       if(req2) doActivate(req2.activatedPackage || req2.pkgId);
     };
     el.appendChild(bDone);
+
+    // ปุ่มทดสอบส่งข้อความ (debug)
+    var bTest = document.createElement("button");
+    bTest.style.cssText = "display:block;width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1.5px dashed #1565C0;background:#EFF6FF;color:#1565C0;font-weight:800;font-size:12px;cursor:pointer;font-family:inherit";
+    bTest.textContent = "📨 ทดสอบส่งข้อความหาลูกค้า";
+    bTest.onclick = async function(){
+      var r2 = reqs.find(function(r){return r.ref===aref;});
+      if(!r2||!r2.lineUserId){ showToast("ไม่พบ LINE User ID","#BE123C","#FFF1F2"); return; }
+      bTest.disabled = true; bTest.textContent = "⏳ กำลังส่ง...";
+      // ทดสอบ Worker /send
+      try{
+        var wr = await fetch("https://programthanarich.programsimpro.workers.dev/send",{
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({to:r2.lineUserId, text:"✅ ทดสอบส่งข้อความจากระบบ Admin ค่ะ"})
+        });
+        var body = await wr.text();
+        showToast("Worker /send → HTTP "+wr.status+": "+body.slice(0,80),"#374151","#F3F4F6");
+        console.log("Worker /send result:", wr.status, body);
+      }catch(e){
+        showToast("Worker /send error: "+e.message,"#BE123C","#FFF1F2");
+      }
+      bTest.disabled = false; bTest.textContent = "📨 ทดสอบส่งข้อความหาลูกค้า";
+    };
+    el.appendChild(bTest);
     addDeleteBtn();
     return;
   }
@@ -2073,14 +2097,36 @@ async function doActivate(pkgId){
     .replace(/\{remaining\}/g, String(remaining))
     .replace(/\{maxQuota\}/g,  String(q.maxQuota));
 
-  // ส่งข้อความแจ้งลูกค้าใน LINE ผ่าน sendAdminMsg (มี LINE Token + บันทึก chat)
+  // ส่งข้อความแจ้งลูกค้า — ลอง Worker /send ก่อน ถ้าไม่ได้ใช้ LINE API โดยตรง
   if(req.lineUserId){
+    var sent = false;
+    // วิธีที่ 1: ผ่าน Worker /send
     try{
-      await sendAdminMsg(req.lineUserId, notifyMsg);
-      showToast("✅ ส่งข้อความแจ้งลูกค้าแล้วค่ะ","#166534","#DCFCE7");
-    }catch(e){
-      showToast("⚠️ ส่งข้อความไม่สำเร็จ: "+e.message,"#B45309","#FFFBEB");
+      var wr = await fetch("https://programthanarich.programsimpro.workers.dev/send",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({to:req.lineUserId, text:notifyMsg})
+      });
+      if(wr.ok){ sent=true; console.log("✅ Worker /send สำเร็จ"); }
+      else{ console.warn("❌ Worker /send error:", wr.status, await wr.text()); }
+    }catch(e){ console.warn("❌ Worker /send exception:", e.message); }
+
+    // วิธีที่ 2: ถ้า Worker ไม่ได้ ใช้ LINE Messaging API โดยตรง
+    if(!sent){
+      try{
+        const LT = "mpLms1e0rLzOjYORU3YzyokEnn6u4VUUdu3WQoMlrUFV/FG/KFJ79P1SWQokv7CfScdVCeVnus2Ud/qv8NZ42J3b3Nwec5/O+8pYcau+FktDFkiQoLC778obQjMEMOBrzybFJNTUj3Zvcx8CaYt2OQdB04t89/1O/w1cDnyilFU=";
+        var lr = await fetch("https://api.line.me/v2/bot/message/push",{
+          method:"POST",
+          headers:{"Content-Type":"application/json","Authorization":"Bearer "+LT},
+          body:JSON.stringify({to:req.lineUserId, messages:[{type:"text",text:notifyMsg}]})
+        });
+        if(lr.ok){ sent=true; console.log("✅ LINE API โดยตรงสำเร็จ"); }
+        else{ console.warn("❌ LINE API error:", lr.status, await lr.text()); }
+      }catch(e){ console.warn("❌ LINE API exception:", e.message); }
     }
+
+    if(sent) showToast("✅ ส่งข้อความแจ้งลูกค้าแล้วค่ะ","#166534","#DCFCE7");
+    else showToast("⚠️ ส่งข้อความไม่สำเร็จ กรุณาแจ้งลูกค้าด้วยตนเองค่ะ","#B45309","#FFFBEB");
   } else {
     showToast("⚠️ ไม่พบ LINE ของลูกค้า ไม่สามารถส่งข้อความได้","#B45309","#FFFBEB");
   }
