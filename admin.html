@@ -121,6 +121,65 @@ body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#F0F2F5;min-he
   <!-- Firebase SDK — โหลดแบบ sync ก่อน script อื่น -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+<script>
+// ── Service Worker สำหรับ Push Notification แม้ปิดหน้าจอ ──
+if("serviceWorker" in navigator){
+  var swCode = [
+    "self.addEventListener('push',function(e){",
+    "  var d=e.data?e.data.json():{};",
+    "  e.waitUntil(self.registration.showNotification(d.title||'📱 คำขอใหม่!',{",
+    "    body:d.body||'มีลูกค้าขอรับเน็ตฟรีค่ะ',",
+    "    icon:'https://upload.wikimedia.org/wikipedia/commons/4/41/Simple_green_wifi.png',",
+    "    tag:'new-order',requireInteraction:true,vibrate:[200,100,200]",
+    "  }));",
+    "});",
+    "self.addEventListener('notificationclick',function(e){",
+    "  e.notification.close();",
+    "  e.waitUntil(clients.matchAll({type:'window'}).then(function(cs){",
+    "    for(var c of cs){ if(c.url&&'focus' in c){ return c.focus(); } }",
+    "    if(clients.openWindow) return clients.openWindow('/');",
+    "  }));",
+    "});"
+  ].join("\n");
+  var blob = new Blob([swCode],{type:"application/javascript"});
+  var swUrl = URL.createObjectURL(blob);
+  navigator.serviceWorker.register(swUrl).then(function(reg){
+    window._swReg = reg;
+    console.log("✅ SW registered");
+    // ขอ permission
+    if(Notification.permission==="default") Notification.requestPermission();
+  }).catch(function(e){ console.warn("SW err:",e.message); });
+}
+
+// แจ้งเตือนเมื่อมี order ใหม่
+var _knownRefs = null;
+function checkNewOrders(newReqs){
+  if(_knownRefs===null){
+    _knownRefs={};
+    newReqs.forEach(function(r){ _knownRefs[r.ref]=true; });
+    return;
+  }
+  newReqs.filter(function(r){ return !_knownRefs[r.ref]; }).forEach(function(r){
+    _knownRefs[r.ref]=true;
+    var name=r.lineDisplayName||"ลูกค้า";
+    var body=name+" - "+r.simPhone+(r.pkgName?" - "+r.pkgName:"");
+    // เล่นเสียง
+    if(window._notifAudio){ window._notifAudio.currentTime=0; window._notifAudio.play().catch(function(){}); }
+    // Browser notification
+    if(Notification.permission==="granted"){
+      if(window._swReg){
+        window._swReg.showNotification("📱 คำขอรับเน็ตฟรีใหม่!",{
+          body:body, tag:"new-order", requireInteraction:true, vibrate:[200,100,200],
+          icon:"https://upload.wikimedia.org/wikipedia/commons/4/41/Simple_green_wifi.png"
+        });
+      } else {
+        new Notification("📱 คำขอรับเน็ตฟรีใหม่!",{body:body});
+      }
+    }
+  });
+}
+</script>
 </head>
 <body>
 <div id="lb" onclick="closeLb()"><button id="lb-x" onclick="closeLb()">✕</button><img id="lb-img" src="" alt=""></div>
@@ -612,6 +671,7 @@ function startRealtimeSync(){
       var tb = a.createdAt||a.submittedAt||"";
       return ta.localeCompare(tb);
     });
+    checkNewOrders(newReqs);
     reqs = newReqs;
     localStorage.setItem("pt_requests", JSON.stringify(reqs));
     console.log("📡 Orders:", reqs.length);
@@ -680,7 +740,7 @@ function startRealtimeSync(){
 
 function loadAll(){
   try{ pkgs = JSON.parse(localStorage.getItem("pt_packages")||"null")||DEFAULT_PKGS; }catch(_){ pkgs=DEFAULT_PKGS; }
-  try{ reqs = JSON.parse(localStorage.getItem("pt_requests")||"[]"); }catch(_){ reqs=[]; }
+  reqs = [];
   try{ var ng=localStorage.getItem("pt_netguides"); if(ng) netGuides=JSON.parse(ng); }catch(_){}
 
   var tb = $("tabbar");
@@ -739,7 +799,7 @@ function syncFromAPI(){
       var lo = localMap[o.ref];
       if(lo){
         if(lo.status)           o.status           = lo.status;
-        if(lo.shopeeVerified && o.shopeeVerified !== "confirmed") o.shopeeVerified = lo.shopeeVerified;
+        if(lo.shopeeVerified)   o.shopeeVerified   = lo.shopeeVerified;
         if(lo.lineMessages)     o.lineMessages     = lo.lineMessages;
         if(lo.activatedPackage) o.activatedPackage = lo.activatedPackage;
         if(lo.activatedAt)      o.activatedAt      = lo.activatedAt;
@@ -1301,15 +1361,25 @@ function renderOrdList(){
     "</div>";
   }).join("");
   $("filter-row").innerHTML=[["all","ทั้งหมด"],["pending","รอตรวจ"],["confirmed","ยืนยัน"],["activated","เปิดเน็ต"],["rejected","ปฏิเสธ"]].map(function(kv){var k=kv[0],v=kv[1],a=fstat===k;return "<button class='fbtn' data-f='"+k+"' onclick='setFilter(this.dataset.f)' style='background:"+(a?"#1565C0":"#EEEEEE")+";color:"+(a?"#fff":"#616161")+"'>"+v+"</button>";}).join("");
-  const filtered=fstat==="all"?reqs:reqs.filter(r=>r.status===fstat);
+  // ถ้า "ทั้งหมด" — แสดง pending/confirmed/processing ทั้งหมด + activated แค่ 3 ล่าสุด
+  var filtered;
+  if(fstat==="all"){
+    var nonActivated = reqs.filter(function(r){ return r.status !== "activated"; });
+    var latestActivated = reqs.filter(function(r){ return r.status === "activated"; }).slice(0,3);
+    filtered = nonActivated.concat(latestActivated);
+    filtered.sort(function(a,b){
+      return (b.createdAt||b.submittedAt||"").localeCompare(a.createdAt||a.submittedAt||"");
+    });
+  } else {
+    filtered = reqs.filter(function(r){ return r.status===fstat; });
+  }
   const el=$("ord-list"),em=$("empty");
   if(!filtered.length){el.innerHTML="";em.style.display="block";return;}
   em.style.display="none";
   el.innerHTML=filtered.map(r=>{
     const sC={pending:["#E65100","#FFF3E0","รอตรวจ"],confirmed:["#1565C0","#E3F2FD","รอเปิดเน็ต"],processing:["#6A1B9A","#F3E8FF","กำลังดำเนินการ"],activated:["#2E7D32","#E8F5E9","เสร็จแล้ว"],rejected:["#C62828","#FFE4E6","ปฏิเสธ"]};
     const[sc,sb,sl]=sC[r.status]||sC.pending;
-    const _svOk=r.shopeeVerified==="confirmed"||(r.shopeeInfo&&r.shopeeInfo.found);
-    const svB=_svOk?`<span class="tag" style="background:#DCFCE7;color:#166534">✅ Shopee ยืนยัน</span>`:r.shopeeVerified==="rejected"?`<span class="tag" style="background:#FFE4E6;color:#BE123C">❌ ปฏิเสธ</span>`:`<span class="tag" style="background:#FEF3C7;color:#D97706">⏳ รอตรวจ Shopee</span>`;
+    const svB=r.shopeeVerified==="confirmed"?`<span class="tag" style="background:#DCFCE7;color:#166534">✅ Shopee ยืนยัน</span>`:r.shopeeVerified==="rejected"?`<span class="tag" style="background:#FFE4E6;color:#BE123C">❌ ปฏิเสธ</span>`:`<span class="tag" style="background:#FEF3C7;color:#D97706">⏳ รอตรวจ Shopee</span>`;
     return`<div class="ord-card fade" onclick="openOrdDetail('${r.ref}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">
         <div style="display:flex;align-items:center;gap:8px">
@@ -1756,10 +1826,11 @@ async function checkShopeeInline(){
     });
     var si = await r.json();
     req.shopeeInfo = si;
-    req.shopeeVerified = si.found ? "confirmed" : (!si.ready ? "pending" : "rejected");
-    if(fbDB||initFirebase()) fbDB.ref("/orders/"+aref).update({shopeeVerified:req.shopeeVerified, shopeeInfo:si});
-    saveReqs(); renderOrdDetail(aref); renderOrdList();
-    if(si.found) showToast("✅ Shopee ยืนยันแล้วค่ะ","#166534","#DCFCE7");
+    fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/orders/"+aref+"/shopeeInfo.json",{
+      method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(si)
+    });
+    saveReqs(); renderOrdDetail(aref);
+    if(si.found) showToast("✅ พบคำสั่งซื้อใน Shopee","#166534","#DCFCE7");
     else showToast("❌ ไม่พบคำสั่งซื้อ","#BE123C","#FFF1F2");
   }catch(e){
     showToast("❌ "+e.message,"#BE123C","#FFF1F2");
@@ -1778,10 +1849,11 @@ async function checkShopeeNow(ref){
     });
     var si = await r.json();
     req.shopeeInfo = si;
-    req.shopeeVerified = si.found ? "confirmed" : (!si.ready ? "pending" : "rejected");
-    if(fbDB||initFirebase()) fbDB.ref("/orders/"+ref).update({shopeeVerified:req.shopeeVerified, shopeeInfo:si});
-    saveReqs(); renderOrdDetail(ref); renderOrdList();
-    if(si.found) showToast("✅ Shopee ยืนยันแล้วค่ะ","#166534","#DCFCE7");
+    fetch("https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app/orders/"+ref+"/shopeeInfo.json",{
+      method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(si)
+    });
+    saveReqs(); renderOrdDetail(ref);
+    if(si.found) showToast("✅ พบคำสั่งซื้อใน Shopee","#166534","#DCFCE7");
     else if(!si.ready) showToast("⏳ "+si.message,"#E65100","#FFF3E0");
     else showToast("❌ ไม่พบคำสั่งซื้อ","#BE123C","#FFF1F2");
   }catch(e){ showToast("❌ "+e.message,"#BE123C","#FFF1F2"); }
