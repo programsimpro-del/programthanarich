@@ -1723,6 +1723,29 @@ async function confirmOrd(ref,verdict){
   saveReqs();renderOrdDetail(ref);renderOrdList();
 }
 
+// ── Quota helper functions ──
+function getQuotaDB(){ try{return JSON.parse(localStorage.getItem("pt_quota")||"{}");}catch(_){return {};} }
+function saveQuotaDB(db){ try{localStorage.setItem("pt_quota",JSON.stringify(db));}catch(_){} }
+
+function getQuotaSummary(orderNo){
+  var db = getQuotaDB();
+  var entry = db[orderNo] || {usedCount:0, maxQuota:1, activations:[]};
+  return {
+    usedCount:   entry.usedCount  || 0,
+    maxQuota:    entry.maxQuota   || 1,
+    remaining:   (entry.maxQuota||1) - (entry.usedCount||0),
+    activations: entry.activations || [],
+    pending:     entry.pending     || []
+  };
+}
+
+function setQuota(orderNo, quota){
+  var db = getQuotaDB();
+  if(!db[orderNo]) db[orderNo] = {usedCount:0, maxQuota:1, activations:[]};
+  db[orderNo].maxQuota = quota;
+  saveQuotaDB(db);
+}
+
 // Dialog เลือกจำนวนสิทธิ์
 function showQuotaDialog(ref, req){
   var cur = (typeof getQuotaSummary==="function") ? getQuotaSummary(req.orderNo).maxQuota : 1;
