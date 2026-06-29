@@ -739,7 +739,8 @@ function syncFromAPI(){
       var lo = localMap[o.ref];
       if(lo){
         if(lo.status)           o.status           = lo.status;
-        if(lo.shopeeVerified)   o.shopeeVerified   = lo.shopeeVerified;
+        // shopeeVerified: ถ้า Firebase บอก confirmed ให้เชื่อ Firebase เสมอ
+        if(lo.shopeeVerified && lo.shopeeVerified !== "confirmed") o.shopeeVerified = lo.shopeeVerified;
         if(lo.lineMessages)     o.lineMessages     = lo.lineMessages;
         if(lo.activatedPackage) o.activatedPackage = lo.activatedPackage;
         if(lo.activatedAt)      o.activatedAt      = lo.activatedAt;
@@ -1085,26 +1086,19 @@ function sendMsg(){
 function chatQuickSend(t){if(t&&t.target)t=t.target.dataset.t;addMsgToReq(activeChat,"admin",t);showQ=false;renderQP();$("qtoggle").style.background="#E8F5E9";$("qtoggle").style.color="#06C755";}
 // ส่งข้อความจาก Admin → ลูกค้า ผ่าน Vercel API (หลีกเลี่ยง CORS)
 async function sendLineMsg(userId, text) {
-  if(!userId){ console.warn("❌ userId ว่าง"); return false; }
-  if(!text){ console.warn("❌ text ว่าง"); return false; }
+  if(!userId){ console.warn("❌ userId ว่าง"); return; }
+  if(!text){ console.warn("❌ text ว่าง"); return; }
+  // แปลง newline เป็น \n string เพื่อไม่ให้ JSON เสีย
+  var safeText = text;
   console.log("📤 ส่งหา:", userId.slice(0,8)+"...");
   try {
     var r = await fetch("https://programthanarich.programsimpro.workers.dev/send", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({to: userId, text: text})
+      body: JSON.stringify({to: userId, text: safeText.replace(/\\n/g, "\n")})
     });
-    if(r.ok){
-      console.log("✅ ส่งสำเร็จ");
-      return true;
-    } else {
-      console.warn("❌ Worker error:", r.status);
-      return false;
-    }
-  } catch(e) {
-    console.warn("❌ sendLineMsg:", e.message);
-    return false;
-  }
+    console.log(r.ok ? "✅ ส่งสำเร็จ" : "❌ error: "+r.status);
+  } catch(e) { console.warn("❌ sendLineMsg:", e.message); }
 }
 
 // ส่งข้อความจาก Admin ไปหาลูกค้า + บันทึก Firebase
@@ -1315,7 +1309,8 @@ function renderOrdList(){
   el.innerHTML=filtered.map(r=>{
     const sC={pending:["#E65100","#FFF3E0","รอตรวจ"],confirmed:["#1565C0","#E3F2FD","รอเปิดเน็ต"],processing:["#6A1B9A","#F3E8FF","กำลังดำเนินการ"],activated:["#2E7D32","#E8F5E9","เสร็จแล้ว"],rejected:["#C62828","#FFE4E6","ปฏิเสธ"]};
     const[sc,sb,sl]=sC[r.status]||sC.pending;
-    const svB=r.shopeeVerified==="confirmed"?`<span class="tag" style="background:#DCFCE7;color:#166534">✅ Shopee ยืนยัน</span>`:r.shopeeVerified==="rejected"?`<span class="tag" style="background:#FFE4E6;color:#BE123C">❌ ปฏิเสธ</span>`:`<span class="tag" style="background:#FEF3C7;color:#D97706">⏳ รอตรวจ Shopee</span>`;
+    const _svOk = r.shopeeVerified==="confirmed" || (r.shopeeInfo && r.shopeeInfo.found);
+    const svB=_svOk?`<span class="tag" style="background:#DCFCE7;color:#166534">✅ Shopee ยืนยัน</span>`:r.shopeeVerified==="rejected"?`<span class="tag" style="background:#FFE4E6;color:#BE123C">❌ ปฏิเสธ</span>`:`<span class="tag" style="background:#FEF3C7;color:#D97706">⏳ รอตรวจ Shopee</span>`;
     return`<div class="ord-card fade" onclick="openOrdDetail('${r.ref}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">
         <div style="display:flex;align-items:center;gap:8px">
@@ -2069,17 +2064,8 @@ async function doActivate(pkgId){
     .replace(/\{remaining\}/g, String(remaining))
     .replace(/\{maxQuota\}/g,  String(q.maxQuota));
 
-  // ส่งข้อความแจ้งลูกค้าใน LINE (await เพื่อให้แน่ใจว่าส่งได้ก่อนไปต่อ)
-  if(req.lineUserId){
-    var sent = await sendLineMsg(req.lineUserId, notifyMsg);
-    if(sent){
-      showToast("✅ ส่งข้อความแจ้งลูกค้าแล้วค่ะ","#166534","#DCFCE7");
-    } else {
-      showToast("⚠️ ส่งข้อความไม่สำเร็จ กรุณาแจ้งลูกค้าด้วยตนเองค่ะ","#B45309","#FFFBEB");
-    }
-  } else {
-    showToast("⚠️ ไม่พบ LINE ของลูกค้า ไม่สามารถส่งข้อความได้","#B45309","#FFFBEB");
-  }
+  // ส่งใน LINE จริง
+  if(req.lineUserId) sendLineMsg(req.lineUserId, notifyMsg);
   addMsgToReq(aref, "admin", notifyMsg);
 
   // อัพเดทสถานะ
