@@ -1089,19 +1089,18 @@ function sendMsg(){
 function chatQuickSend(t){if(t&&t.target)t=t.target.dataset.t;addMsgToReq(activeChat,"admin",t);showQ=false;renderQP();$("qtoggle").style.background="#E8F5E9";$("qtoggle").style.color="#06C755";}
 // ส่งข้อความจาก Admin → ลูกค้า ผ่าน Vercel API (หลีกเลี่ยง CORS)
 async function sendLineMsg(userId, text) {
-  if(!userId){ console.warn("❌ userId ว่าง"); return; }
-  if(!text){ console.warn("❌ text ว่าง"); return; }
-  // แปลง newline เป็น \n string เพื่อไม่ให้ JSON เสีย
-  var safeText = text;
+  if(!userId){ console.warn("❌ userId ว่าง"); return false; }
+  if(!text){ console.warn("❌ text ว่าง"); return false; }
   console.log("📤 ส่งหา:", userId.slice(0,8)+"...");
   try {
     var r = await fetch("https://programthanarich.programsimpro.workers.dev/send", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({to: userId, text: safeText.replace(/\\n/g, "\n")})
+      body: JSON.stringify({to: userId, text: text})
     });
-    console.log(r.ok ? "✅ ส่งสำเร็จ" : "❌ error: "+r.status);
-  } catch(e) { console.warn("❌ sendLineMsg:", e.message); }
+    if(r.ok){ console.log("✅ ส่งสำเร็จ"); return true; }
+    else { console.warn("❌ Worker error:", r.status, await r.text()); return false; }
+  } catch(e) { console.warn("❌ sendLineMsg:", e.message); return false; }
 }
 
 // ส่งข้อความจาก Admin ไปหาลูกค้า + บันทึก Firebase
@@ -2065,8 +2064,14 @@ async function doActivate(pkgId){
     .replace(/\{remaining\}/g, String(remaining))
     .replace(/\{maxQuota\}/g,  String(q.maxQuota));
 
-  // ส่งใน LINE จริง
-  if(req.lineUserId) sendLineMsg(req.lineUserId, notifyMsg);
+  // ส่งข้อความแจ้งลูกค้าใน LINE (await รอผล)
+  if(req.lineUserId){
+    var sent = await sendLineMsg(req.lineUserId, notifyMsg);
+    if(sent) showToast("✅ ส่งข้อความแจ้งลูกค้าแล้วค่ะ","#166534","#DCFCE7");
+    else showToast("⚠️ ส่งข้อความไม่สำเร็จ กรุณาแจ้งลูกค้าด้วยตนเองค่ะ","#B45309","#FFFBEB");
+  } else {
+    showToast("⚠️ ไม่พบ LINE ของลูกค้า ไม่สามารถส่งข้อความได้","#B45309","#FFFBEB");
+  }
   addMsgToReq(aref, "admin", notifyMsg);
 
   // อัพเดทสถานะ
