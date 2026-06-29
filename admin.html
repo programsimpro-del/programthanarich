@@ -516,569 +516,97 @@ const ts=()=>new Date().toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-dig
 const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
 const isMob=/Android|iPhone|iPad/i.test(navigator.userAgent);
 
-// ── helper: ดึง LINE userId จาก req รองรับทุก field name ──
-function getLineUserId(req){
-  return (req && (req.lineUserId || req.userId || req.line_user_id || null));
-}
 
-// ── sendLineMsgSafe: ค้นหา userId จาก /chats ถ้า req ไม่มี แล้วส่งจริง ──
-async function sendLineMsgSafe(req, text){
-  if(!text) return;
-  // 1) ลอง field โดยตรงก่อน
-  var uid = getLineUserId(req);
-  // 2) ถ้าไม่มี → ค้นจาก Firebase /chats โดยจับคู่ simPhone / orderNo / ref
-  if(!uid && fbDB && req){
-    try{
-      var snap = await fbDB.ref("/chats").once("value");
-      var chatData = snap.val();
-      if(chatData){
-        for(var k in chatData){
-          var info = chatData[k].info || chatData[k];
-          if((req.simPhone && info.simPhone === req.simPhone) ||
-             (req.ref      && info.ref      === req.ref)      ||
-             (req.orderNo  && info.orderNo  === req.orderNo)){
-            uid = k; // key ของ /chats คือ LINE userId
-            // บันทึกไว้ใน req เพื่อใช้ครั้งต่อไปไม่ต้อง lookup ซ้ำ
-            req.lineUserId = uid;
-            if(fbDB) fbDB.ref("/orders/"+req.ref).update({lineUserId: uid}).catch(function(){});
-            console.log("✅ found lineUserId from /chats:", uid.slice(0,8)+"...");
-            break;
-          }
-        }
-      }
-    }catch(e){ console.warn("lookup /chats failed:", e.message); }
+/* ══════════════════════════════════════════════════════
+   ระบบส่งข้อความ LINE — เขียนใหม่ทั้งหมด
+   Worker endpoint: /send  รับ { to: LINE_userId, text: string }
+══════════════════════════════════════════════════════ */
+
+// ── 1. ส่งข้อความไปหา LINE userId โดยตรง ──
+async function sendLineMsg(userId, text){
+  if(!userId || !text){
+    console.warn("❌ sendLineMsg: userId="+userId+" text="+text);
+    return false;
   }
-  if(!uid){ console.warn("❌ ไม่พบ lineUserId สำหรับ:", req&&req.ref); return; }
-  await sendLineMsg(uid, text);
+  console.log("📤 sendLineMsg → "+userId.slice(0,8)+"... : "+text.slice(0,30));
+  try{
+    var r = await fetch("https://programthanarich.programsimpro.workers.dev/send", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({to: userId, text: text})
+    });
+    var d = await r.json().catch(function(){return {};});
+    if(r.ok){
+      console.log("✅ ส่งสำเร็จ");
+      return true;
+    } else {
+      console.error("❌ LINE error HTTP "+r.status, d);
+      return false;
+    }
+  } catch(e){
+    console.error("❌ sendLineMsg fetch error:", e.message);
+    return false;
+  }
 }
 
+// ── 2. ค้นหา LINE userId จาก req (รองรับทุก field + lookup จาก /chats) ──
+async function resolveLineUserId(req){
+  if(!req) return null;
+  // ลอง field ทั้งหมดใน req ก่อน
+  var uid = req.lineUserId || req.userId || req.line_user_id || null;
+  if(uid){ console.log("✅ uid จาก req:", uid.slice(0,8)+"..."); return uid; }
 
-/* ══════ SUPABASE ══════ */
-/* ══════ QUOTA SYSTEM — ป้องกันซ้ำ + นับสิทธิ์ ══════ */
-function getQuotaDB(){ try{return JSON.parse(localStorage.getItem("pt_quota")||"{}");}catch(_){return {};} }
-function saveQuotaDB(db){ try{localStorage.setItem("pt_quota",JSON.stringify(db));}catch(_){} }
+  // ถ้าไม่มี → lookup จาก Firebase /chats
+  if(!fbDB){ console.warn("❌ fbDB ยังไม่พร้อม"); return null; }
+  try{
+    var snap = await fbDB.ref("/chats").once("value");
+    var chats = snap.val();
+    if(!chats) return null;
+    for(var k in chats){
+      var info = chats[k].info || chats[k];
+      if( (req.simPhone && info.simPhone === req.simPhone) ||
+          (req.ref      && info.ref      === req.ref)      ||
+          (req.orderNo  && info.orderNo  === req.orderNo) ){
+        uid = k;
+        // cache กลับเข้า req และ Firebase เพื่อครั้งต่อไป
+        req.lineUserId = uid;
+        fbDB.ref("/orders/"+req.ref).update({lineUserId: uid}).catch(function(){});
+        console.log("✅ uid จาก /chats lookup:", uid.slice(0,8)+"...");
+        return uid;
+      }
+    }
+  } catch(e){ console.error("❌ lookup /chats error:", e.message); }
+  console.warn("❌ หา lineUserId ไม่เจอ ref="+req.ref+" simPhone="+req.simPhone);
+  return null;
+}
 
-// เรียกเมื่อ Admin กดเปิดเน็ต — บันทึกการใช้สิทธิ์
-window.markActivated = function(orderNo, simPhone, refNo, quota) {
-  // บันทึก localStorage
-  var db = getQDB();
-  if (!db[orderNo]) db[orderNo] = { usedCount:0, maxQuota: quota||1, activations:[] };
-  if(quota) db[orderNo].maxQuota = quota;
-  db[orderNo].usedCount = (db[orderNo].usedCount||0) + 1;
-  db[orderNo].activations = db[orderNo].activations || [];
-  db[orderNo].activations.push({ sim:simPhone, ref:refNo, at:new Date().toISOString() });
-  saveQDB(db);
-  // บันทึก Firebase — ให้ลูกค้าทุกเครื่องเช็คได้
+// ── 3. ส่งข้อความ + บันทึก Firebase /chats ──
+async function sendToCustomer(req, text){
+  if(!req || !text) return;
+  var uid = await resolveLineUserId(req);
+  if(!uid){ console.warn("❌ sendToCustomer: ไม่มี uid"); return; }
+
+  // ส่ง LINE จริง
+  await sendLineMsg(uid, text);
+
+  // บันทึกประวัติใน req.lineMessages
+  addMsgToReq(req.ref, "admin", text);
+
+  // บันทึกใน Firebase /chats/{uid}/messages
   if(fbDB){
-    var q = db[orderNo];
-    fbDB.ref("/quota/"+orderNo).set({
-      orderNo:    orderNo,
-      usedCount:  q.usedCount,
-      maxQuota:   q.maxQuota,
-      activations: q.activations,
-      updatedAt:  new Date().toISOString()
+    var now = new Date();
+    var tstr = now.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});
+    var msgId = "adm"+Date.now();
+    fbDB.ref("/chats/"+uid+"/messages/"+msgId).set({
+      id: msgId, from: "admin", text: text, time: tstr, ts: Date.now()
+    }).catch(function(){});
+    fbDB.ref("/chats/"+uid+"/info").update({
+      lastMsg: "คุณ: "+text, lastTime: tstr, lastTs: Date.now(), unread: false
     }).catch(function(){});
   }
-  console.log("✅ สิทธิ์: "+orderNo+" ("+db[orderNo].usedCount+"/"+db[orderNo].maxQuota+")");
-};
-
-
-// ดึงสรุปสิทธิ์ของออเดอร์
-function getQuotaSummary(orderNo) {
-  const db    = getQuotaDB();
-  const entry = db[orderNo] || { usedCount:0, maxQuota:1, activations:[] };
-  return {
-    usedCount: entry.usedCount || 0,
-    maxQuota:  entry.maxQuota  || 1,
-    remaining: (entry.maxQuota||1) - (entry.usedCount||0),
-    activations: entry.activations || [],
-    pending: entry.pending || [],
-  };
 }
 
-// Admin ปรับโควต้า (จำนวนซิมในออเดอร์)
-function setQuota(orderNo, quota) {
-  const db = getQuotaDB();
-  if (!db[orderNo]) db[orderNo] = { usedCount:0, maxQuota:1, activations:[] };
-  db[orderNo].maxQuota = quota;
-  saveQuotaDB(db);
-}
-
-/* ══════ LOAD / SAVE ══════ */
-const ORDERS_API = ""; // ไม่ใช้แล้ว Firebase แทน
-var fbDB = null;
-
-// Firebase init — รอให้ SDK โหลดเสร็จก่อน
-function initFirebase(){
-  if(typeof firebase === "undefined"){
-    console.warn("Firebase SDK not loaded yet, retrying in 500ms...");
-    setTimeout(function(){ if(initFirebase()) startRealtimeSync(); }, 500);
-    return false;
-  }
-  try{
-    var FB_CONFIG = {
-      apiKey:      "AIzaSyCnvEoyaadcOManjeyLcpkIM_rtWt3GLy8",
-      authDomain:  "programthanrich.firebaseapp.com",
-      databaseURL: "https://programthanrich-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId:   "programthanrich"
-    };
-    if(!firebase.apps || !firebase.apps.length) firebase.initializeApp(FB_CONFIG);
-    fbDB = firebase.database();
-    console.log("✅ Firebase ready");
-    return true;
-  }catch(e){
-    console.warn("Firebase init failed:", e.message);
-    setTimeout(function(){ if(initFirebase()) startRealtimeSync(); }, 1000);
-    return false;
-  }
-}
-
-// Real-time listener — Orders + Packages
-function startRealtimeSync(){
-  if(!fbDB && !initFirebase()){
-    return;
-  }
-
-  // ── Orders real-time (ขึ้นก่อนเพื่อให้ข้อมูลแสดงเร็วที่สุด) ──
-  fbDB.ref("/orders").on("value", function(snap){
-    var data = snap.val();
-    var newReqs = [];
-    if(data){ newReqs = Object.values(data); }
-    newReqs.sort(function(a,b){
-      var ta = b.createdAt||b.submittedAt||"";
-      var tb = a.createdAt||a.submittedAt||"";
-      return ta.localeCompare(tb);
-    });
-    // normalize: รองรับ field userId (LIFF/webhook) → lineUserId
-    newReqs.forEach(function(r){
-      if(!r.lineUserId && r.userId) r.lineUserId = r.userId;
-    });
-    reqs = newReqs;
-    localStorage.setItem("pt_requests", JSON.stringify(reqs));
-    console.log("📡 Orders:", reqs.length);
-    // join lineUserId จาก /chats สำหรับ orders ที่ยังไม่มี
-    var missing = reqs.filter(function(r){ return !r.lineUserId; });
-    if(missing.length > 0 && fbDB){
-      fbDB.ref("/chats").once("value").then(function(cs){
-        var chatData = cs.val(); if(!chatData) return;
-        var chatMap = {};
-        Object.keys(chatData).forEach(function(uid){
-          var info = (chatData[uid].info) || chatData[uid];
-          if(info.simPhone) chatMap["ph:"+info.simPhone] = uid;
-          if(info.ref)      chatMap["rf:"+info.ref]      = uid;
-          if(info.orderNo)  chatMap["on:"+info.orderNo]  = uid;
-        });
-        reqs.forEach(function(r){
-          if(!r.lineUserId){
-            r.lineUserId = chatMap["ph:"+r.simPhone]
-                        || chatMap["rf:"+r.ref]
-                        || chatMap["on:"+r.orderNo]
-                        || null;
-            if(r.lineUserId) console.log("✅ join lineUserId:", r.ref, "->", r.lineUserId.slice(0,8)+"...");
-          }
-        });
-        renderChatList();
-        renderOrdList();
-      }).catch(function(){});
-    }
-    renderChatList();
-    renderOrdList();
-    renderDashboard();
-    updateBadges();
-    $("rts").textContent = "\u{1F534} LIVE \u2014 \u0e2d\u0e31\u0e1e\u0e40\u0e14\u0e17 " + ts();
-  });
-
-  // ── Packages real-time ────────────────────────
-  fbDB.ref("/packages").on("value", function(snap){
-    var fbPkgs = snap.val();
-    if(fbPkgs && Array.isArray(fbPkgs) && fbPkgs.length > 0){
-      pkgs = fbPkgs;
-      localStorage.setItem("pt_packages", JSON.stringify(pkgs));
-      // ถ้าหน้า sc-pkgs เปิดอยู่ให้ refresh
-      if(document.getElementById("sc-pkgs").classList.contains("on")){
-        renderPkgMgrList();
-      }
-    } else {
-      // Firebase ว่าง — push local pkgs ขึ้น
-      if(pkgs && pkgs.length > 0 && (fbDB||initFirebase())){
-        fbDB.ref("/packages").set(pkgs).catch(function(){});
-      }
-    }
-  });
-
-
-  // ── Chats real-time (LINE OA) ────────────────────
-  fbDB.ref("/chats").on("value", function(snap){
-    var data = snap.val();
-    window._chats = data ? Object.values(data) : [];
-    window._chats.sort(function(a,b){
-      return ((b.info||b).lastTs||0) - ((a.info||a).lastTs||0);
-    });
-    if(document.getElementById("sc0") && document.getElementById("sc0").classList.contains("on")){
-      renderChatListFB();
-    }
-  });
-
-  // ── Orders real-time ────────────────────────────
-  // ── NetGuides real-time ──────────────────────
-  fbDB.ref("/settings/netGuides").on("value", function(snap){
-    var d = snap.val();
-    if(d !== null && d !== undefined){
-      var arr = Array.isArray(d) ? d : Object.values(d);
-      arr = arr.filter(function(g){ return g && (g.keyword||g.steps); });
-      if(arr.length > 0){
-        netGuides = arr;
-        localStorage.setItem("pt_netguides", JSON.stringify(netGuides));
-        // render ถ้าหน้าเปิดอยู่
-        var sc = document.getElementById("sc-netguide");
-        if(sc && sc.classList.contains("on")) renderNetGuideList();
-      }
-    } else {
-      // Firebase ว่าง — push local ขึ้น
-      try{
-        var loc = localStorage.getItem("pt_netguides");
-        if(loc){ var local=JSON.parse(loc); if(local&&local.length>0){ netGuides=local; fbDB.ref("/settings/netGuides").set(netGuides); } }
-      }catch(_){}
-    }
-  });
-
-}
-
-function loadAll(){
-  try{ pkgs = JSON.parse(localStorage.getItem("pt_packages")||"null")||DEFAULT_PKGS; }catch(_){ pkgs=DEFAULT_PKGS; }
-  reqs = [];
-  try{ var ng=localStorage.getItem("pt_netguides"); if(ng) netGuides=JSON.parse(ng); }catch(_){}
-
-  var tb = $("tabbar");
-  if(tb) tb.style.display="flex";
-  switchTab(1);
-  renderOrdList();
-  renderDashboard();
-  updateBadges();
-  $("rts").textContent = "⏳ กำลังเชื่อมต่อ Firebase...";
-  setTopbar("",null,"");
-
-  // init Firebase แล้ว start listener ทันที
-  if(initFirebase()){
-    startRealtimeSync();
-  }
-  // initFirebase จะ retry+startRealtimeSync เองถ้า SDK ยังไม่พร้อม
-
-  if(ORDERS_API) syncFromAPI();
-  syncPkgsFromFirebase();
-  loadNetGuides();
-}
-
-function syncPkgsFromFirebase(){
-  if(!fbDB && !initFirebase()) return;
-  fbDB.ref("/packages").once("value").then(function(snap){
-    var fbPkgs = snap.val();
-    if(fbPkgs && Array.isArray(fbPkgs) && fbPkgs.length > 0){
-      pkgs = fbPkgs;
-      localStorage.setItem("pt_packages", JSON.stringify(pkgs));
-      console.log("✅ pkgs synced from Firebase:", pkgs.length, "packages");
-    } else {
-      // Firebase ว่าง — upload LOCAL pkgs ขึ้น Firebase
-      if(pkgs && pkgs.length > 0){
-        fbDB.ref("/packages").set(pkgs).catch(function(){});
-      }
-    }
-  }).catch(function(e){ console.warn("syncPkgs:", e.message); });
-}
-
-function syncFromAPI(){
-  fetch(ORDERS_API, {
-    method: "GET",
-    headers: {"Content-Type":"application/json"},
-    cache: "no-store"
-  })
-  .then(function(r){
-    if(!r.ok) throw new Error("HTTP "+r.status);
-    return r.json();
-  })
-  .then(function(data){
-    if(!data.orders || !data.orders.length) return;
-    var local = JSON.parse(localStorage.getItem("pt_requests")||"[]");
-    var localMap = {};
-    local.forEach(function(o){ localMap[o.ref]=o; });
-    var merged = data.orders.map(function(o){
-      var lo = localMap[o.ref];
-      if(lo){
-        if(lo.status)           o.status           = lo.status;
-        if(lo.shopeeVerified)   o.shopeeVerified   = lo.shopeeVerified;
-        if(lo.lineMessages)     o.lineMessages     = lo.lineMessages;
-        if(lo.activatedPackage) o.activatedPackage = lo.activatedPackage;
-        if(lo.activatedAt)      o.activatedAt      = lo.activatedAt;
-        if(lo.aiResult)         o.aiResult         = lo.aiResult;
-      }
-      return o;
-    });
-    local.forEach(function(lo){
-      if(!merged.find(function(o){return o.ref===lo.ref;})) merged.push(lo);
-    });
-    reqs = merged;
-    localStorage.setItem("pt_requests", JSON.stringify(reqs));
-    renderChatList();
-    renderOrdList();
-    renderDashboard();
-    updateBadges();
-    $("rts").textContent="อัพเดท "+ts()+" ✅";
-  })
-  .catch(function(e){
-    // API ไม่พร้อม — ใช้ localStorage ปกติ ไม่แสดง error
-  });
-}
-function saveReqs(){
-  try{localStorage.setItem("pt_requests",JSON.stringify(reqs));}catch(_){}
-  // sync status กลับไป Firebase
-  reqs.forEach(function(r){
-    if(r.ref && r.status && r.status!=="pending" && fbDB){
-      try{
-        // อัพเดทเฉพาะ status fields ไม่ทับ lineUserId
-        var updates = {
-          status:           r.status,
-          shopeeVerified:   r.shopeeVerified||"pending",
-          activatedPackage: r.activatedPackage||null,
-          activatedAt:      r.activatedAt||null
-        };
-        if(r.maxQuota) updates.maxQuota = r.maxQuota;
-        fbDB.ref("/orders/"+r.ref).update(updates);
-      }catch(_){}
-    }
-  });
-}
-
-function demoReqs(){return[
-  {ref:"PT571784",platform:"shopee",orderNo:"TH01058RRVBA5D0",simPhone:"0951986769",pkgId:"TRUE2MB159",pkgName:"ซิมเทพดีแทค 2Mbps ไม่จำกัด",pkgCode:"TRUE2MB159(FREE)",status:"pending",shopeeVerified:"pending",submittedAt:"09:31",lineDisplayName:"คุณปวีณา",linePictureUrl:null,imgOrder:null,imgSim:null,imgReg:null,aiResult:null,lineMessages:[{id:1,from:"customer",text:"สวัสดีค่ะ ขอรับเน็ตฟรีเดือนแรกค่ะ\nเลขพัสดุ TH01058RRVBA5D0\nเบอร์ซิม 0951986769\nแพ็คเกจ ซิมเทพดีแทค 2Mbps ไม่จำกัด",time:"09:31"}]},
-  {ref:"PT524600",platform:"tiktok",orderNo:"TKT2024005678",simPhone:"0987654321",pkgId:"DTAC30D",pkgName:"ซิม DTAC 2Mbps ไม่จำกัด",pkgCode:"DTAC30DAYS(FREE)",status:"activated",shopeeVerified:"confirmed",submittedAt:"08:30",lineDisplayName:"คุณวิชัย",linePictureUrl:null,imgOrder:null,imgSim:null,imgReg:null,aiResult:{verdict:"pass",summary:"ข้อมูลตรงกัน"},activatedPackage:"DTAC30D",activatedAt:"08:45",lineMessages:[{id:1,from:"customer",text:"ขอรับเน็ตฟรีค่ะ",time:"08:30"},{id:2,from:"admin",text:"ดำเนินการเรียบร้อยแล้วค่ะ ✅",time:"08:45"}]},
-];}
-
-function updateBadges(){
-  var notifPend = reqs.filter(function(r){ return r.status==="pending"; }).length;
-  var nb = $("notif-badge");
-  if(nb){ nb.style.display=notifPend>0?"inline":"none"; nb.textContent=notifPend; }
-}
-
-/* ══════ TAB SWITCH ══════ */
-function showScreen(id){
-  // ซ่อนทุก screen
-  document.querySelectorAll(".screen").forEach(function(s){
-    s.style.display = "none";
-    s.classList.remove("on");
-  });
-  // แสดงเฉพาะ screen ที่ต้องการ
-  var el = document.getElementById(id);
-  if(el){
-    el.style.display = "flex";
-    el.classList.add("on");
-  }
-}
-
-function switchTab(n){
-  curTab = n;
-  // อัพเดท active tab
-  document.querySelectorAll(".tab").forEach(function(t,i){
-    t.classList.toggle("active", (n===1&&i===0)||(n===3&&i===1));
-  });
-  document.getElementById("tabbar").style.display = "flex";
-
-  if(n===1){
-    // รับเน็ตฟรี+รายงาน
-    showScreen("sc1");
-    var olv = document.getElementById("ord-list-view");
-    var odv = document.getElementById("ord-detail-view");
-    var rpt = document.getElementById("sc-report");
-    if(olv) olv.style.display = "flex";
-    if(odv) odv.style.display = "none";
-    if(rpt) rpt.style.display = "flex";
-    renderOrdList();
-    renderReport();
-    setTopbar("",null,"");
-  } else if(n===3){
-    showScreen("sc-settings");
-    setTopbar("⚙️ การตั้งค่า",null,"");
-  }
-}
-
-
-/* ══════════════════════════════
-   TAB 0: LINE OA CHAT LIST
-══════════════════════════════ */
-function renderChatListFB(){
-  var el = $("chat-list");
-  if(!el) return;
-  var chats = window._chats || [];
-
-  // กรอง: แสดงเฉพาะที่ unread, pinned, หรือ processing
-  // ถ้า admin ตอบแล้วและไม่ pinned/processing → ไม่แสดง
-  var pinned     = chats.filter(function(ch){ var i=ch.info||ch; return i.pinned && !i.processing; });
-  var processing = chats.filter(function(ch){ var i=ch.info||ch; return i.processing; });
-  var unread     = chats.filter(function(ch){ var i=ch.info||ch; return i.unread && !i.pinned && !i.processing; });
-
-  if(!pinned.length && !processing.length && !unread.length){
-    el.innerHTML = '<div style="text-align:center;padding:40px;color:#BDBDBD;font-size:13px">ไม่มีข้อความใหม่ค่ะ 🎉</div>';
-    return;
-  }
-
-  function chatRow(chat){
-    var info = chat.info || chat;
-    var userId = info.userId || "";
-    var name = info.displayName || userId;
-    var pic = info.pictureUrl || "";
-    var lastMsg = info.lastMsg || "";
-    var lastTime = info.lastTime || "";
-    var isPinned = info.pinned || false;
-    var isProc = info.processing || false;
-
-    var row = document.createElement("div");
-    row.style.cssText = "display:flex;align-items:center;padding:12px 14px;gap:10px;border-bottom:1px solid #F5F5F5;background:"
-      +(isPinned?"#FFFDE7":isProc?"#EFF6FF":"#F0FDF4");
-
-    row.innerHTML =
-      '<div style="position:relative;width:46px;height:46px;flex-shrink:0;cursor:pointer" onclick="openChatFB(\''+userId+'\',\''+name+'\',\''+pic+'\')">'
-        +'<div style="width:46px;height:46px;border-radius:50%;background:#E8F5E9;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:20px">'
-        +(pic?'<img src="'+pic+'" style="width:100%;height:100%;object-fit:cover">':'👤')
-        +'</div>'
-        +'<div style="position:absolute;top:0;right:0;width:12px;height:12px;border-radius:50%;background:'+(isPinned?'#F59E0B':isProc?'#3B82F6':'#06C755')+';border:2px solid #fff"></div>'
-      +'</div>'
-      +'<div style="flex:1;min-width:0;cursor:pointer" onclick="openChatFB(\''+userId+'\',\''+name+'\',\''+pic+'\')">'
-        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">'
-          +'<div style="font-weight:800;font-size:14px;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">'+name+'</div>'
-          +'<div style="font-size:11px;color:#9E9E9E">'+lastTime+'</div>'
-        +'</div>'
-        +'<div style="font-size:12px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600">'+lastMsg+'</div>'
-      +'</div>'
-      +'<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">'
-        +'<button onclick="event.stopPropagation();togglePin(\''+userId+'\')" title="ปักหมุด" style="background:none;border:none;font-size:14px;cursor:pointer">'+(isPinned?'📌':'📍')+'</button>'
-        +'<button onclick="event.stopPropagation();toggleProcessing(\''+userId+'\')" title="ดำเนินการ" style="background:none;border:none;font-size:14px;cursor:pointer">'+(isProc?'🔵':'⚙️')+'</button>'
-        +'<button onclick="event.stopPropagation();deleteChat(\''+userId+'\')" title="ลบออกจากระบบ" style="background:none;border:none;font-size:14px;cursor:pointer">🗑️</button>'
-      +'</div>';
-
-    el.appendChild(row);
-  }
-
-  el.innerHTML = "";
-
-  if(pinned.length){
-    var h1=document.createElement("div");
-    h1.style.cssText="padding:5px 14px;font-size:11px;font-weight:800;color:#92400E;background:#FEF3C7;border-bottom:1px solid #FDE68A";
-    h1.textContent="📌 ปักหมุด ("+pinned.length+")";
-    el.appendChild(h1);
-    pinned.forEach(chatRow);
-  }
-  if(processing.length){
-    var h2=document.createElement("div");
-    h2.style.cssText="padding:5px 14px;font-size:11px;font-weight:800;color:#1E40AF;background:#EFF6FF;border-bottom:1px solid #BFDBFE";
-    h2.textContent="⚙️ กำลังดำเนินการ ("+processing.length+")";
-    el.appendChild(h2);
-    processing.forEach(chatRow);
-  }
-  if(unread.length){
-    var h3=document.createElement("div");
-    h3.style.cssText="padding:5px 14px;font-size:11px;font-weight:800;color:#166534;background:#F0FDF4;border-bottom:1px solid #DCFCE7";
-    h3.textContent="🔵 ยังไม่ได้อ่าน ("+unread.length+")";
-    el.appendChild(h3);
-    unread.forEach(chatRow);
-  }
-}
-
-
-function togglePin(userId){
-  if(!fbDB) return;
-  fbDB.ref("/chats/"+userId+"/info").once("value").then(function(snap){
-    var info = snap.val()||{};
-    fbDB.ref("/chats/"+userId+"/info").update({pinned:!info.pinned, processing:false});
-  });
-}
-
-function toggleProcessing(userId){
-  if(!fbDB) return;
-  fbDB.ref("/chats/"+userId+"/info").once("value").then(function(snap){
-    var info = snap.val()||{};
-    fbDB.ref("/chats/"+userId+"/info").update({processing:!info.processing, pinned:false});
-  });
-}
-
-function deleteChat(userId){
-  if(!confirm("ลบแชทนี้ออกจากระบบ Admin? (ข้อความยังอยู่ใน LINE OA ปกติ)")) return;
-  if(!fbDB) return;
-  fbDB.ref("/chats/"+userId).remove().then(function(){
-    showToast("ลบแชทออกจากระบบแล้วค่ะ","#C62828","#FFEBEE");
-  });
-}
-
-
-function renderChatList(){
-  if(curTab !== 0 && curTab !== 1) return;
-  // ถ้ามี chats จาก Firebase ใช้นั้น
-  if(window._chats && window._chats.length) {
-    renderChatListFB();
-    return;
-  }
-  // fallback: แสดงจาก reqs
-  var el=$("chat-list"); if(!el)return;
-  el.innerHTML='<div style="text-align:center;padding:40px;color:#BDBDBD;font-size:13px">ยังไม่มีแชทค่ะ</div>';
-}
-function filterChats(){renderChatList();}
-
-function openChatFB(userId, name, pic){
-  // mark as read
-  if(fbDB) fbDB.ref("/chats/"+userId+"/info").update({unread:false}).catch(function(){});
-  // โหลดข้อความ
-  var cdv = $("chat-detail-view");
-  var clv = $("chat-list-view");
-  if(clv) clv.style.display = "none";
-  if(cdv){ cdv.style.display = "flex"; cdv.innerHTML = ""; }
-
-  // Header
-  var hdr = document.createElement("div");
-  hdr.style.cssText = "display:flex;align-items:center;gap:10px;padding:12px 14px;background:#06C755;color:#fff";
-  hdr.innerHTML =
-    '<button onclick="$(\'chat-list-view\').style.display=\'flex\';$(\'chat-detail-view\').style.display=\'none\';" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer">←</button>'
-    + '<div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);overflow:hidden;display:flex;align-items:center;justify-content:center">'
-    + (pic ? '<img src="'+pic+'" style="width:100%;height:100%">' : '👤')
-    + '</div>'
-    + '<div style="font-weight:800;font-size:15px">' + name + '</div>';
-  cdv.appendChild(hdr);
-
-  // Messages area
-  var msgArea = document.createElement("div");
-  msgArea.id = "chat-msgs-"+userId;
-  msgArea.style.cssText = "flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:#F5F5F5";
-  cdv.appendChild(msgArea);
-
-  // Input area
-  var inputArea = document.createElement("div");
-  inputArea.style.cssText = "display:flex;gap:8px;padding:10px 12px;background:#fff;border-top:1px solid #E8E8E8";
-  inputArea.innerHTML =
-    '<input id="chat-input-'+userId+'" type="text" placeholder="พิมพ์ข้อความ..." style="flex:1;border:1.5px solid #E8E8E8;border-radius:20px;padding:8px 14px;font-size:13px;font-family:inherit;outline:none"'
-    + ' onkeydown="if(event.key===\'Enter\')sendChatMsg(\''+userId+'\');">'
-    + '<button onclick="sendChatMsg(\''+userId+'\')" style="background:#06C755;color:#fff;border:none;border-radius:20px;padding:8px 16px;font-weight:800;cursor:pointer;font-family:inherit">ส่ง</button>';
-  cdv.appendChild(inputArea);
-
-  // โหลดข้อความจาก Firebase real-time
-  if(fbDB){
-    fbDB.ref("/chats/"+userId+"/messages").on("value", function(snap){
-      var msgs = snap.val();
-      var area = document.getElementById("chat-msgs-"+userId);
-      if(!area) return;
-      area.innerHTML = "";
-      if(!msgs){ area.innerHTML = '<div style="text-align:center;color:#BDBDBD;font-size:12px">ยังไม่มีข้อความ</div>'; return; }
-      Object.values(msgs).sort(function(a,b){return (a.ts||0)-(b.ts||0);}).forEach(function(msg){
-        var isAdmin = msg.from === "admin";
-        var bubble = document.createElement("div");
-        bubble.style.cssText = "display:flex;justify-content:"+(isAdmin?"flex-end":"flex-start");
-        bubble.innerHTML = '<div style="max-width:75%;padding:8px 12px;border-radius:'+(isAdmin?"16px 16px 4px 16px":"16px 16px 16px 4px")+';background:'+(isAdmin?"#06C755":"#fff")+';color:'+(isAdmin?"#fff":"#111")+';font-size:13px;box-shadow:0 1px 4px rgba(0,0,0,.08)">'
-          + msg.text
-          + '<div style="font-size:10px;opacity:.6;text-align:right;margin-top:2px">'+( msg.time||"")+'</div>'
-          + '</div>';
-        area.appendChild(bubble);
-      });
-      area.scrollTop = area.scrollHeight;
-    });
-  }
-}
-
+// ── 4. ส่งจาก Tab Chat (openChatFB) — userId คือ LINE userId โดยตรง ──
 async function sendChatMsg(userId){
   var inp = document.getElementById("chat-input-"+userId);
   if(!inp) return;
@@ -1086,127 +614,65 @@ async function sendChatMsg(userId){
   if(!text) return;
   inp.value = "";
 
-  var now = new Date();
-  var ts = now.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});
-  var msgId = "m"+Date.now();
+  // ส่ง LINE
+  await sendLineMsg(userId, text);
 
-  // บันทึก Firebase
+  // บันทึก Firebase /chats
   if(fbDB){
+    var now = new Date();
+    var tstr = now.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});
+    var msgId = "adm"+Date.now();
     fbDB.ref("/chats/"+userId+"/messages/"+msgId).set({
-      id: msgId, from: "admin", text: text, time: ts, ts: Date.now()
-    });
-    fbDB.ref("/chats/"+userId+"/info").update({lastMsg: "คุณ: "+text, lastTime: ts, lastTs: Date.now(), unread: false});
-  }
-
-  // ส่งผ่าน Worker
-  sendLineMsg(userId, text);
-}
-
-function openChat(ref){
-  activeChat=ref;
-  const req=reqs.find(r=>r.ref===ref); if(!req)return;
-  req._chatRead=true; saveReqs();
-  $("chat-list-view").style.display="none";
-  $("chat-detail-view").style.display="flex";
-  // header
-  $("cdhdr").innerHTML=`
-    <button onclick="closeChat()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0;line-height:1;margin-right:6px">←</button>
-    <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:17px;overflow:hidden;flex-shrink:0">
-      ${req.linePictureUrl?`<img src="${req.linePictureUrl}" style="width:100%;height:100%;object-fit:cover" alt="">`:``}👤
-    </div>
-    <div style="flex:1;margin-left:8px">
-      <div style="font-weight:800;font-size:14px;color:#fff">${req.lineDisplayName||req.simPhone}</div>
-      <div style="font-size:10px;color:rgba(255,255,255,.8)">${PLTS[req.platform]||""} · 📱 ${req.simPhone}</div>
-    </div>
-    <button onclick="switchTab(1);setTimeout(()=>openOrdDetail('${ref}'),100)" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:20px;padding:5px 11px;font-size:11px;font-weight:800;cursor:pointer">📦 ดูออเดอร์</button>`;
-  renderChatMsgs(req);
-  updateBadges();
-}
-function closeChat(){$("chat-list-view").style.display="flex";$("chat-detail-view").style.display="none";renderChatList();}
-function renderChatMsgs(req){
-  const el=$("msg-area");
-  el.innerHTML=(req.lineMessages||[]).map(m=>{
-    const isA=m.from==="admin";
-    return`<div class="bwrap${isA?" adm":""}">
-      ${!isA?`<div style="width:28px;height:28px;border-radius:50%;background:#06C755;display:flex;align-items:center;justify-content:center;font-size:12px;margin-right:6px;flex-shrink:0;align-self:flex-end;overflow:hidden">${req.linePictureUrl?`<img src="${req.linePictureUrl}" style="width:100%;height:100%;object-fit:cover" alt="">`:``}👤</div>`:""}
-      <div><div class="bubble${isA?" adm-b":" cust"}">${esc(m.text)}</div><div class="btime" style="text-align:${isA?"right":"left"}">${m.time}</div></div>
-    </div>`;
-  }).join("");
-  el.scrollTop=el.scrollHeight;
-}
-function toggleQ(){showQ=!showQ;const b=$("qtoggle");b.style.background=showQ?"#06C755":"#E8F5E9";b.style.color=showQ?"#fff":"#06C755";renderQP();}
-function renderQP(){
-  const el=$("qpanel");el.style.display=showQ?"block":"none";if(!showQ)return;
-    el.innerHTML='<div style="font-size:10px;color:#9E9E9E;font-weight:700;margin-bottom:5px">⚡ ตอบด่วน</div>'+QUICK.map(function(q){var t=q.t.replace(/'/g,"&apos;");return '<button class="qbtn" onclick="chatQuickSend(this.dataset.t)" data-t="'+t+'">['+q.k+'] '+q.t.slice(0,44)+'...</button>';}).join("");
-}
-function chkSend(){$("send-btn").disabled=!$("msg-input").value.trim();}
-function sendMsg(){
-  var v=$("msg-input").value.trim(); if(!v)return;
-  var req=reqs.find(function(r){return r.ref===activeChat;});
-  addMsgToReq(activeChat,"admin",v);
-  sendLineMsgSafe(req, v).then(function(){
-    var uid=getLineUserId(req)||activeChat;
-    var now=new Date(); var tstr=now.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"}); var msgId="m"+Date.now();
-    if(fbDB&&uid){
-      fbDB.ref("/chats/"+uid+"/messages/"+msgId).set({id:msgId,from:"admin",text:v,time:tstr,ts:Date.now()});
-      fbDB.ref("/chats/"+uid+"/info").update({lastMsg:"คุณ: "+v,lastTime:tstr,lastTs:Date.now(),unread:false});
-    }
-  });
-  $("msg-input").value=""; $("send-btn").disabled=true;
-}
-function chatQuickSend(t){
-  if(t&&t.target)t=t.target.dataset.t;
-  if(!t||!activeChat)return;
-  var req=reqs.find(function(r){return r.ref===activeChat;});
-  addMsgToReq(activeChat,"admin",t);
-  sendLineMsgSafe(req, t).then(function(){
-    var uid=getLineUserId(req)||activeChat;
-    var now=new Date(); var tstr=now.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"}); var msgId="m"+Date.now();
-    if(fbDB&&uid){
-      fbDB.ref("/chats/"+uid+"/messages/"+msgId).set({id:msgId,from:"admin",text:t,time:tstr,ts:Date.now()});
-      fbDB.ref("/chats/"+uid+"/info").update({lastMsg:"คุณ: "+t,lastTime:tstr,lastTs:Date.now(),unread:false});
-    }
-  });
-  showQ=false;renderQP();$("qtoggle").style.background="#E8F5E9";$("qtoggle").style.color="#06C755";
-}
-// ส่งข้อความจาก Admin → ลูกค้า ผ่าน Vercel API (หลีกเลี่ยง CORS)
-async function sendLineMsg(userId, text) {
-  if(!userId){ console.warn("❌ userId ว่าง"); return; }
-  if(!text){ console.warn("❌ text ว่าง"); return; }
-  console.log("📤 ส่งหา:", userId.slice(0,8)+"...");
-  try {
-    var r = await fetch("https://programthanarich.programsimpro.workers.dev/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to: userId, text: text })
-    });
-    var d = await r.json().catch(function(){return {};});
-    console.log(r.ok ? "✅ ส่งสำเร็จ" : "❌ LINE error: "+r.status+" "+JSON.stringify(d));
-  } catch(e) { console.warn("❌ sendLineMsg:", e.message); }
-}
-
-// ส่งข้อความจาก Admin ไปหาลูกค้า + บันทึก Firebase
-async function sendAdminMsg(userId, text) {
-  if(!userId) return;
-  try {
-    await fetch("https://programthanarich.programsimpro.workers.dev/send", {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ to: userId, text: text })
-    });
-  } catch(_) {}
-  // บันทึกใน Firebase
-  if(fbDB && userId) {
-    var msgId = "a" + Date.now();
-    var ts2   = new Date().toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});
-    fbDB.ref("/chats/"+userId+"/messages/"+msgId).set({
-      id:msgId, from:"admin", text, time:ts2, timestamp:Date.now()
-    });
+      id: msgId, from: "admin", text: text, time: tstr, ts: Date.now()
+    }).catch(function(){});
     fbDB.ref("/chats/"+userId+"/info").update({
-      lastMessage:"คุณ: "+text, lastTime:ts2, unread:false
-    });
+      lastMsg: "คุณ: "+text, lastTime: tstr, lastTs: Date.now(), unread: false
+    }).catch(function(){});
   }
 }
+
+// ── 5. ส่งจากช่อง Order Detail (od-input) ──
+async function sendOdMsg(){
+  var v = $("od-input").value.trim(); if(!v) return;
+  var req = reqs.find(function(r){ return r.ref===aref; });
+  if(!req){ console.warn("❌ sendOdMsg: req ไม่เจอ"); return; }
+  $("od-input").value = ""; $("od-send").disabled = true;
+  await sendToCustomer(req, v);
+}
+
+// ── 6. ปุ่มตอบด่วน Order Detail ──
+async function odQuickSend(t){
+  if(t && t.target) t = t.target.dataset.t;
+  if(!t) return;
+  var req = reqs.find(function(r){ return r.ref===aref; });
+  showOdQ = false; renderOdQP();
+  $("od-qt").style.background = "#E3F2FD"; $("od-qt").style.color = "#1565C0";
+  await sendToCustomer(req, t);
+}
+
+// ── 7. ส่งจากช่อง Chat Tab (msg-input) ──
+async function sendMsg(){
+  var v = $("msg-input").value.trim(); if(!v) return;
+  var req = reqs.find(function(r){ return r.ref===activeChat; });
+  $("msg-input").value = ""; $("send-btn").disabled = true;
+  await sendToCustomer(req, v);
+}
+
+// ── 8. ปุ่มตอบด่วน Chat Tab ──
+async function chatQuickSend(t){
+  if(t && t.target) t = t.target.dataset.t;
+  if(!t || !activeChat) return;
+  var req = reqs.find(function(r){ return r.ref===activeChat; });
+  showQ = false; renderQP();
+  $("qtoggle").style.background = "#E8F5E9"; $("qtoggle").style.color = "#06C755";
+  await sendToCustomer(req, t);
+}
+
+// ── 9. backward compat ──
+async function sendAdminMsg(userId, text){ await sendLineMsg(userId, text); }
+function getLineUserId(req){ return req && (req.lineUserId || req.userId || req.line_user_id || null); }
+async function sendLineMsgSafe(req, text){ await sendToCustomer(req, text); }
+
 
 function addMsgToReq(ref,from,text){
   var req=reqs.find(function(r){return r.ref===ref;}); if(!req)return;
@@ -1771,7 +1237,7 @@ async function sendPackageAndProcess(ref, pkgId){
     .replace(/\{simCode\}/g,   req.simCode||"")
     .replace(/\{branch\}/g,    req.branchName||"");
 
-  sendLineMsgSafe(req, msg);
+  await sendToCustomer(req, msg);
   addMsgToReq(ref, "admin", msg);
 
   // อัพเดทสถานะ → processing
@@ -1812,14 +1278,7 @@ function renderOdQP(){
     el.innerHTML='<div style="font-size:10px;color:#9E9E9E;font-weight:700;margin-bottom:5px">⚡ ตอบด่วน</div>'+QUICK.map(function(q){var t=q.t.replace(/'/g,"&apos;");return '<button class="qbtn" onclick="odQuickSend(this.dataset.t)" data-t="'+t+'">['+q.k+'] '+q.t.slice(0,44)+'...</button>';}).join("");
 }
 function chkOdSend(){$("od-send").disabled=!$("od-input").value.trim();}
-function sendOdMsg(){
-  var v=$("od-input").value.trim(); if(!v)return;
-  var req=reqs.find(function(r){return r.ref===aref;});
-  addMsgToReq(aref,"admin",v);
-  sendLineMsgSafe(req, v);
-  $("od-input").value=""; $("od-send").disabled=true;
-}
-function odQuickSend(t){if(t&&t.target)t=t.target.dataset.t;var req=reqs.find(function(r){return r.ref===aref;});addMsgToReq(aref,"admin",t);sendLineMsgSafe(req,t);showOdQ=false;renderOdQP();$("od-qt").style.background="#E3F2FD";$("od-qt").style.color="#1565C0";}
+// sendOdMsg และ odQuickSend อยู่ด้านบนแล้ว
 function toggleNet(){showActivateMenu();}
 
 /* ══════ ORDER BOX ══════ */
@@ -1989,7 +1448,7 @@ function confirmOrd(ref,verdict){
   else if(verdict==="rejected"){
     req.status="rejected";
     // แจ้งลูกค้าผ่าน LINE
-    sendLineMsgSafe(req, "ขออภัยค่ะ ไม่พบคำสั่งซื้อนี้ในระบบ กรุณาตรวจสอบและติดต่อใหม่อีกครั้งนะคะ 🙏");
+    await sendToCustomer(req, "ขออภัยค่ะ ไม่พบคำสั่งซื้อนี้ในระบบ กรุณาตรวจสอบและติดต่อใหม่อีกครั้งนะคะ 🙏");
     addMsgToReq(ref,"admin","ขออภัยค่ะ ไม่พบคำสั่งซื้อนี้ในระบบ กรุณาตรวจสอบและติดต่อใหม่อีกครั้งนะคะ 🙏");
   }
   else{req.shopeeVerified="pending";req.status="pending";}
@@ -2082,7 +1541,7 @@ function applyQuotaConfirm(ref){
     "✅ คงเหลือ: " + quota + " สิทธิ์\n\n" +
     "ทีมงานกำลังดำเนินการเปิดเน็ตฟรีให้ค่ะ รอสักครู่นะคะ 🙏";
 
-  sendLineMsgSafe(req, msg);
+  await sendToCustomer(req, msg);
   addMsgToReq(ref, "admin", msg);
 
   showNet = true;
@@ -2146,7 +1605,7 @@ async function doActivate(pkgId){
     .replace(/\{maxQuota\}/g,  String(q.maxQuota));
 
   // ส่งใน LINE จริง
-  sendLineMsgSafe(req, notifyMsg);
+  await sendToCustomer(req, notifyMsg);
   addMsgToReq(aref, "admin", notifyMsg);
 
   // อัพเดทสถานะ
