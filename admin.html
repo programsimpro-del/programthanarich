@@ -521,6 +521,37 @@ function getLineUserId(req){
   return (req && (req.lineUserId || req.userId || req.line_user_id || null));
 }
 
+// ── sendLineMsgSafe: ค้นหา userId จาก /chats ถ้า req ไม่มี แล้วส่งจริง ──
+async function sendLineMsgSafe(req, text){
+  if(!text) return;
+  // 1) ลอง field โดยตรงก่อน
+  var uid = getLineUserId(req);
+  // 2) ถ้าไม่มี → ค้นจาก Firebase /chats โดยจับคู่ simPhone / orderNo / ref
+  if(!uid && fbDB && req){
+    try{
+      var snap = await fbDB.ref("/chats").once("value");
+      var chatData = snap.val();
+      if(chatData){
+        for(var k in chatData){
+          var info = chatData[k].info || chatData[k];
+          if((req.simPhone && info.simPhone === req.simPhone) ||
+             (req.ref      && info.ref      === req.ref)      ||
+             (req.orderNo  && info.orderNo  === req.orderNo)){
+            uid = k; // key ของ /chats คือ LINE userId
+            // บันทึกไว้ใน req เพื่อใช้ครั้งต่อไปไม่ต้อง lookup ซ้ำ
+            req.lineUserId = uid;
+            if(fbDB) fbDB.ref("/orders/"+req.ref).update({lineUserId: uid}).catch(function(){});
+            console.log("✅ found lineUserId from /chats:", uid.slice(0,8)+"...");
+            break;
+          }
+        }
+      }
+    }catch(e){ console.warn("lookup /chats failed:", e.message); }
+  }
+  if(!uid){ console.warn("❌ ไม่พบ lineUserId สำหรับ:", req&&req.ref); return; }
+  await sendLineMsg(uid, text);
+}
+
 
 /* ══════ SUPABASE ══════ */
 /* ══════ QUOTA SYSTEM — ป้องกันซ้ำ + นับสิทธิ์ ══════ */
@@ -1112,28 +1143,30 @@ function chkSend(){$("send-btn").disabled=!$("msg-input").value.trim();}
 function sendMsg(){
   var v=$("msg-input").value.trim(); if(!v)return;
   var req=reqs.find(function(r){return r.ref===activeChat;});
-  var uid=req?(req.lineUserId||req.userId||activeChat):activeChat;
   addMsgToReq(activeChat,"admin",v);
-  sendLineMsg(uid,v);
-  var now=new Date(); var tstr=now.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"}); var msgId="m"+Date.now();
-  if(fbDB&&uid){
-    fbDB.ref("/chats/"+uid+"/messages/"+msgId).set({id:msgId,from:"admin",text:v,time:tstr,ts:Date.now()});
-    fbDB.ref("/chats/"+uid+"/info").update({lastMsg:"คุณ: "+v,lastTime:tstr,lastTs:Date.now(),unread:false});
-  }
+  sendLineMsgSafe(req, v).then(function(){
+    var uid=getLineUserId(req)||activeChat;
+    var now=new Date(); var tstr=now.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"}); var msgId="m"+Date.now();
+    if(fbDB&&uid){
+      fbDB.ref("/chats/"+uid+"/messages/"+msgId).set({id:msgId,from:"admin",text:v,time:tstr,ts:Date.now()});
+      fbDB.ref("/chats/"+uid+"/info").update({lastMsg:"คุณ: "+v,lastTime:tstr,lastTs:Date.now(),unread:false});
+    }
+  });
   $("msg-input").value=""; $("send-btn").disabled=true;
 }
 function chatQuickSend(t){
   if(t&&t.target)t=t.target.dataset.t;
   if(!t||!activeChat)return;
   var req=reqs.find(function(r){return r.ref===activeChat;});
-  var uid=req?req.lineUserId:activeChat;
   addMsgToReq(activeChat,"admin",t);
-  sendLineMsg(uid,t);
-  var now=new Date(); var tstr=now.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"}); var msgId="m"+Date.now();
-  if(fbDB&&uid){
-    fbDB.ref("/chats/"+uid+"/messages/"+msgId).set({id:msgId,from:"admin",text:t,time:tstr,ts:Date.now()});
-    fbDB.ref("/chats/"+uid+"/info").update({lastMsg:"คุณ: "+t,lastTime:tstr,lastTs:Date.now(),unread:false});
-  }
+  sendLineMsgSafe(req, t).then(function(){
+    var uid=getLineUserId(req)||activeChat;
+    var now=new Date(); var tstr=now.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"}); var msgId="m"+Date.now();
+    if(fbDB&&uid){
+      fbDB.ref("/chats/"+uid+"/messages/"+msgId).set({id:msgId,from:"admin",text:t,time:tstr,ts:Date.now()});
+      fbDB.ref("/chats/"+uid+"/info").update({lastMsg:"คุณ: "+t,lastTime:tstr,lastTs:Date.now(),unread:false});
+    }
+  });
   showQ=false;renderQP();$("qtoggle").style.background="#E8F5E9";$("qtoggle").style.color="#06C755";
 }
 // ส่งข้อความจาก Admin → ลูกค้า ผ่าน Vercel API (หลีกเลี่ยง CORS)
@@ -1740,7 +1773,7 @@ async function sendPackageAndProcess(ref, pkgId){
     .replace(/\{simCode\}/g,   req.simCode||"")
     .replace(/\{branch\}/g,    req.branchName||"");
 
-  if(getLineUserId(req)) sendLineMsg(getLineUserId(req), msg);
+  sendLineMsgSafe(req, msg);
   addMsgToReq(ref, "admin", msg);
 
   // อัพเดทสถานะ → processing
@@ -1785,10 +1818,10 @@ function sendOdMsg(){
   var v=$("od-input").value.trim(); if(!v)return;
   var req=reqs.find(function(r){return r.ref===aref;});
   addMsgToReq(aref,"admin",v);
-  if(getLineUserId(req)) sendLineMsg(getLineUserId(req), v);
+  sendLineMsgSafe(req, v);
   $("od-input").value=""; $("od-send").disabled=true;
 }
-function odQuickSend(t){if(t&&t.target)t=t.target.dataset.t;var req=reqs.find(function(r){return r.ref===aref;});addMsgToReq(aref,"admin",t);if(req&&getLineUserId(req))sendLineMsg(getLineUserId(req),t);showOdQ=false;renderOdQP();$("od-qt").style.background="#E3F2FD";$("od-qt").style.color="#1565C0";}
+function odQuickSend(t){if(t&&t.target)t=t.target.dataset.t;var req=reqs.find(function(r){return r.ref===aref;});addMsgToReq(aref,"admin",t);sendLineMsgSafe(req,t);showOdQ=false;renderOdQP();$("od-qt").style.background="#E3F2FD";$("od-qt").style.color="#1565C0";}
 function toggleNet(){showActivateMenu();}
 
 /* ══════ ORDER BOX ══════ */
@@ -1958,7 +1991,7 @@ function confirmOrd(ref,verdict){
   else if(verdict==="rejected"){
     req.status="rejected";
     // แจ้งลูกค้าผ่าน LINE
-    if(getLineUserId(req)) sendLineMsg(getLineUserId(req), "ขออภัยค่ะ ไม่พบคำสั่งซื้อนี้ในระบบ กรุณาตรวจสอบและติดต่อใหม่อีกครั้งนะคะ 🙏");
+    sendLineMsgSafe(req, "ขออภัยค่ะ ไม่พบคำสั่งซื้อนี้ในระบบ กรุณาตรวจสอบและติดต่อใหม่อีกครั้งนะคะ 🙏");
     addMsgToReq(ref,"admin","ขออภัยค่ะ ไม่พบคำสั่งซื้อนี้ในระบบ กรุณาตรวจสอบและติดต่อใหม่อีกครั้งนะคะ 🙏");
   }
   else{req.shopeeVerified="pending";req.status="pending";}
@@ -2051,7 +2084,7 @@ function applyQuotaConfirm(ref){
     "✅ คงเหลือ: " + quota + " สิทธิ์\n\n" +
     "ทีมงานกำลังดำเนินการเปิดเน็ตฟรีให้ค่ะ รอสักครู่นะคะ 🙏";
 
-  if(getLineUserId(req)) sendLineMsg(getLineUserId(req), msg);
+  sendLineMsgSafe(req, msg);
   addMsgToReq(ref, "admin", msg);
 
   showNet = true;
@@ -2115,7 +2148,7 @@ async function doActivate(pkgId){
     .replace(/\{maxQuota\}/g,  String(q.maxQuota));
 
   // ส่งใน LINE จริง
-  if(getLineUserId(req)) sendLineMsg(getLineUserId(req), notifyMsg);
+  sendLineMsgSafe(req, notifyMsg);
   addMsgToReq(aref, "admin", notifyMsg);
 
   // อัพเดทสถานะ
