@@ -516,6 +516,12 @@ const ts=()=>new Date().toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-dig
 const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");
 const isMob=/Android|iPhone|iPad/i.test(navigator.userAgent);
 
+// ── helper: ดึง LINE userId จาก req รองรับทุก field name ──
+function getLineUserId(req){
+  return (req && (req.lineUserId || req.userId || req.line_user_id || null));
+}
+
+
 /* ══════ SUPABASE ══════ */
 /* ══════ QUOTA SYSTEM — ป้องกันซ้ำ + นับสิทธิ์ ══════ */
 function getQuotaDB(){ try{return JSON.parse(localStorage.getItem("pt_quota")||"{}");}catch(_){return {};} }
@@ -612,14 +618,43 @@ function startRealtimeSync(){
       var tb = a.createdAt||a.submittedAt||"";
       return ta.localeCompare(tb);
     });
+    // normalize: รองรับ field userId (LIFF/webhook) → lineUserId
+    newReqs.forEach(function(r){
+      if(!r.lineUserId && r.userId) r.lineUserId = r.userId;
+    });
     reqs = newReqs;
     localStorage.setItem("pt_requests", JSON.stringify(reqs));
     console.log("📡 Orders:", reqs.length);
+    // join lineUserId จาก /chats สำหรับ orders ที่ยังไม่มี
+    var missing = reqs.filter(function(r){ return !r.lineUserId; });
+    if(missing.length > 0 && fbDB){
+      fbDB.ref("/chats").once("value").then(function(cs){
+        var chatData = cs.val(); if(!chatData) return;
+        var chatMap = {};
+        Object.keys(chatData).forEach(function(uid){
+          var info = (chatData[uid].info) || chatData[uid];
+          if(info.simPhone) chatMap["ph:"+info.simPhone] = uid;
+          if(info.ref)      chatMap["rf:"+info.ref]      = uid;
+          if(info.orderNo)  chatMap["on:"+info.orderNo]  = uid;
+        });
+        reqs.forEach(function(r){
+          if(!r.lineUserId){
+            r.lineUserId = chatMap["ph:"+r.simPhone]
+                        || chatMap["rf:"+r.ref]
+                        || chatMap["on:"+r.orderNo]
+                        || null;
+            if(r.lineUserId) console.log("✅ join lineUserId:", r.ref, "->", r.lineUserId.slice(0,8)+"...");
+          }
+        });
+        renderChatList();
+        renderOrdList();
+      }).catch(function(){});
+    }
     renderChatList();
     renderOrdList();
     renderDashboard();
     updateBadges();
-    $("rts").textContent = "🔴 LIVE — อัพเดท " + ts();
+    $("rts").textContent = "\u{1F534} LIVE \u2014 \u0e2d\u0e31\u0e1e\u0e40\u0e14\u0e17 " + ts();
   });
 
   // ── Packages real-time ────────────────────────
@@ -1077,12 +1112,30 @@ function chkSend(){$("send-btn").disabled=!$("msg-input").value.trim();}
 function sendMsg(){
   var v=$("msg-input").value.trim(); if(!v)return;
   var req=reqs.find(function(r){return r.ref===activeChat;});
+  var uid=req?(req.lineUserId||req.userId||activeChat):activeChat;
   addMsgToReq(activeChat,"admin",v);
-  // ส่งไปหาลูกค้าผ่าน LINE
-  if(req && req.lineUserId) sendLineMsg(req.lineUserId, v);
+  sendLineMsg(uid,v);
+  var now=new Date(); var tstr=now.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"}); var msgId="m"+Date.now();
+  if(fbDB&&uid){
+    fbDB.ref("/chats/"+uid+"/messages/"+msgId).set({id:msgId,from:"admin",text:v,time:tstr,ts:Date.now()});
+    fbDB.ref("/chats/"+uid+"/info").update({lastMsg:"คุณ: "+v,lastTime:tstr,lastTs:Date.now(),unread:false});
+  }
   $("msg-input").value=""; $("send-btn").disabled=true;
 }
-function chatQuickSend(t){if(t&&t.target)t=t.target.dataset.t;addMsgToReq(activeChat,"admin",t);sendChatMsg(activeChat,t);showQ=false;renderQP();$("qtoggle").style.background="#E8F5E9";$("qtoggle").style.color="#06C755";}
+function chatQuickSend(t){
+  if(t&&t.target)t=t.target.dataset.t;
+  if(!t||!activeChat)return;
+  var req=reqs.find(function(r){return r.ref===activeChat;});
+  var uid=req?req.lineUserId:activeChat;
+  addMsgToReq(activeChat,"admin",t);
+  sendLineMsg(uid,t);
+  var now=new Date(); var tstr=now.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"}); var msgId="m"+Date.now();
+  if(fbDB&&uid){
+    fbDB.ref("/chats/"+uid+"/messages/"+msgId).set({id:msgId,from:"admin",text:t,time:tstr,ts:Date.now()});
+    fbDB.ref("/chats/"+uid+"/info").update({lastMsg:"คุณ: "+t,lastTime:tstr,lastTs:Date.now(),unread:false});
+  }
+  showQ=false;renderQP();$("qtoggle").style.background="#E8F5E9";$("qtoggle").style.color="#06C755";
+}
 // ส่งข้อความจาก Admin → ลูกค้า ผ่าน Vercel API (หลีกเลี่ยง CORS)
 async function sendLineMsg(userId, text) {
   if(!userId){ console.warn("❌ userId ว่าง"); return; }
@@ -1687,7 +1740,7 @@ async function sendPackageAndProcess(ref, pkgId){
     .replace(/\{simCode\}/g,   req.simCode||"")
     .replace(/\{branch\}/g,    req.branchName||"");
 
-  if(req.lineUserId) sendLineMsg(req.lineUserId, msg);
+  if(getLineUserId(req)) sendLineMsg(getLineUserId(req), msg);
   addMsgToReq(ref, "admin", msg);
 
   // อัพเดทสถานะ → processing
@@ -1732,10 +1785,10 @@ function sendOdMsg(){
   var v=$("od-input").value.trim(); if(!v)return;
   var req=reqs.find(function(r){return r.ref===aref;});
   addMsgToReq(aref,"admin",v);
-  if(req && req.lineUserId) sendLineMsg(req.lineUserId, v);
+  if(getLineUserId(req)) sendLineMsg(getLineUserId(req), v);
   $("od-input").value=""; $("od-send").disabled=true;
 }
-function odQuickSend(t){if(t&&t.target)t=t.target.dataset.t;var req=reqs.find(function(r){return r.ref===aref;});addMsgToReq(aref,"admin",t);if(req&&req.lineUserId)sendLineMsg(req.lineUserId,t);showOdQ=false;renderOdQP();$("od-qt").style.background="#E3F2FD";$("od-qt").style.color="#1565C0";}
+function odQuickSend(t){if(t&&t.target)t=t.target.dataset.t;var req=reqs.find(function(r){return r.ref===aref;});addMsgToReq(aref,"admin",t);if(req&&getLineUserId(req))sendLineMsg(getLineUserId(req),t);showOdQ=false;renderOdQP();$("od-qt").style.background="#E3F2FD";$("od-qt").style.color="#1565C0";}
 function toggleNet(){showActivateMenu();}
 
 /* ══════ ORDER BOX ══════ */
@@ -1905,7 +1958,7 @@ function confirmOrd(ref,verdict){
   else if(verdict==="rejected"){
     req.status="rejected";
     // แจ้งลูกค้าผ่าน LINE
-    if(req.lineUserId) sendLineMsg(req.lineUserId, "ขออภัยค่ะ ไม่พบคำสั่งซื้อนี้ในระบบ กรุณาตรวจสอบและติดต่อใหม่อีกครั้งนะคะ 🙏");
+    if(getLineUserId(req)) sendLineMsg(getLineUserId(req), "ขออภัยค่ะ ไม่พบคำสั่งซื้อนี้ในระบบ กรุณาตรวจสอบและติดต่อใหม่อีกครั้งนะคะ 🙏");
     addMsgToReq(ref,"admin","ขออภัยค่ะ ไม่พบคำสั่งซื้อนี้ในระบบ กรุณาตรวจสอบและติดต่อใหม่อีกครั้งนะคะ 🙏");
   }
   else{req.shopeeVerified="pending";req.status="pending";}
@@ -1998,7 +2051,7 @@ function applyQuotaConfirm(ref){
     "✅ คงเหลือ: " + quota + " สิทธิ์\n\n" +
     "ทีมงานกำลังดำเนินการเปิดเน็ตฟรีให้ค่ะ รอสักครู่นะคะ 🙏";
 
-  if(req.lineUserId) sendLineMsg(req.lineUserId, msg);
+  if(getLineUserId(req)) sendLineMsg(getLineUserId(req), msg);
   addMsgToReq(ref, "admin", msg);
 
   showNet = true;
@@ -2062,7 +2115,7 @@ async function doActivate(pkgId){
     .replace(/\{maxQuota\}/g,  String(q.maxQuota));
 
   // ส่งใน LINE จริง
-  if(req.lineUserId) sendLineMsg(req.lineUserId, notifyMsg);
+  if(getLineUserId(req)) sendLineMsg(getLineUserId(req), notifyMsg);
   addMsgToReq(aref, "admin", notifyMsg);
 
   // อัพเดทสถานะ
