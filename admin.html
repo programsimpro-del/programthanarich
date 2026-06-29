@@ -517,6 +517,274 @@ const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"
 const isMob=/Android|iPhone|iPad/i.test(navigator.userAgent);
 
 
+
+function updateBadges(){
+  var notifPend = reqs.filter(function(r){ return r.status==="pending"; }).length;
+  var nb = $("notif-badge");
+  if(nb){ nb.style.display=notifPend>0?"inline":"none"; nb.textContent=notifPend; }
+}
+
+/* ══════ TAB SWITCH ══════ */
+function showScreen(id){
+  // ซ่อนทุก screen
+  document.querySelectorAll(".screen").forEach(function(s){
+    s.style.display = "none";
+    s.classList.remove("on");
+  });
+  // แสดงเฉพาะ screen ที่ต้องการ
+  var el = document.getElementById(id);
+  if(el){
+    el.style.display = "flex";
+    el.classList.add("on");
+  }
+}
+
+function switchTab(n){
+  curTab = n;
+  // อัพเดท active tab
+  document.querySelectorAll(".tab").forEach(function(t,i){
+    t.classList.toggle("active", (n===1&&i===0)||(n===3&&i===1));
+  });
+  document.getElementById("tabbar").style.display = "flex";
+
+  if(n===1){
+    // รับเน็ตฟรี+รายงาน
+    showScreen("sc1");
+    var olv = document.getElementById("ord-list-view");
+    var odv = document.getElementById("ord-detail-view");
+    var rpt = document.getElementById("sc-report");
+    if(olv) olv.style.display = "flex";
+    if(odv) odv.style.display = "none";
+    if(rpt) rpt.style.display = "flex";
+    renderOrdList();
+    renderReport();
+    setTopbar("",null,"");
+  } else if(n===3){
+    showScreen("sc-settings");
+    setTopbar("⚙️ การตั้งค่า",null,"");
+  }
+}
+
+
+/* ══════════════════════════════
+   TAB 0: LINE OA CHAT LIST
+══════════════════════════════ */
+function renderChatListFB(){
+  var el = $("chat-list");
+  if(!el) return;
+  var chats = window._chats || [];
+
+  // กรอง: แสดงเฉพาะที่ unread, pinned, หรือ processing
+  // ถ้า admin ตอบแล้วและไม่ pinned/processing → ไม่แสดง
+  var pinned     = chats.filter(function(ch){ var i=ch.info||ch; return i.pinned && !i.processing; });
+  var processing = chats.filter(function(ch){ var i=ch.info||ch; return i.processing; });
+  var unread     = chats.filter(function(ch){ var i=ch.info||ch; return i.unread && !i.pinned && !i.processing; });
+
+  if(!pinned.length && !processing.length && !unread.length){
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:#BDBDBD;font-size:13px">ไม่มีข้อความใหม่ค่ะ 🎉</div>';
+    return;
+  }
+
+  function chatRow(chat){
+    var info = chat.info || chat;
+    var userId = info.userId || "";
+    var name = info.displayName || userId;
+    var pic = info.pictureUrl || "";
+    var lastMsg = info.lastMsg || "";
+    var lastTime = info.lastTime || "";
+    var isPinned = info.pinned || false;
+    var isProc = info.processing || false;
+
+    var row = document.createElement("div");
+    row.style.cssText = "display:flex;align-items:center;padding:12px 14px;gap:10px;border-bottom:1px solid #F5F5F5;background:"
+      +(isPinned?"#FFFDE7":isProc?"#EFF6FF":"#F0FDF4");
+
+    row.innerHTML =
+      '<div style="position:relative;width:46px;height:46px;flex-shrink:0;cursor:pointer" onclick="openChatFB(\''+userId+'\',\''+name+'\',\''+pic+'\')">'
+        +'<div style="width:46px;height:46px;border-radius:50%;background:#E8F5E9;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:20px">'
+        +(pic?'<img src="'+pic+'" style="width:100%;height:100%;object-fit:cover">':'👤')
+        +'</div>'
+        +'<div style="position:absolute;top:0;right:0;width:12px;height:12px;border-radius:50%;background:'+(isPinned?'#F59E0B':isProc?'#3B82F6':'#06C755')+';border:2px solid #fff"></div>'
+      +'</div>'
+      +'<div style="flex:1;min-width:0;cursor:pointer" onclick="openChatFB(\''+userId+'\',\''+name+'\',\''+pic+'\')">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">'
+          +'<div style="font-weight:800;font-size:14px;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">'+name+'</div>'
+          +'<div style="font-size:11px;color:#9E9E9E">'+lastTime+'</div>'
+        +'</div>'
+        +'<div style="font-size:12px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600">'+lastMsg+'</div>'
+      +'</div>'
+      +'<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">'
+        +'<button onclick="event.stopPropagation();togglePin(\''+userId+'\')" title="ปักหมุด" style="background:none;border:none;font-size:14px;cursor:pointer">'+(isPinned?'📌':'📍')+'</button>'
+        +'<button onclick="event.stopPropagation();toggleProcessing(\''+userId+'\')" title="ดำเนินการ" style="background:none;border:none;font-size:14px;cursor:pointer">'+(isProc?'🔵':'⚙️')+'</button>'
+        +'<button onclick="event.stopPropagation();deleteChat(\''+userId+'\')" title="ลบออกจากระบบ" style="background:none;border:none;font-size:14px;cursor:pointer">🗑️</button>'
+      +'</div>';
+
+    el.appendChild(row);
+  }
+
+  el.innerHTML = "";
+
+  if(pinned.length){
+    var h1=document.createElement("div");
+    h1.style.cssText="padding:5px 14px;font-size:11px;font-weight:800;color:#92400E;background:#FEF3C7;border-bottom:1px solid #FDE68A";
+    h1.textContent="📌 ปักหมุด ("+pinned.length+")";
+    el.appendChild(h1);
+    pinned.forEach(chatRow);
+  }
+  if(processing.length){
+    var h2=document.createElement("div");
+    h2.style.cssText="padding:5px 14px;font-size:11px;font-weight:800;color:#1E40AF;background:#EFF6FF;border-bottom:1px solid #BFDBFE";
+    h2.textContent="⚙️ กำลังดำเนินการ ("+processing.length+")";
+    el.appendChild(h2);
+    processing.forEach(chatRow);
+  }
+  if(unread.length){
+    var h3=document.createElement("div");
+    h3.style.cssText="padding:5px 14px;font-size:11px;font-weight:800;color:#166534;background:#F0FDF4;border-bottom:1px solid #DCFCE7";
+    h3.textContent="🔵 ยังไม่ได้อ่าน ("+unread.length+")";
+    el.appendChild(h3);
+    unread.forEach(chatRow);
+  }
+}
+
+
+function togglePin(userId){
+  if(!fbDB) return;
+  fbDB.ref("/chats/"+userId+"/info").once("value").then(function(snap){
+    var info = snap.val()||{};
+    fbDB.ref("/chats/"+userId+"/info").update({pinned:!info.pinned, processing:false});
+  });
+}
+
+function toggleProcessing(userId){
+  if(!fbDB) return;
+  fbDB.ref("/chats/"+userId+"/info").once("value").then(function(snap){
+    var info = snap.val()||{};
+    fbDB.ref("/chats/"+userId+"/info").update({processing:!info.processing, pinned:false});
+  });
+}
+
+function deleteChat(userId){
+  if(!confirm("ลบแชทนี้ออกจากระบบ Admin? (ข้อความยังอยู่ใน LINE OA ปกติ)")) return;
+  if(!fbDB) return;
+  fbDB.ref("/chats/"+userId).remove().then(function(){
+    showToast("ลบแชทออกจากระบบแล้วค่ะ","#C62828","#FFEBEE");
+  });
+}
+
+
+function renderChatList(){
+  if(curTab !== 0 && curTab !== 1) return;
+  // ถ้ามี chats จาก Firebase ใช้นั้น
+  if(window._chats && window._chats.length) {
+    renderChatListFB();
+    return;
+  }
+  // fallback: แสดงจาก reqs
+  var el=$("chat-list"); if(!el)return;
+  el.innerHTML='<div style="text-align:center;padding:40px;color:#BDBDBD;font-size:13px">ยังไม่มีแชทค่ะ</div>';
+}
+function filterChats(){renderChatList();}
+
+function openChatFB(userId, name, pic){
+  // mark as read
+  if(fbDB) fbDB.ref("/chats/"+userId+"/info").update({unread:false}).catch(function(){});
+  // โหลดข้อความ
+  var cdv = $("chat-detail-view");
+  var clv = $("chat-list-view");
+  if(clv) clv.style.display = "none";
+  if(cdv){ cdv.style.display = "flex"; cdv.innerHTML = ""; }
+
+  // Header
+  var hdr = document.createElement("div");
+  hdr.style.cssText = "display:flex;align-items:center;gap:10px;padding:12px 14px;background:#06C755;color:#fff";
+  hdr.innerHTML =
+    '<button onclick="$(\'chat-list-view\').style.display=\'flex\';$(\'chat-detail-view\').style.display=\'none\';" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer">←</button>'
+    + '<div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);overflow:hidden;display:flex;align-items:center;justify-content:center">'
+    + (pic ? '<img src="'+pic+'" style="width:100%;height:100%">' : '👤')
+    + '</div>'
+    + '<div style="font-weight:800;font-size:15px">' + name + '</div>';
+  cdv.appendChild(hdr);
+
+  // Messages area
+  var msgArea = document.createElement("div");
+  msgArea.id = "chat-msgs-"+userId;
+  msgArea.style.cssText = "flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:#F5F5F5";
+  cdv.appendChild(msgArea);
+
+  // Input area
+  var inputArea = document.createElement("div");
+  inputArea.style.cssText = "display:flex;gap:8px;padding:10px 12px;background:#fff;border-top:1px solid #E8E8E8";
+  inputArea.innerHTML =
+    '<input id="chat-input-'+userId+'" type="text" placeholder="พิมพ์ข้อความ..." style="flex:1;border:1.5px solid #E8E8E8;border-radius:20px;padding:8px 14px;font-size:13px;font-family:inherit;outline:none"'
+    + ' onkeydown="if(event.key===\'Enter\')sendChatMsg(\''+userId+'\');">'
+    + '<button onclick="sendChatMsg(\''+userId+'\')" style="background:#06C755;color:#fff;border:none;border-radius:20px;padding:8px 16px;font-weight:800;cursor:pointer;font-family:inherit">ส่ง</button>';
+  cdv.appendChild(inputArea);
+
+  // โหลดข้อความจาก Firebase real-time
+  if(fbDB){
+    fbDB.ref("/chats/"+userId+"/messages").on("value", function(snap){
+      var msgs = snap.val();
+      var area = document.getElementById("chat-msgs-"+userId);
+      if(!area) return;
+      area.innerHTML = "";
+      if(!msgs){ area.innerHTML = '<div style="text-align:center;color:#BDBDBD;font-size:12px">ยังไม่มีข้อความ</div>'; return; }
+      Object.values(msgs).sort(function(a,b){return (a.ts||0)-(b.ts||0);}).forEach(function(msg){
+        var isAdmin = msg.from === "admin";
+        var bubble = document.createElement("div");
+        bubble.style.cssText = "display:flex;justify-content:"+(isAdmin?"flex-end":"flex-start");
+        bubble.innerHTML = '<div style="max-width:75%;padding:8px 12px;border-radius:'+(isAdmin?"16px 16px 4px 16px":"16px 16px 16px 4px")+';background:'+(isAdmin?"#06C755":"#fff")+';color:'+(isAdmin?"#fff":"#111")+';font-size:13px;box-shadow:0 1px 4px rgba(0,0,0,.08)">'
+          + msg.text
+          + '<div style="font-size:10px;opacity:.6;text-align:right;margin-top:2px">'+( msg.time||"")+'</div>'
+          + '</div>';
+        area.appendChild(bubble);
+      });
+      area.scrollTop = area.scrollHeight;
+    });
+  }
+}
+
+
+function openChat(ref){
+  activeChat=ref;
+  const req=reqs.find(r=>r.ref===ref); if(!req)return;
+  req._chatRead=true; saveReqs();
+  $("chat-list-view").style.display="none";
+  $("chat-detail-view").style.display="flex";
+  // header
+  $("cdhdr").innerHTML=`
+    <button onclick="closeChat()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0;line-height:1;margin-right:6px">←</button>
+    <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:17px;overflow:hidden;flex-shrink:0">
+      ${req.linePictureUrl?`<img src="${req.linePictureUrl}" style="width:100%;height:100%;object-fit:cover" alt="">`:``}👤
+    </div>
+    <div style="flex:1;margin-left:8px">
+      <div style="font-weight:800;font-size:14px;color:#fff">${req.lineDisplayName||req.simPhone}</div>
+      <div style="font-size:10px;color:rgba(255,255,255,.8)">${PLTS[req.platform]||""} · 📱 ${req.simPhone}</div>
+    </div>
+    <button onclick="switchTab(1);setTimeout(()=>openOrdDetail('${ref}'),100)" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:20px;padding:5px 11px;font-size:11px;font-weight:800;cursor:pointer">📦 ดูออเดอร์</button>`;
+  renderChatMsgs(req);
+  updateBadges();
+}
+function closeChat(){$("chat-list-view").style.display="flex";$("chat-detail-view").style.display="none";renderChatList();}
+function renderChatMsgs(req){
+  const el=$("msg-area");
+  el.innerHTML=(req.lineMessages||[]).map(m=>{
+    const isA=m.from==="admin";
+    return`<div class="bwrap${isA?" adm":""}">
+      ${!isA?`<div style="width:28px;height:28px;border-radius:50%;background:#06C755;display:flex;align-items:center;justify-content:center;font-size:12px;margin-right:6px;flex-shrink:0;align-self:flex-end;overflow:hidden">${req.linePictureUrl?`<img src="${req.linePictureUrl}" style="width:100%;height:100%;object-fit:cover" alt="">`:``}👤</div>`:""}
+      <div><div class="bubble${isA?" adm-b":" cust"}">${esc(m.text)}</div><div class="btime" style="text-align:${isA?"right":"left"}">${m.time}</div></div>
+    </div>`;
+  }).join("");
+  el.scrollTop=el.scrollHeight;
+}
+function toggleQ(){showQ=!showQ;const b=$("qtoggle");b.style.background=showQ?"#06C755":"#E8F5E9";b.style.color=showQ?"#fff":"#06C755";renderQP();}
+function renderQP(){
+  const el=$("qpanel");el.style.display=showQ?"block":"none";if(!showQ)return;
+    el.innerHTML='<div style="font-size:10px;color:#9E9E9E;font-weight:700;margin-bottom:5px">⚡ ตอบด่วน</div>'+QUICK.map(function(q){var t=q.t.replace(/'/g,"&apos;");return '<button class="qbtn" onclick="chatQuickSend(this.dataset.t)" data-t="'+t+'">['+q.k+'] '+q.t.slice(0,44)+'...</button>';}).join("");
+}
+function chkSend(){$("send-btn").disabled=!$("msg-input").value.trim();}
+// sendMsg อยู่ใน NEW SEND SYSTEM ด้านล่าง
+
 /* ══════════════════════════════════════════════════════
    ระบบส่งข้อความ LINE — เขียนใหม่ทั้งหมด
    Worker endpoint: /send  รับ { to: LINE_userId, text: string }
