@@ -2064,11 +2064,14 @@ async function doActivate(pkgId){
     .replace(/\{remaining\}/g, String(remaining))
     .replace(/\{maxQuota\}/g,  String(q.maxQuota));
 
-  // ส่งข้อความแจ้งลูกค้าใน LINE (await รอผล)
+  // ส่งข้อความแจ้งลูกค้าใน LINE ผ่าน sendAdminMsg (มี LINE Token + บันทึก chat)
   if(req.lineUserId){
-    var sent = await sendLineMsg(req.lineUserId, notifyMsg);
-    if(sent) showToast("✅ ส่งข้อความแจ้งลูกค้าแล้วค่ะ","#166534","#DCFCE7");
-    else showToast("⚠️ ส่งข้อความไม่สำเร็จ กรุณาแจ้งลูกค้าด้วยตนเองค่ะ","#B45309","#FFFBEB");
+    try{
+      await sendAdminMsg(req.lineUserId, notifyMsg);
+      showToast("✅ ส่งข้อความแจ้งลูกค้าแล้วค่ะ","#166534","#DCFCE7");
+    }catch(e){
+      showToast("⚠️ ส่งข้อความไม่สำเร็จ: "+e.message,"#B45309","#FFFBEB");
+    }
   } else {
     showToast("⚠️ ไม่พบ LINE ของลูกค้า ไม่สามารถส่งข้อความได้","#B45309","#FFFBEB");
   }
