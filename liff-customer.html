@@ -1046,7 +1046,24 @@ async function notifyAdmin(refNo, req, pkg){
     }catch(e){ console.warn("❌ Firebase retry err:", e.message); }
   }
 
-  // ── Step C: แจ้ง LINE Admin ผ่าน Worker (fire-and-forget หลัง Firebase สำเร็จ) ──
+  // ── Step C: Push ข้อความต้อนรับหาลูกค้าทันที (ทำให้ chat ปรากฏใน LINE OA) ──
+  if(req.lineUserId){
+    fetch("https://programthanarich.programsimpro.workers.dev/send", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        to: req.lineUserId,
+        text: "✅ ทางร้านได้รับคำขอรับเน็ตฟรีเดือนแรกของคุณแล้วค่ะ 🎉\n\n"
+            + "📦 เลขอ้างอิง: " + refNo + "\n"
+            + "📱 เบอร์ซิม: " + (req.simPhone||"-") + "\n"
+            + "🎁 แพ็คเกจ: " + (pkg?pkg.name:req.pkgName||"-") + "\n\n"
+            + "⏳ กรุณารอ Admin ตรวจสอบและดำเนินการให้ค่ะ\n"
+            + "📵 อย่าลืมปิดเน็ตมือถือก่อนนะคะ"
+      })
+    }).catch(function(){});
+  }
+
+  // ── Step D: แจ้ง LINE Admin ผ่าน Worker ──
   fetch("https://programthanarich.programsimpro.workers.dev/notify", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
