@@ -2141,17 +2141,20 @@ async function doActivate(pkgId){
     .replace(/\{remaining\}/g, String(remaining))
     .replace(/\{maxQuota\}/g,  String(q.maxQuota));
 
-  // ส่งใน LINE จริง
+  // ── ส่งข้อความทันที — ก่อนทำอะไรทั้งนั้น ──
   if(req.lineUserId) sendLineMsg(req.lineUserId, notifyMsg);
   addMsgToReq(aref, "admin", notifyMsg);
 
-  // อัพเดทสถานะ
+  // อัพเดทสถานะ local ก่อน render ทันที
   req.status="activated";
   req.activatedPackage=pkgId;
   req.activatedAt=ts();
   showNet=false;
+  saveReqs();
+  renderOrdDetail(aref);
+  renderOrdList();
 
-  // บันทึก Firebase /orders
+  // บันทึก Firebase แบบ fire-and-forget (ไม่บล็อกการส่งข้อความ)
   if(fbDB || initFirebase()){
     fbDB.ref("/orders/"+req.ref).update({
       status:"activated",
@@ -2159,7 +2162,6 @@ async function doActivate(pkgId){
       activatedAt:new Date().toISOString()
     }).catch(function(){});
 
-    // อัพเดท /quota — นับ usedCount + บันทึก activation
     var newActivation = {
       sim:   req.simPhone,
       ref:   req.ref,
