@@ -1140,14 +1140,11 @@ function chatQuickSend(t){if(t&&t.target)t=t.target.dataset.t;addMsgToReq(active
 async function sendLineMsg(userId, text) {
   if(!userId){ console.warn("❌ userId ว่าง"); return; }
   if(!text){ console.warn("❌ text ว่าง"); return; }
-  // แปลง newline เป็น \n string เพื่อไม่ให้ JSON เสีย
-  var safeText = text;
-  console.log("📤 ส่งหา:", userId.slice(0,8)+"...");
   try {
     var r = await fetch("https://programthanarich.programsimpro.workers.dev/send", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({to: userId, text: safeText.replace(/\\n/g, "\n")})
+      body: JSON.stringify({to: userId, text: text})
     });
     console.log(r.ok ? "✅ ส่งสำเร็จ" : "❌ error: "+r.status);
   } catch(e) { console.warn("❌ sendLineMsg:", e.message); }
@@ -1156,7 +1153,7 @@ async function sendLineMsg(userId, text) {
 // ส่งข้อความจาก Admin ไปหาลูกค้า + บันทึก Firebase
 async function sendAdminMsg(userId, text) {
   if(!userId) return;
-  const LINE_TOKEN = "mpLms1e0rLzOjYORU3YzyokEnn6u4VUUdu3WQoMlrUFV/FG/KFJ79P1SWQokv7CfScdVCeVnus2Ud/qv8NZ42J3b3Nwec5/O+8pYcau+FktDFkiQoLC778obQjMEMOBrzybFJNTUj3Zvcx8CaYt2OQdB04t89/1O/w1cDnyilFU=";
+  const LINE_TOKEN = "/vY4vJJFVsmc87w5GAICEhdlpOPHhQRcSbxwf0IHxAexw2p68xaHTvcEA7G/e0MPScdVCeVnus2Ud/qv8NZ42J3b3Nwec5/O+8pYcau+FktdFMD8G+Jb/GYwHpTGLSUSMsnHK5txylLa1Lt4Iv2P/QdB04t89/1O/w1cDnyilFU=";
   // ส่งผ่าน Vercel API เพื่อหลีกเลี่ยง CORS
   try {
     await fetch("https://programthanarich.programsimpro.workers.dev/notify", {
@@ -1197,12 +1194,17 @@ function renderReport(){ renderDashboard(); }
 /* ── ยอดที่ร้านได้รับจริงจาก Shopee ── */
 function getSellerAmount(si){
   if(!si) return 0;
+  // ใช้ sellerIncome จาก escrow API (ถ้า Worker ใหม่แล้ว)
   if(si.sellerIncome && parseFloat(si.sellerIncome)>0) return parseFloat(si.sellerIncome);
+  // ใช้ totalAmount ที่ Shopee ส่งมา (ยอดที่ลูกค้าจ่ายจริง)
+  var total = parseFloat(si.totalAmount||0)||0;
+  if(total>0) return total;
+  // fallback: คำนวณจาก items
   if(si.items && si.items.length){
     var s=0; si.items.forEach(function(i){ s+=(parseFloat(i.price)||0)*(parseInt(i.qty)||1); });
-    if(s>0) return s;
+    return s;
   }
-  return parseFloat(si.totalAmount||0)||0;
+  return 0;
 }
 
 function renderDashboard(){
@@ -1304,7 +1306,7 @@ function renderDashboard(){
   // ── สถิติแยกสาขา ──────────────────────────────────
   var branchData={K:{today:0,month:0,revenue:0,pkgs:{}},L:{today:0,month:0,revenue:0,pkgs:{}}};
   reqs.forEach(function(r){
-    var d=new Date(r.createdAt||0);
+    var d=new Date(r.createdAt||r.submittedAt||0);
     var mk=d.getFullYear()+"-"+(d.getMonth()+1).toString().padStart(2,"0");
     var ds=d.toLocaleDateString("th-TH");
     var br=(r.branchCode||"").toUpperCase();
@@ -1313,7 +1315,14 @@ function renderDashboard(){
     if(mk===thisMonth){
       bd.month++;
       var p2=pkgs.find(function(p){return p.id===(r.activatedPackage||r.pkgId);});
-      if(p2&&r.status==="activated") bd.revenue+=(p2.price||0);
+      if(r.status==="activated"){
+        // ใช้ยอดจาก Shopee ถ้ามี มิฉะนั้นใช้ราคาแพ็กเกจ
+        if(r.shopeeInfo && getSellerAmount(r.shopeeInfo)>0){
+          bd.revenue += getSellerAmount(r.shopeeInfo);
+        } else if(p2){
+          bd.revenue += parseFloat(p2.price)||0;
+        }
+      }
       var pn=p2?p2.name:(r.pkgName||"ไม่ระบุ");
       bd.pkgs[pn]=(bd.pkgs[pn]||0)+1;
     }
