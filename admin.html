@@ -1194,6 +1194,17 @@ function addMsgToReq(ref,from,text){
 /* ══════ DASHBOARD ══════ */
 function renderReport(){ renderDashboard(); }
 
+/* ── ยอดที่ร้านได้รับจริงจาก Shopee ── */
+function getSellerAmount(si){
+  if(!si) return 0;
+  if(si.sellerIncome && parseFloat(si.sellerIncome)>0) return parseFloat(si.sellerIncome);
+  if(si.items && si.items.length){
+    var s=0; si.items.forEach(function(i){ s+=(parseFloat(i.price)||0)*(parseInt(i.qty)||1); });
+    if(s>0) return s;
+  }
+  return parseFloat(si.totalAmount||0)||0;
+}
+
 function renderDashboard(){
   if(!reqs || !reqs.length) return;
 
@@ -1510,7 +1521,7 @@ function manualShopeeCheck(){
         +'</div>'
         +'<div style="background:#fff;border-radius:8px;padding:10px;text-align:center">'
           +'<div style="font-size:10px;color:#9E9E9E">ยอดรวม</div>'
-          +'<div style="font-weight:800;font-size:13px;color:#1565C0">฿'+si.totalAmount+'</div>'
+          +'<div style="font-size:10px;color:#9E9E9E">ยอดรายรับร้าน</div>'+'<div style="font-weight:800;font-size:13px;color:#1565C0">฿'+getSellerAmount(si).toLocaleString()+'</div>'
         +'</div>'
         +'<div style="background:#fff;border-radius:8px;padding:10px;text-align:center">'
           +'<div style="font-size:10px;color:#9E9E9E">สถานะ</div>'
@@ -1599,7 +1610,7 @@ function renderOrdDetail(ref){
     if(!si.ready) return '<div style="background:#FFF3E0;border-radius:10px;padding:10px 12px;margin-bottom:10px;border:1.5px solid #FFCC02"><span style="font-size:12px;color:#E65100">⏳ '+si.message+'</span></div>';
     if(!si.found) return '<div style="background:#FFF1F2;border-radius:10px;padding:10px 12px;margin-bottom:10px;border:1.5px solid #FECDD3;display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12px;font-weight:700;color:#BE123C">❌ ไม่พบใน Shopee</div><div style="font-size:11px;color:#9E9E9E">'+(si.error||"ตรวจสอบเลขคำสั่งซื้ออีกครั้ง")+'</div></div><button onclick="checkShopeeNow(aref)" style="background:#FF5722;color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit">ตรวจใหม่</button></div>';
     var itemsHTML = (si.items||[]).map(function(i){ return '<div style="font-size:11px;padding:3px 0;border-bottom:1px solid #DCFCE7">📦 '+i.name+' | '+i.model+' | x'+i.qty+' | ฿'+i.price+'</div>'; }).join("");
-    return '<div style="background:#F0FDF4;border-radius:10px;padding:10px 12px;margin-bottom:10px;border:1.5px solid #BBF7D0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-weight:800;font-size:12px;color:#166534">✅ Shopee ยืนยันแล้ว</span><button onclick="checkShopeeNow(aref)" style="background:none;border:1px solid #BBF7D0;border-radius:6px;padding:3px 8px;font-size:11px;color:#166534;cursor:pointer;font-family:inherit">รีเฟรช</button></div><div style="font-size:12px;color:#374151;line-height:1.8;margin-bottom:4px">👤 ผู้ซื้อ: <b>'+si.buyer+'</b> | 🔢 '+si.totalSim+' ซิม | 💰 ฿'+si.totalAmount+'</div>'+itemsHTML+'</div>';
+    return '<div style="background:#F0FDF4;border-radius:10px;padding:10px 12px;margin-bottom:10px;border:1.5px solid #BBF7D0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-weight:800;font-size:12px;color:#166534">✅ Shopee ยืนยันแล้ว</span><button onclick="checkShopeeNow(aref)" style="background:none;border:1px solid #BBF7D0;border-radius:6px;padding:3px 8px;font-size:11px;color:#166534;cursor:pointer;font-family:inherit">รีเฟรช</button></div><div style="font-size:12px;color:#374151;line-height:1.8;margin-bottom:4px">👤 ผู้ซื้อ: <b>'+si.buyer+'</b> | 🔢 '+si.totalSim+' ซิม | 💰 ฿'+getSellerAmount(si).toLocaleString()+'</div>'+itemsHTML+'</div>';
   })()}
 `;
   $("od-order").innerHTML=renderOrderBox(req);
